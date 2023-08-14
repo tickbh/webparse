@@ -1,0 +1,10 @@
+[package]
+name = "webparse"
+version = "0.1.0"
+edition = "2021"
+authors = [ "tickbh <tickdream125@hotmail.com>" ]
+description = "a web parse"
+repository = "https://github.com/tickbh/webparse"
+license = "Apache-2.0"
+keywords = []
+[dependencies]
