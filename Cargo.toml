@@ -7,4 +7,7 @@ description = "a web parse"
 repository = "https://github.com/tickbh/webparse"
 license = "Apache-2.0"
 keywords = []
+
 [dependencies]
+log="0.4.19"
+url = "2.4.0"
