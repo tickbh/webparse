@@ -241,19 +241,19 @@ impl Helper {
     }
     
     #[inline]
-    pub(crate) fn parse_header(buffer: &mut Buffer) -> WebResult<HeaderMap> {
-        let mut header = HeaderMap::new();
-        
+    pub(crate) fn parse_header(buffer: &mut Buffer, header: &mut HeaderMap) -> WebResult<()> {
+        header.headers.clear();
+
         loop {
             let b = peek!(buffer)?;
             if b == b'\r' {
                 buffer.next();
                 expect!(buffer.next() == b'\n' => Err(WebError::NewLine));
-                return Ok(header);
+                return Ok(());
             }
             if b == b'\n' {
                 buffer.next();
-                return Ok(header);
+                return Ok(());
             }
 
             let name = Helper::parse_header_name(buffer)?;
@@ -261,8 +261,8 @@ impl Helper {
             expect!(buffer.next() == b':' => Err(WebError::HeaderName));
             Self::skip_spaces(buffer)?;
             let value = Helper::parse_header_value(buffer)?;
-            header.headers.insert(name, value);
             Self::skip_new_line(buffer)?;
+            header.headers.insert(name, value);
         }
     }
 
