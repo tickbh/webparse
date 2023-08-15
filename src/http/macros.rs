@@ -9,20 +9,20 @@ macro_rules! next {
     ($bytes:ident) => ({
         match $bytes.next() {
             Some(b) => Ok(b),
-            None => return Err(WebError::Partial)
+            None => Err(WebError::Partial)
         }
     })
 }
 
 
-// macro_rules! expect {
-//     ($bytes:ident.next() == $pat:pat => $ret:expr) => {
-//         expect!(next!($bytes) => $pat |? $ret)
-//     };
-//     ($e:expr => $pat:pat |? $ret:expr) => {
-//         match $e {
-//             v@$pat => v,
-//             _ => return $ret
-//         }
-//     };
-// }
+macro_rules! expect {
+    ($bytes:ident.next() == $pat:pat => $ret:expr) => {
+        expect!(next!($bytes) => $pat |? $ret)
+    };
+    ($e:expr => $pat:pat_param |? $ret:expr) => {
+        match $e {
+            Ok(v@$pat) => v,
+            _ => return $ret
+        }
+    };
+}

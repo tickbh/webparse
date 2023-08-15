@@ -1,5 +1,7 @@
 use crate::{Buffer, WebResult, WebError};
 
+use super::{Method, Version};
+
 
 
 
@@ -103,31 +105,124 @@ pub(crate) fn is_header_value_token(b: u8) -> bool {
     HEADER_VALUE_MAP[b as usize]
 }
 
-#[inline]
-pub(crate) fn parse_token<'a>(bytes: &mut Buffer) -> WebResult<&'a str> {
-    let b = next!(bytes)?;
-
-    Ok("")
+pub(crate) fn parse_method(buffer: &mut Buffer) -> WebResult<Method> {
+    let token = parse_token(buffer)?;
+    match token {
+        Method::SGET => Ok(Method::GET),
+        Method::SPOST => Ok(Method::POST),
+        Method::SPUT => Ok(Method::PUT),
+        Method::SDELETE => Ok(Method::DELETE),
+        Method::SHEAD => Ok(Method::HEAD),
+        Method::SOPTIONS => Ok(Method::OPTIONS),
+        Method::SCONNECT => Ok(Method::CONNECT),
+        Method::SPATCH => Ok(Method::PATCH),
+        Method::STRACE => Ok(Method::TRACE),
+        _ => {
+            Ok(Method::Extension(token.to_string()))
+        }
+    }
 }
 
 
-// #[inline]
-// fn parse_token<'a>(bytes: &mut Bytes<'a>) -> Result<&'a str> {
-//     let b = next!(bytes);
-//     if !is_token(b) {
-//         // First char must be a token char, it can't be a space which would indicate an empty token.
-//         return Err(Error::Token);
-//     }
+pub(crate) fn parse_version(buffer: &mut Buffer) -> WebResult<Version> {
+    let token = parse_token(buffer)?;
+    match token {
+        Version::SHTTP10 => Ok(Version::Http10),
+        Version::SHTTP11 => Ok(Version::Http11),
+        Version::SHTTP2 => Ok(Version::Http2),
+        Version::SHTTP3 => Ok(Version::Http3),
+        _ => {
+            Err(WebError::Version)
+        }
+    }
+}
 
-//     loop {
-//         let b = next!(bytes);
-//         if b == b' ' {
-//             return Ok(Status::Complete(
-//                 // SAFETY: all bytes up till `i` must have been `is_token` and therefore also utf-8.
-//                 unsafe { str::from_utf8_unchecked(bytes.slice_skip(1)) },
-//             ));
-//         } else if !is_token(b) {
-//             return Err(Error::Token);
-//         }
-//     }
-// }
+
+#[inline]
+pub(crate) fn parse_token_by_func<'a>(buffer: &'a mut Buffer, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
+    let b = next!(buffer)?;
+    if !func(b) {
+        return Err(err);
+    }
+
+    loop {
+        let b = next!(buffer)?;
+        if b == b' ' {
+            return Ok(
+                unsafe {
+                    std::str::from_utf8_unchecked(buffer.slice_skip(1))
+                })
+        } else if !func(b) {
+            return Err(err);
+        }
+    }
+}
+
+
+#[inline]
+pub(crate) fn parse_token<'a>(buffer: &'a mut Buffer) -> WebResult<&'a str> {
+    parse_token_by_func(buffer, is_token, WebError::Token)
+}
+
+#[inline]
+pub(crate) fn parse_header_name<'a>(buffer: &'a mut Buffer) -> WebResult<&'a str> {
+    parse_token_by_func(buffer, is_header_name_token, WebError::HeaderName)
+}
+
+#[inline]
+pub(crate) fn parse_header_value<'a>(buffer: &'a mut Buffer) -> WebResult<&'a str> {
+    parse_token_by_func(buffer, is_header_value_token, WebError::HeaderValue)
+}
+
+#[inline]
+pub(crate) fn skip_new_line(buffer: &mut Buffer) -> WebResult<()> {
+    match next!(buffer)? {
+        b'\r' => {
+            expect!(buffer.next() == b'\n' => Err(WebError::NewLine));
+            buffer.slice();
+        },
+        b'\n' => {
+            buffer.slice();
+        },
+        _ => return Err(WebError::NewLine)
+    };
+    Ok(())
+}
+
+#[inline]
+pub(crate) fn skip_empty_lines(buffer: &mut Buffer) -> WebResult<()> {
+    loop {
+        let b = buffer.peek();
+        match b {
+            Some(b'\r') => {
+                buffer.bump();
+                expect!(buffer.next() == b'\n' => Err(WebError::NewLine));
+            }
+            Some(b'\n') => {
+                buffer.bump();
+            }
+            Some(..) => {
+                buffer.slice();
+                return Ok(());
+            }
+            None => return Err(WebError::Partial),
+        }
+    }
+}
+
+#[inline]
+pub(crate) fn skip_spaces(buffer: &mut Buffer) -> WebResult<()> {
+    loop {
+        let b = buffer.peek();
+        match b {
+            Some(b' ') => {
+                buffer.bump();
+            }
+            Some(..) => {
+                buffer.slice();
+                return Ok(());
+            }
+            None => return Err(WebError::Partial),
+        }
+    }
+}
