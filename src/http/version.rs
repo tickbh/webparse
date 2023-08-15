@@ -1,5 +1,6 @@
 
 
+#[derive(Debug)]
 pub enum Version {
     None,
     Http10,

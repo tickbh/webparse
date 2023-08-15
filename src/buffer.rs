@@ -29,16 +29,17 @@ impl Buffer {
         Buffer {
             val: vec,
             start: 0,
-            end: 0,
+            end: buf.len(),
             cursor: 0,
         }
     }
     
     pub fn new_vec(vec: Vec<u8>) -> Buffer {
+        let len = vec.len();
         Buffer {
             val: vec,
             start: 0,
-            end: 0,
+            end: len,
             cursor: 0,
         }
     }
@@ -138,8 +139,8 @@ impl Buffer {
     
     #[inline]
     pub fn peek(&self) -> Option<u8> {
-        if self.start < self.end {
-            Some(self.val[self.start])
+        if self.cursor < self.end {
+            Some(self.val[self.cursor])
         } else {
             None
         }
@@ -167,8 +168,9 @@ impl Buffer {
     pub fn slice_skip(&mut self, skip: usize) -> &[u8] {
         debug_assert!(self.cursor - skip >= self.start);
         let cursor = self.cursor;
+        let start = self.start;
         self.commit();
-        let head = &self.val[self.start .. cursor - skip];
+        let head = &self.val[start .. (cursor - skip)];
         head
     }
 
@@ -182,12 +184,20 @@ impl Buffer {
         self.cursor = self.cursor + n;
         debug_assert!(self.cursor <= self.end, "overflow");
     }
+    
+    #[inline]
+    pub fn retreat(&mut self, n: usize) {
+        self.cursor = self.cursor - n;
+        debug_assert!(self.cursor >= self.start, "overflow");
+    }
+    
 
     #[inline]
     pub fn slice(&mut self) -> &[u8] {
         let cursor = self.cursor;
+        let start = self.start;
         self.commit();
-        let slice = &self.val[self.start .. cursor];
+        let slice = &self.val[start .. cursor];
         slice
     }
 

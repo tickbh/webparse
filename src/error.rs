@@ -1,6 +1,6 @@
 use std::{fmt, result};
 
-
+#[derive(Debug)]
 pub enum WebError {
     /// Invalid byte in header name.
     HeaderName,

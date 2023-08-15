@@ -14,6 +14,15 @@ macro_rules! next {
     })
 }
 
+macro_rules! peek {
+    ($bytes:ident) => ({
+        match $bytes.peek() {
+            Some(b) => Ok(b),
+            None => Err(WebError::Partial)
+        }
+    })
+}
+
 
 macro_rules! expect {
     ($bytes:ident.next() == $pat:pat => $ret:expr) => {

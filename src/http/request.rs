@@ -1,13 +1,15 @@
 use url::Url;
 
 use crate::{Buffer, WebResult};
-use super::{Method, HeaderMap, Version, skip_empty_lines, parse_method, skip_spaces, parse_version, parse_token, skip_new_line};
+use super::{Method, HeaderMap, Version, Helper};
 
+#[derive(Debug)]
 pub struct Request {
     parts: Parts,
     body: Buffer
 }
 
+#[derive(Debug)]
 pub struct Parts {
     pub method: Method,
     pub header: HeaderMap,
@@ -28,16 +30,14 @@ impl Request {
 
     pub fn parse(&mut self, buf:&[u8]) -> WebResult<()> {
         let mut buffer = Buffer::new_buf(buf);
-        skip_empty_lines(&mut buffer)?;
-        self.parts.method = parse_method(&mut buffer)?;
-        skip_spaces(&mut buffer)?;
-        self.parts.path = parse_token(&mut buffer)?.to_string();
-        skip_spaces(&mut buffer)?;
-        self.parts.version = parse_version(&mut buffer)?;
-        skip_new_line(&mut buffer)?;
-
-        // self.parts.url = 
-
+        Helper::skip_empty_lines(&mut buffer)?;
+        self.parts.method = Helper::parse_method(&mut buffer)?;
+        Helper::skip_spaces(&mut buffer)?;
+        self.parts.path = Helper::parse_token(&mut buffer)?.to_string();
+        Helper::skip_spaces(&mut buffer)?;
+        self.parts.version = Helper::parse_version(&mut buffer)?;
+        Helper::skip_new_line(&mut buffer)?;
+        self.parts.header = Helper::parse_header(&mut buffer)?;
         Ok(())
     }
 }

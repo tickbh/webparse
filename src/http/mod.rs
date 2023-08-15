@@ -9,6 +9,7 @@ mod helper;
 pub use version::Version;
 pub use method::Method;
 pub use header::{HeaderMap, HeaderName, HeaderValue};
-pub(crate) use helper::*;
+pub use request::Request;
+pub(crate) use helper::Helper;
 
 
