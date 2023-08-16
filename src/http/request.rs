@@ -5,7 +5,7 @@ use super::{Method, HeaderMap, Version};
 #[derive(Debug)]
 pub struct Request {
     parts: Parts,
-    body: Buffer,
+    body: Vec<u8>,
     partial: bool,
 }
 
@@ -23,10 +23,14 @@ impl Request {
     
     pub fn new() -> Request {
         Request {
-            body: Buffer::new(),
+            body: Vec::new(),
             partial: false,
             parts: Parts { method: Method::NONE, header: HeaderMap::new(), version: Version::None, url: None, path: String::new() }
         }
+    }
+
+    pub fn get_body_len(&self) -> usize {
+        self.parts.header.get_body_len()
     }
 
     pub fn is_partial(&self) -> bool {

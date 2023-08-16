@@ -9,9 +9,10 @@ fn main() {
     // println!("result = {:?}", request);
     // println!("is_partial = {}", request.is_partial());
 
-    let _result = request.parse(b"GET /index.html HTTP/1.1\r\nHost: example.domain1\r\n");
+    let _result = request.parse(b"GET /index.html HTTP/1.1\r\nHost: example.domain1\r\ncontent-length: 1111\r\n");
     println!("result = {:?}", request);
     println!("is_partial = {}", request.is_partial());
+    println!("body len = {}", request.get_body_len());
 
     let url = Url::parse("https://%4811:!%2011@www.baidu.com:88/path?aaa=222");
     println!("value = {:?}", url);

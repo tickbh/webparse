@@ -1,4 +1,4 @@
-use std::{fmt, result};
+use std::{fmt::{self, Result}, result, error::Error};
 
 #[derive(Debug)]
 pub enum WebError {
@@ -19,6 +19,9 @@ pub enum WebError {
 
     UrlInvalid,
     UrlCodeInvalid,
+
+    IntoError,
+    Extension(),
 }
 
 impl WebError {
@@ -34,6 +37,9 @@ impl WebError {
             WebError::Partial => "invalid HTTP length",
             WebError::UrlInvalid => "invalid Url",
             WebError::UrlCodeInvalid => "invalid Url Code",
+
+            WebError::IntoError => "into value error",
+            WebError::Extension() => "std error",
         }
     }
 }
@@ -44,5 +50,10 @@ impl fmt::Display for WebError {
     }
 }
 
+impl From<std::num::ParseIntError> for WebError {
+    fn from(_: std::num::ParseIntError) -> Self {
+        WebError::Extension()
+    }
+}
 
 pub type WebResult<T> = result::Result<T, WebError>;

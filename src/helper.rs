@@ -32,9 +32,11 @@ impl Helper {
         }
     }
 
+    pub const DIGIT_0 :u8 = 48;
+
     #[inline]
     pub fn is_digit(b: u8) -> bool {
-        if b >= 65 && b <= 90 {
+        if b >= 48 && b <= 57 {
             return true
         } else {
             return false

@@ -1,6 +1,8 @@
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, hash::Hash};
 
-#[derive(Hash, Eq, PartialEq)]
+use crate::{WebError, helper, Helper, WebResult};
+
+#[derive(Eq, PartialEq)]
 pub enum HeaderName {
     Stand(&'static str),
     Value(String),
@@ -10,6 +12,19 @@ pub enum HeaderName {
 pub enum HeaderValue {
     Stand(&'static str),
     Value(Vec<u8>),
+}
+
+impl Hash for HeaderName {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            HeaderName::Stand(stand) => {
+                stand.hash(state);
+            },
+            HeaderName::Value(val) => {
+                val.as_str().hash(state);
+            }
+        }
+    }
 }
 
 impl fmt::Debug for HeaderName {
@@ -23,6 +38,51 @@ impl fmt::Debug for HeaderName {
     }
 }
 
+impl From<&'static str> for HeaderName {
+    fn from(s: &'static str) -> Self {
+        HeaderName::Stand(s)
+    }
+}
+
+impl From<String> for HeaderName {
+    fn from(s: String) -> Self {
+        HeaderName::Value(s)
+    }
+}
+
+impl HeaderName {
+
+}
+
+impl TryInto<usize> for &HeaderValue {
+    type Error = WebError;
+
+    fn try_into(self) -> Result<usize, WebError> {
+        match self {
+            HeaderValue::Stand(s) => s.parse().map_err(WebError::from),
+            HeaderValue::Value(v) => {
+                let mut result = 0usize;
+                for b in v {
+                    if !Helper::is_digit(*b) {
+                        return Err(WebError::IntoError)
+                    }
+                    match result.overflowing_mul(10) {
+                        (u, false) => {
+                            result = u + (b - Helper::DIGIT_0) as usize;
+                        }
+                        (_u, true) => {
+                            return Err(WebError::IntoError)
+                        }
+                    }
+                }
+                Ok(result)
+            }
+        }
+    }
+
+}
+
+
 #[derive(Debug)]
 pub struct HeaderMap {
     pub headers : HashMap<HeaderName, HeaderValue>,
@@ -31,6 +91,23 @@ pub struct HeaderMap {
 impl HeaderMap {
     pub fn new() -> HeaderMap {
         HeaderMap { headers: HashMap::new() }
+    }
+
+    pub fn contains(&self, name: &HeaderName) -> bool {
+        self.headers.contains_key(name)
+    }
+
+    pub fn get_body_len(&self) -> usize  {
+        // if self.headers.contains_key(&HeaderName::TRANSFER_ENCODING) {
+        //     let value = &self.headers[&HeaderName::CONTENT_LENGTH];
+        //     value.try_into().unwrap_or(0)
+        // } else 
+        if self.headers.contains_key(&HeaderName::CONTENT_LENGTH) {
+            let value = &self.headers[&HeaderName::CONTENT_LENGTH];
+            value.try_into().unwrap_or(0)
+        } else {
+            0
+        }
     }
 }
 
@@ -47,6 +124,7 @@ macro_rules! standard_headers {
                 $(#[$docs])*
                 // pub const $konst: HeaderName = HeaderName::Stand(unsafe { std::str::from_utf8_unchecked( $name_bytes ) });
                 pub const $upcase: HeaderName = HeaderName::Stand(unsafe { std::str::from_utf8_unchecked( $name_bytes ) });
+                // pub const concat!("S", {$upcase}): String = String::new();
             )+
 
             pub fn from_bytes(name_bytes: &[u8]) -> Option<HeaderName> {
@@ -55,7 +133,8 @@ macro_rules! standard_headers {
                         $name_bytes => Some(HeaderName::$upcase),
                     )+
                     _ => {
-                        Some(HeaderName::Value(std::string::String::from_utf8_lossy(name_bytes).to_string()))
+                        println!(concat!("a", "b"));
+                        Some(HeaderName::Value(std::string::String::from_utf8_lossy(name_bytes).to_lowercase()))
                     },
                 }
             }
