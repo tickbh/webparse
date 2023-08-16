@@ -16,6 +16,8 @@ pub enum WebError {
     Version,
     /// Partial
     Partial,
+
+    UrlInvalid,
 }
 
 impl WebError {
@@ -29,6 +31,7 @@ impl WebError {
             WebError::Token => "invalid token",
             WebError::Version => "invalid HTTP version",
             WebError::Partial => "invalid HTTP length",
+            WebError::UrlInvalid => "invalid Url",
         }
     }
 }

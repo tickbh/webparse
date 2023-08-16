@@ -10,4 +10,3 @@ keywords = []
 
 [dependencies]
 log="0.4.19"
-url = "2.4.0"

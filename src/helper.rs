@@ -1,7 +1,5 @@
-use crate::{Buffer, WebResult, WebError};
-
-use super::{Method, Version, HeaderMap, HeaderName, HeaderValue};
-
+use crate::{Buffer, WebResult, WebError, byte_map, next, expect, peek};
+use super::{Method, Version, HeaderMap, HeaderName, HeaderValue, Scheme};
 
 
 pub struct Helper;
@@ -19,8 +17,54 @@ impl Helper {
     /// >                ; any VCHAR, except delimiters
     /// > ```
     #[inline]
-    fn is_token(b: u8) -> bool {
+    pub fn is_token(b: u8) -> bool {
         b > 0x1F && b < 0x7F
+    }
+    
+    #[inline]
+    pub fn is_alpha(b: u8) -> bool {
+        if b >= 65 && b <= 90 {
+            return true
+        } else if b >= 97 && b <= 122 {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    #[inline]
+    pub fn is_digit(b: u8) -> bool {
+        if b >= 65 && b <= 90 {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    #[inline]
+    pub fn is_hex(b: u8) -> bool {
+        if b >= 48 && b <= 57 {
+            return true
+        } else if b >= 65 && b <= 70 {
+            return true
+        } else if b >= 97 && b <= 102 {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    #[inline]
+    pub fn convert_hex(b: u8) -> Option<u8> {
+        if b >= 48 && b <= 57 {
+            return Some(b - 48)
+        } else if b >= 65 && b <= 70 {
+            return Some(b - 65 + 10)
+        } else if b >= 97 && b <= 102 {
+            return Some(b - 97 + 10)
+        } else {
+            return None;
+        }
     }
 
     // ASCII codes to accept URI string.
@@ -183,6 +227,12 @@ impl Helper {
     pub(crate) fn parse_header_value<'a>(buffer: &'a mut Buffer) -> WebResult<HeaderValue> {
         let token = Self::parse_token_by_func(buffer, Self::is_header_value_token, WebError::HeaderValue)?;
         Ok(HeaderValue::Value(token.as_bytes().to_vec()))
+    }
+
+    #[inline]
+    pub(crate) fn parse_scheme<'a>(buffer: &'a mut Buffer) -> WebResult<&'a str> {
+        let token = Self::parse_token_by_func(buffer, Scheme::is_scheme_token, WebError::HeaderValue)?;
+        Ok(token)
     }
 
     #[inline]

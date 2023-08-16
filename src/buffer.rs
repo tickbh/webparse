@@ -64,20 +64,29 @@ impl Buffer {
         }
     }
 
-    pub fn set_rpos(&mut self, rpos: usize) {
-        self.start = rpos;
+
+    pub fn set_start(&mut self, start: usize) {
+        self.start = start;
     }
 
-    pub fn get_rpos(&self) -> usize {
+    pub fn get_start(&self) -> usize {
         self.start
     }
 
-    pub fn set_wpos(&mut self, wpos: usize) {
-        self.end = wpos;
+    pub fn set_end(&mut self, end: usize) {
+        self.end = end;
     }
 
-    pub fn get_wpos(&self) -> usize {
+    pub fn get_end(&self) -> usize {
         self.end
+    }
+    
+    pub fn set_cursor(&mut self, cursor: usize) {
+        self.cursor = cursor;
+    }
+
+    pub fn get_cursor(&self) -> usize {
+        self.cursor
     }
     
     pub fn get_read_array(&self, max_bytes: usize) -> &[u8] {
@@ -206,7 +215,7 @@ impl Buffer {
 
 impl fmt::Debug for Buffer {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "bytes ({:?})", self.val)
+        write!(fmt, "bytes ({:?})", self.get_write_data())
     }
 }
 

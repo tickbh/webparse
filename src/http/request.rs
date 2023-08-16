@@ -1,7 +1,6 @@
-use url::Url;
 
-use crate::{Buffer, WebResult};
-use super::{Method, HeaderMap, Version, Helper};
+use crate::{Buffer, WebResult, Url, Helper};
+use super::{Method, HeaderMap, Version};
 
 #[derive(Debug)]
 pub struct Request {
