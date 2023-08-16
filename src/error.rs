@@ -18,6 +18,7 @@ pub enum WebError {
     Partial,
 
     UrlInvalid,
+    UrlCodeInvalid,
 }
 
 impl WebError {
@@ -32,6 +33,7 @@ impl WebError {
             WebError::Version => "invalid HTTP version",
             WebError::Partial => "invalid HTTP length",
             WebError::UrlInvalid => "invalid Url",
+            WebError::UrlCodeInvalid => "invalid Url Code",
         }
     }
 }

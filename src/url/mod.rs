@@ -193,6 +193,51 @@ impl Url {
 
         Ok(url)
     }
+
+    pub fn url_encode(val: &str) -> String {
+        let bytes = val.as_bytes();
+        let mut vec = Vec::with_capacity((1.2 * (bytes.len() as f32)) as usize);
+        for b in bytes {
+            if Helper::is_not_uritrans(*b) {
+                vec.push(*b);
+            } else {
+                vec.push(b'%');
+                vec.push(Helper::to_hex((b / 16) as u8));
+                vec.push(Helper::to_hex((b % 16) as u8));
+            }
+        }
+
+        String::from_utf8_lossy(&vec).to_string()
+    }
+    
+    pub fn url_decode(val: &str) -> WebResult<String> {
+        let bytes = val.as_bytes();
+        let mut vec = Vec::with_capacity(bytes.len() as usize);
+        let mut idx = 0;
+        loop {
+            if idx >= bytes.len() {
+                break;
+            }
+            let b = bytes[idx];
+            if b == b'%' {
+                if idx + 2 >= bytes.len() {
+                    return Err(WebError::UrlCodeInvalid);
+                }
+                
+                let t = Helper::convert_hex(bytes[idx + 1]);
+                let u = Helper::convert_hex(bytes[idx + 2]);
+                if t.is_none() || u.is_none() {
+                    return Err(WebError::UrlCodeInvalid);
+                }
+                vec.push(t.unwrap() * 16 + u.unwrap());
+                idx += 3;
+            } else {
+                vec.push(b);
+                idx += 1;
+            }
+        }
+        Ok(String::from_utf8_lossy(&vec).to_string())
+    }
 }
 
 impl Display for Url {
@@ -202,7 +247,7 @@ impl Display for Url {
             f.write_fmt(format_args!("{}://", self.scheme))?;
         }
         if self.username.is_some() || self.password.is_some() {
-            f.write_fmt(format_args!("{}:{}@", self.username.as_ref().unwrap_or(&String::new()), self.password.as_ref().unwrap_or(&String::new())))?;
+            f.write_fmt(format_args!("{}:{}@", Self::url_encode(self.username.as_ref().unwrap_or(&String::new())) , Self::url_encode(self.password.as_ref().unwrap_or(&String::new()))))?;
         }
         if self.domain.is_some() {
             f.write_fmt(format_args!("{}", self.domain.as_ref().unwrap()))?;
@@ -210,9 +255,9 @@ impl Display for Url {
         if self.port.is_some() {
             f.write_fmt(format_args!(":{}", self.port.as_ref().unwrap()))?;
         }
-        f.write_fmt(format_args!("{}", self.path))?;
+        f.write_fmt(format_args!("{}", Self::url_encode(&self.path)))?;
         if self.query.is_some() {
-            f.write_fmt(format_args!("?{}", self.query.as_ref().unwrap()))?;
+            f.write_fmt(format_args!("?{}", Self::url_encode(self.query.as_ref().unwrap())))?;
         }
         Ok(())
     }
