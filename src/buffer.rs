@@ -14,8 +14,8 @@ pub struct Buffer {
 
 impl Buffer {
     pub fn new() -> Buffer {
-        let mut vec = Vec::with_capacity(512);
-        vec.resize(512, 0);
+        let mut vec = Vec::with_capacity(1024);
+        vec.resize(1024, 0);
         Buffer {
             val: vec,
             start: 0,
@@ -69,6 +69,7 @@ impl Buffer {
         self.start = start;
     }
 
+
     pub fn get_start(&self) -> usize {
         self.start
     }
@@ -81,6 +82,10 @@ impl Buffer {
         self.end
     }
     
+    pub fn add_write_len(&mut self, len: usize) {
+        self.end += len;   
+    }
+    
     pub fn set_cursor(&mut self, cursor: usize) {
         self.cursor = cursor;
     }
@@ -91,6 +96,13 @@ impl Buffer {
     
     pub fn get_read_array(&self, max_bytes: usize) -> &[u8] {
         &self.val[self.end .. (self.end+max_bytes-1)]
+    }
+    
+    pub fn get_write_array(&mut self, write_bytes: usize) -> &mut [u8] {
+        if self.end + write_bytes > self.val.len() {
+            self.val.resize(self.end + write_bytes + 128, 0);
+        }
+        &mut self.val[self.end .. (self.end+write_bytes-1)]
     }
     
     pub fn drain(&mut self, pos: usize) {
@@ -144,6 +156,10 @@ impl Buffer {
 
     pub fn commit(&mut self) {
         self.start = self.cursor
+    }
+
+    pub fn uncommit(&mut self) {
+        self.cursor = self.start
     }
     
     #[inline]

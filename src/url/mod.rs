@@ -10,13 +10,13 @@ use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper};
 
 #[derive(Clone, Debug)]
 pub struct Url {
-    scheme: Scheme,
-    path: String,
-    username: Option<String>,
-    password: Option<String>,
-    domain: Option<String>,
-    port: Option<u16>,
-    query: Option<String>,
+    pub scheme: Scheme,
+    pub path: String,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub domain: Option<String>,
+    pub port: Option<u16>,
+    pub query: Option<String>,
 }
 
 impl Url {
@@ -189,6 +189,17 @@ impl Url {
         
         if query_end != 0 {
             url.query = Self::parse_url_token(&mut buffer, path_end + 1, query_end, true)?;
+        }
+
+        if url.port.is_none() {
+            match url.scheme {
+                Scheme::Http => url.port = Some(80),
+                Scheme::Https => url.port = Some(443),
+                Scheme::Ws => url.port = Some(80),
+                Scheme::Wss => url.port = Some(443),
+                Scheme::Ftp => url.port = Some(21),
+                _ => return Err(WebError::UrlInvalid)
+            }
         }
 
         Ok(url)

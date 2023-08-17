@@ -260,6 +260,7 @@ impl Helper {
     #[inline]
     pub(crate) fn parse_header_name<'a>(buffer: &'a mut Buffer) -> WebResult<HeaderName> {
         let token = Self::parse_token_by_func(buffer, Self::is_header_name_token, WebError::HeaderName)?;
+        println!("token = {:?}", token);
         match HeaderName::from_bytes(token.as_bytes()) {
             Some(name) => Ok(name),
             _ => Err(WebError::HeaderName)

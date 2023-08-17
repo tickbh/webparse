@@ -2,7 +2,6 @@ use std::{collections::HashMap, fmt, hash::Hash};
 
 use crate::{WebError, helper, Helper, WebResult};
 
-#[derive(Eq, PartialEq)]
 pub enum HeaderName {
     Stand(&'static str),
     Value(String),
@@ -14,14 +13,33 @@ pub enum HeaderValue {
     Value(Vec<u8>),
 }
 
+impl PartialEq for HeaderName {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (HeaderName::Stand(a), HeaderName::Stand(b)) => a == b,
+            (HeaderName::Stand(a), HeaderName::Value(b)) => a == &b.as_str(),
+            (HeaderName::Value(a), HeaderName::Stand(b)) => &a.as_str() == b,
+            (HeaderName::Value(a), HeaderName::Value(b)) => a == b,
+        }
+    }
+}
+
+impl Eq for HeaderName {
+
+}
+
 impl Hash for HeaderName {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
             HeaderName::Stand(stand) => {
-                stand.hash(state);
+                println!("stand name = {}", *stand);
+                (*stand).hash(state);
+                println!("state name = {:?}", state.finish());
             },
             HeaderName::Value(val) => {
+                println!("Value name = {}", val.as_str());
                 val.as_str().hash(state);
+                println!("111state name = {:?}", state.finish());
             }
         }
     }
@@ -83,6 +101,21 @@ impl TryInto<usize> for &HeaderValue {
 }
 
 
+impl TryInto<String> for &HeaderValue {
+    type Error = WebError;
+
+    fn try_into(self) -> Result<String, WebError> {
+        match self {
+            HeaderValue::Stand(s) => Ok(s.to_string()),
+            HeaderValue::Value(v) => {
+                Ok(String::from_utf8_lossy(v).to_string())
+            }
+        }
+    }
+
+}
+
+
 #[derive(Debug)]
 pub struct HeaderMap {
     pub headers : HashMap<HeaderName, HeaderValue>,
@@ -95,6 +128,18 @@ impl HeaderMap {
 
     pub fn contains(&self, name: &HeaderName) -> bool {
         self.headers.contains_key(name)
+    }
+
+    pub fn get_host(&self) -> Option<String> {
+        for iter in &self.headers {
+            println!("name = {:?}", iter.0); 
+        }
+        if self.headers.contains_key(&HeaderName::HOST) {
+            let value = &self.headers[&HeaderName::HOST];
+            value.try_into().ok()
+        } else {
+            None
+        }
     }
 
     pub fn get_body_len(&self) -> usize  {
