@@ -1,4 +1,6 @@
 
+use std::collections::HashMap;
+
 use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue};
 use super::{Method, HeaderMap, Version};
 
@@ -181,7 +183,7 @@ impl Builder {
     ///
     /// ```
     /// # use webparse::*;
-    /// # use http::header::HeaderValue;
+    /// # use webparse::header::HeaderValue;
     ///
     /// let req = Request::builder()
     ///     .header("Accept", "text/html")
@@ -210,7 +212,7 @@ impl Builder {
     /// # Example
     ///
     /// ```
-    /// # use http::Request;
+    /// # use webparse::Request;
     /// let req = Request::builder()
     ///     .header("Accept", "text/html")
     ///     .header("X-Custom-Foo", "bar");
@@ -229,7 +231,7 @@ impl Builder {
     /// # Example
     ///
     /// ```
-    /// # use http::{header::HeaderValue, Request};
+    /// # use webparse::{header::HeaderValue, Request};
     /// let mut req = Request::builder();
     /// {
     ///   let headers = req.headers_mut().unwrap();

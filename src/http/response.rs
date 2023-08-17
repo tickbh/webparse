@@ -2,9 +2,6 @@ use crate::{HeaderMap, Version};
 
 use super::StatusCode;
 
-
-
-
 #[derive(Debug)]
 pub struct Response {
     parts: Parts,

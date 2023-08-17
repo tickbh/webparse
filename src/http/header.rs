@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, hash::Hash};
+use std::{collections::HashMap, fmt, hash::Hash, ops::Index};
 
 use crate::{WebError, helper, Helper, WebResult};
 
@@ -35,7 +35,13 @@ impl Hash for HeaderName {
                 (*stand).hash(state);
             },
             HeaderName::Value(val) => {
-                val.as_str().hash(state);
+                for &b in val.as_bytes() {
+                    if b >= b'A' && b <= b'Z' {
+                        state.write_u8(b + 32);
+                    } else {
+                        state.write_u8(b);
+                    }
+                }
             }
         }
     }
@@ -52,21 +58,20 @@ impl fmt::Debug for HeaderName {
     }
 }
 
-impl From<&'static str> for HeaderName {
-    fn from(s: &'static str) -> Self {
-        HeaderName::Stand(s)
+impl TryFrom<&'static str> for HeaderName {
+    type Error=WebError;
+    fn try_from(value: &'static str) -> Result<Self, Self::Error> {
+        Ok(HeaderName::Stand(value))
     }
 }
 
-impl From<String> for HeaderName {
-    fn from(s: String) -> Self {
-        HeaderName::Value(s)
+impl TryFrom<String> for HeaderName {
+    type Error=WebError;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Ok(HeaderName::Value(value))
     }
 }
 
-impl HeaderName {
-
-}
 
 impl TryInto<usize> for &HeaderValue {
     type Error = WebError;
@@ -112,6 +117,22 @@ impl TryInto<String> for &HeaderValue {
 }
 
 
+impl TryFrom<&'static str> for HeaderValue {
+    type Error=WebError;
+
+    fn try_from(value: &'static str) -> Result<Self, Self::Error> {
+        Ok(HeaderValue::Stand(value))
+    }
+}
+
+impl TryFrom<String> for HeaderValue {
+    type Error=WebError;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Ok(HeaderValue::Value(value.into_bytes()))
+    }
+}
+
+
 #[derive(Debug)]
 pub struct HeaderMap {
     pub headers : HashMap<HeaderName, HeaderValue>,
@@ -149,6 +170,16 @@ impl HeaderMap {
         } else {
             0
         }
+    }
+}
+
+
+impl Index<&'static str> for HeaderMap {
+    type Output=HeaderValue;
+
+    fn index(&self, index: &'static str) -> &Self::Output {
+        let name = HeaderName::Stand(index);
+        &self.headers[&name]
     }
 }
 
