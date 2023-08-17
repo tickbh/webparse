@@ -32,14 +32,10 @@ impl Hash for HeaderName {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
             HeaderName::Stand(stand) => {
-                println!("stand name = {}", *stand);
                 (*stand).hash(state);
-                println!("state name = {:?}", state.finish());
             },
             HeaderName::Value(val) => {
-                println!("Value name = {}", val.as_str());
                 val.as_str().hash(state);
-                println!("111state name = {:?}", state.finish());
             }
         }
     }
@@ -178,7 +174,6 @@ macro_rules! standard_headers {
                         $name_bytes => Some(HeaderName::$upcase),
                     )+
                     _ => {
-                        println!(concat!("a", "b"));
                         Some(HeaderName::Value(std::string::String::from_utf8_lossy(name_bytes).to_lowercase()))
                     },
                 }

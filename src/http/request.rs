@@ -28,6 +28,10 @@ impl Request {
             parts: Parts { method: Method::NONE, header: HeaderMap::new(), version: Version::None, url: None, path: String::new() }
         }
     }
+    
+    pub fn method(&self) -> &Method {
+        &self.parts.method
+    }
 
     pub fn get_host(&self) -> Option<String> {
         self.parts.get_host()

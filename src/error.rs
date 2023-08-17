@@ -21,7 +21,8 @@ pub enum WebError {
     UrlCodeInvalid,
 
     IntoError,
-    Extension(),
+    Extension(&'static str),
+    Io(std::io::Error),
 }
 
 impl WebError {
@@ -39,7 +40,8 @@ impl WebError {
             WebError::UrlCodeInvalid => "invalid Url Code",
 
             WebError::IntoError => "into value error",
-            WebError::Extension() => "std error",
+            WebError::Extension(_) => "std error",
+            WebError::Io(_) => "io error",
         }
     }
 }
@@ -52,7 +54,13 @@ impl fmt::Display for WebError {
 
 impl From<std::num::ParseIntError> for WebError {
     fn from(_: std::num::ParseIntError) -> Self {
-        WebError::Extension()
+        WebError::Extension("parse int error")
+    }
+}
+
+impl From<std::io::Error> for WebError {
+    fn from(e: std::io::Error) -> Self {
+        WebError::Io(e)
     }
 }
 
