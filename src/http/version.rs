@@ -1,6 +1,6 @@
 
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Version {
     None,
     Http10,

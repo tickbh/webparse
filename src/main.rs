@@ -1,4 +1,4 @@
-use webparse::Url;
+use webparse::{Url, Request};
 
 extern crate webparse;
 
@@ -25,7 +25,9 @@ fn main() {
     // println!("decode = {:?}", Url::url_decode("%48%211111"));
     // println!("decode = {:?}", Url::url_decode("%48%21111%1"));
     // println!("decode = {:?}", Url::url_decode("%48%21111%4j"));
-    // // let value = url::Url::parse("https://11:11@www.baidu.com/path");
+    let value = Url::parse("https://11:11@www.baidu.com/path").unwrap();
+    println!("value = {}", value);
+
     // let value = url::Url::parse("/path");
     let _result = request.parse(b"GET http://www.baidu.com/ HTTP/1.1\r\nHost: www.baidu.com\r\nUser-Agent: curl/7.74.0\r\nAccept: */*\r\nProxy-Connection: Keep-Alive\r\n\r\n");
     println!("result = {:?}", request);
@@ -33,5 +35,10 @@ fn main() {
     println!("body len = {}", request.get_body_len());
     println!("host len = {:?}", request.get_host());
     println!("host len = {:?}", request.get_connect_url());
+
+    let mut req = Request::builder();
+    assert_eq!(req.url_ref().unwrap(), "/" );
+    req = req.url("https://www.rust-lang.org/");
+    assert_eq!(req.url_ref().unwrap(), "https://www.rust-lang.org/" );
     
 }

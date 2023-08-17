@@ -22,7 +22,7 @@ pub struct Url {
 impl Url {
     
     pub fn new() -> Url {
-        Url { scheme: Scheme::None, path: String::new(), username: None, password: None, domain: None, port: None, query: None }
+        Url { scheme: Scheme::None, path: "/".to_string(), username: None, password: None, domain: None, port: None, query: None }
     }
 
     fn parse_url_token<'a>(buffer: &'a mut Buffer, start: usize, end: usize, can_convert: bool) -> WebResult<Option<String>> {
@@ -264,12 +264,44 @@ impl Display for Url {
             f.write_fmt(format_args!("{}", self.domain.as_ref().unwrap()))?;
         }
         if self.port.is_some() {
-            f.write_fmt(format_args!(":{}", self.port.as_ref().unwrap()))?;
+            match (&self.scheme, self.port) {
+                (Scheme::Http, Some(80)) => {}
+                (Scheme::Https, Some(443)) => {}
+                _ => f.write_fmt(format_args!(":{}", self.port.as_ref().unwrap()))?
+            };
         }
         f.write_fmt(format_args!("{}", Self::url_encode(&self.path)))?;
         if self.query.is_some() {
             f.write_fmt(format_args!("?{}", Self::url_encode(self.query.as_ref().unwrap())))?;
         }
         Ok(())
+    }
+}
+
+impl TryFrom<&str> for Url {
+    type Error=WebError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Url::parse(value)
+    }
+}
+
+impl TryFrom<String> for Url {
+    type Error=WebError;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Url::parse(&value)
+    }
+}
+
+impl PartialEq<str> for Url {
+    fn eq(&self, other: &str) -> bool {
+        println!("Ok === {}", format!("{}", &self));
+        format!("{}", &self) == other
+    }
+}
+
+
+impl PartialEq<Url> for str {
+    fn eq(&self, url: &Url) -> bool {
+        url == self
     }
 }
