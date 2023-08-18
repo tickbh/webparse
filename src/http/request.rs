@@ -1,13 +1,13 @@
 
 use std::collections::HashMap;
 
-use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue};
+use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions};
 use super::{Method, HeaderMap, Version};
 
 #[derive(Debug)]
-pub struct Request {
+pub struct Request<T> {
     parts: Parts,
-    body: Vec<u8>,
+    body: T,
     partial: bool,
 }
 
@@ -18,6 +18,7 @@ pub struct Parts {
     pub version: Version,
     pub url: Url,
     pub path: String,
+    pub extensions: Extensions,
 }
 
 #[derive(Debug)]
@@ -217,8 +218,8 @@ impl Builder {
     ///     .header("Accept", "text/html")
     ///     .header("X-Custom-Foo", "bar");
     /// let headers = req.headers_ref().unwrap();
-    /// assert_eq!( headers["Accept"], "text/html" );
-    /// assert_eq!( headers["X-Custom-Foo"], "bar" );
+    /// assert_eq!( &headers["Accept"], "text/html" );
+    /// assert_eq!( &headers["X-Custom-Foo"], "bar" );
     /// ```
     pub fn headers_ref(&self) -> Option<&HeaderMap> {
         self.inner.as_ref().ok().map(|h| &h.header)
@@ -231,16 +232,16 @@ impl Builder {
     /// # Example
     ///
     /// ```
-    /// # use webparse::{header::HeaderValue, Request};
+    /// # use webparse::{HeaderValue, Request};
     /// let mut req = Request::builder();
     /// {
     ///   let headers = req.headers_mut().unwrap();
-    ///   headers.insert("Accept", HeaderValue::from_static("text/html"));
-    ///   headers.insert("X-Custom-Foo", HeaderValue::from_static("bar"));
+    ///   headers.insert("Accept", "text/html");
+    ///   headers.insert("X-Custom-Foo", "bar");
     /// }
     /// let headers = req.headers_ref().unwrap();
-    /// assert_eq!( headers["Accept"], "text/html" );
-    /// assert_eq!( headers["X-Custom-Foo"], "bar" );
+    /// assert_eq!( &headers["Accept"], "text/html" );
+    /// assert_eq!( &headers["X-Custom-Foo"], "bar" );
     /// ```
     pub fn headers_mut(&mut self) -> Option<&mut HeaderMap> {
         self.inner.as_mut().ok().map(|h| &mut h.header)
@@ -266,7 +267,7 @@ impl Builder {
     ///     .body(())
     ///     .unwrap();
     /// ```
-    pub fn body(self, body: Vec<u8>) -> WebResult<Request> {
+    pub fn body<T>(self, body: T) -> WebResult<Request<T>> {
         self.inner.map(move |head| {
             Request {
                 parts: head,
@@ -297,11 +298,10 @@ impl Default for Builder {
     }
 }
 
-impl Request {
-    
-    pub fn new() -> Request {
+impl Request<()> {
+    pub fn new() -> Request<()> {
         Request {
-            body: Vec::new(),
+            body: (),
             partial: false,
             parts: Parts::new(),
         }
@@ -310,7 +310,9 @@ impl Request {
     pub fn builder() -> Builder {
         Builder { inner: Ok(Parts::new()) }
     }
-    
+}
+
+impl<T> Request<T> {
     pub fn method(&self) -> &Method {
         &self.parts.method
     }
@@ -385,12 +387,42 @@ impl Request {
         let mut buffer = Buffer::new_buf(buf);
         self.parse_buffer(&mut buffer)
     }
+
+    
+    /// Returns a reference to the associated extensions.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use webparse::*;
+    /// let request: Request<()> = Request::default();
+    /// assert!(request.extensions().get::<i32>().is_none());
+    /// ```
+    #[inline]
+    pub fn extensions(&self) -> &Extensions {
+        &self.parts.extensions
+    }
+
+    /// Returns a mutable reference to the associated extensions.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use webparse::*;
+    /// let mut request: Request<()> = Request::default();
+    /// request.extensions_mut().insert("hello");
+    /// assert_eq!(request.extensions().get(), Some(&"hello"));
+    /// ```
+    #[inline]
+    pub fn extensions_mut(&mut self) -> &mut Extensions {
+        &mut self.parts.extensions
+    }
 }
 
 impl Parts {
 
     pub fn new() -> Parts {
-        Parts { method: Method::NONE, header: HeaderMap::new(), version: Version::Http11, url: Url::new(), path: String::new() }
+        Parts::default()
     }
 
     pub fn get_host(&self) -> Option<String> {
@@ -406,6 +438,25 @@ impl Parts {
             Some(format!("{}:{}", self.url.domain.as_ref().unwrap(), self.url.port.as_ref().unwrap()))
         } else {
             None
+        }
+    }
+}
+
+impl Default for Request<()> {
+    fn default() -> Self {
+        Self { parts: Default::default(), body: Default::default(), partial: Default::default() }
+    }
+}
+
+impl Default for Parts {
+    fn default() -> Self {
+        Parts { 
+            method: Method::NONE,
+            header: HeaderMap::new(), 
+            version: Version::Http11, 
+            url: Url::new(), 
+            path: String::new(),
+            extensions: Extensions::new(),
         }
     }
 }

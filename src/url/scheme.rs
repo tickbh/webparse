@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{byte_map, Buffer, Helper, WebResult};
+use crate::{byte_map, Buffer, Helper, WebResult, WebError};
 
 
 
@@ -17,6 +17,7 @@ pub enum Scheme {
 
 impl Scheme {
     
+    const MAX_SCHEME_LEN: usize = 64;
     // ASCII codes to accept URI string.
     // i.e. A-Z a-z 0-9 !#$%&'*+-._();:@=,/?[]~^
     // TODO: Make a stricter checking for URI string?
@@ -53,16 +54,11 @@ impl Scheme {
         Self::SCHEME_MAP[b as usize]
     }
 
+    
+
     pub fn parse_scheme(buffer: &mut Buffer) -> WebResult<Scheme> {
         let scheme = Helper::parse_scheme(buffer)?;
-        match scheme {
-            "http" => Ok(Scheme::Http),
-            "https" => Ok(Scheme::Https),
-            "ws" => Ok(Scheme::Ws),
-            "wss" => Ok(Scheme::Wss),
-            "ftp" => Ok(Scheme::Ftp),
-            _ => Ok(Scheme::Extension(scheme.to_string()))
-        }
+        Scheme::try_from(scheme)
     }
 }
 
@@ -77,6 +73,24 @@ impl Display for Scheme {
             Scheme::Ftp => f.write_str("ftp"),
             Scheme::Extension(s) => f.write_str(s.as_str()),
             Scheme::None => f.write_str(""),
+        }
+    }
+}
+
+impl TryFrom<&str> for Scheme {
+    type Error=WebError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if value.len() > 64 {
+            return Err(WebError::UrlInvalid);
+        }
+        match value {
+            "http" => Ok(Scheme::Http),
+            "https" => Ok(Scheme::Https),
+            "ws" => Ok(Scheme::Ws),
+            "wss" => Ok(Scheme::Wss),
+            "ftp" => Ok(Scheme::Ftp),
+            _ => Ok(Scheme::Extension(value.to_string()))
         }
     }
 }

@@ -56,7 +56,7 @@ fn main() {
         println!("____={:?}", value.0);
         println!("____={:?}", value.1);
     }
-    // assert_eq!( headers["Accept"], "text/html" );
-    // assert_eq!( headers["X-Custom-Foo"], "bar" );
+    assert_eq!( &headers["Accept"], "text/html" );
+    assert_eq!( &headers["X-Custom-Foo"], "bar" );
     
 }

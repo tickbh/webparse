@@ -52,13 +52,6 @@ impl fmt::Debug for HeaderName {
     }
 }
 
-// impl TryFrom<HeaderName> for HeaderName {
-//     type Error=WebError;
-//     fn try_from(value: HeaderName) -> Result<Self, Self::Error> {
-//         Ok(value)
-//     }
-// }
-
 impl TryFrom<&'static str> for HeaderName {
     type Error=WebError;
     fn try_from(value: &'static str) -> Result<Self, Self::Error> {
@@ -95,7 +88,7 @@ macro_rules! standard_headers {
                         $name_bytes => Some(HeaderName::$upcase),
                     )+
                     _ => {
-                        Some(HeaderName::Value(std::string::String::from_utf8_lossy(name_bytes).to_lowercase()))
+                        Some(HeaderName::Value(std::string::String::from_utf8_lossy(name_bytes).to_string()))
                     },
                 }
             }

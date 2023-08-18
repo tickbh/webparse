@@ -1,11 +1,14 @@
 
 mod scheme;
+mod builder;
 
 use std::fmt::Display;
 
 pub use scheme::Scheme;
+pub use builder::Builder;
 
 use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper};
+
 
 
 #[derive(Clone, Debug)]
@@ -303,5 +306,12 @@ impl PartialEq<str> for Url {
 impl PartialEq<Url> for str {
     fn eq(&self, url: &Url) -> bool {
         url == self
+    }
+}
+
+impl Default for Url {
+    #[inline]
+    fn default() -> Url {
+        Url::new()
     }
 }
