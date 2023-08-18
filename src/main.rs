@@ -1,4 +1,4 @@
-use webparse::{url, Url, Request, HeaderName, HeaderValue, Serialize, Buffer};
+use webparse::{url, Url, Request, HeaderName, HeaderValue, Serialize, Buffer, Response};
 
 extern crate webparse;
 
@@ -68,5 +68,12 @@ fn main() {
 
     let u = url::Builder::new().scheme("https").domain("www.baidu.com").build().unwrap();
     println!("u = {}", u);
+
+    let response = Response::builder()
+    .header("Accept", "text/html")
+    .header("X-Custom-Foo", "bar").body("my is web").unwrap();
+    
+    println!("ssssssssssss {}", String::from_utf8_lossy(&response.httpdata().unwrap()));
+    // let response = url::Builder::
     
 }

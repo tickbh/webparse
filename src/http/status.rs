@@ -14,13 +14,13 @@
 //! assert!(StatusCode::OK.is_success());
 //! ```
 
-use std::convert::TryFrom;
+use std::{convert::TryFrom, io::Write};
 use std::num::NonZeroU16;
 use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
-use crate::{WebError, WebResult};
+use crate::{WebError, WebResult, Serialize, Buffer};
 
 /// An HTTP status code (`status-code` in RFC 7230 et al.).
 ///
@@ -46,13 +46,6 @@ use crate::{WebError, WebResult};
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StatusCode(NonZeroU16);
 
-/// A possible error value when converting a `StatusCode` from a `u16` or `&str`
-///
-/// This error indicates that the supplied input was not a valid number, was less
-/// than 100, or was greater than 999.
-pub struct InvalidStatusCode {
-    _priv: (),
-}
 
 impl StatusCode {
     /// Converts a u16 to a status code.
@@ -516,29 +509,19 @@ status_codes! {
     (511, NETWORK_AUTHENTICATION_REQUIRED, "Network Authentication Required");
 }
 
-impl InvalidStatusCode {
-    fn new() -> InvalidStatusCode {
-        InvalidStatusCode {
-            _priv: (),
+
+
+impl Serialize for StatusCode  {
+    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+        match self.canonical_reason() {
+            Some(s) => {
+                buffer.write(format!("{} {}\r\n", self.as_str(), s).as_bytes()).map_err(WebError::from)?;
+            }
+            _ => return Err(WebError::InvalidStatusCode)
         }
+        Ok(())
     }
 }
-
-impl fmt::Debug for InvalidStatusCode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("InvalidStatusCode")
-            // skip _priv noise
-            .finish()
-    }
-}
-
-impl fmt::Display for InvalidStatusCode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("invalid status code")
-    }
-}
-
-impl Error for InvalidStatusCode {}
 
 // A string of packed 3-ASCII-digit status code values for the supported range
 // of [100, 999] (900 codes, 2700 bytes).

@@ -1,9 +1,9 @@
 mod header;
-mod request;
+pub mod request;
 mod method;
 mod version;
 mod status;
-mod response;
+pub mod response;
 mod name;
 mod value;
 

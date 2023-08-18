@@ -6,6 +6,13 @@ pub trait Serialize {
     fn serialize(&self, buffer: &mut Buffer) -> WebResult<()>;
 }
 
+impl Serialize for &'static str {
+    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+        buffer.write(self.as_bytes()).map_err(WebError::from)?;
+        Ok(())
+    }
+}
+
 impl Serialize for String {
     fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
         buffer.write(self.as_bytes()).map_err(WebError::from)?;

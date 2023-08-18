@@ -14,7 +14,7 @@ pub enum Version {
 }
 
 impl Copy for Version {
-    
+
 }
 
 impl Version {
@@ -45,7 +45,7 @@ impl Serialize for Version {
     fn serialize(&self, buffer: &mut crate::Buffer) -> crate::WebResult<()> {
         match self {
             Version::None => return Err(WebError::Serialize("version")),
-            _ => buffer.write(format!("{}\r\n", self).as_bytes()).map_err(WebError::from)?,
+            _ => buffer.write(format!("{}", self).as_bytes()).map_err(WebError::from)?,
         };
         Ok(())
     }

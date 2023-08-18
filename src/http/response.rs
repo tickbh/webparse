@@ -1,6 +1,6 @@
-use std::any::Any;
+use std::{any::Any, io::Write};
 
-use crate::{HeaderMap, Version, Serialize, WebResult, Extensions, WebError, HeaderName, HeaderValue};
+use crate::{HeaderMap, Version, Serialize, WebResult, Extensions, WebError, HeaderName, HeaderValue, Buffer};
 
 use super::StatusCode;
 
@@ -17,7 +17,6 @@ pub struct Parts {
     pub status: StatusCode,
     pub header: HeaderMap,
     pub version: Version,
-    pub path: String,
     pub extensions: Extensions,
 }
 
@@ -551,6 +550,12 @@ impl<T:Serialize> Response<T> {
             partial: self.partial,
         }
     }
+    
+    pub fn httpdata(&self) -> WebResult<Vec<u8>>  {
+        let mut buffer = Buffer::new();
+        self.serialize(&mut buffer)?;
+        return Ok(buffer.write_data());
+    }
 }
 
 impl<T:Default+Serialize> Default for Response<T> {
@@ -565,8 +570,20 @@ impl Default for Parts {
             status: StatusCode::OK, 
             header: HeaderMap::new(), 
             version: Version::Http11, 
-            path: Default::default(),
             extensions: Extensions::new() 
         }
+    }
+}
+
+
+impl<T> Serialize for Response<T>
+    where T : Serialize {
+    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+        self.parts.version.serialize(buffer)?;
+        buffer.write(" ".as_bytes()).map_err(WebError::from)?;
+        self.parts.status.serialize(buffer)?;
+        self.parts.header.serialize(buffer)?;
+        self.body.serialize(buffer)?;
+        Ok(())
     }
 }
