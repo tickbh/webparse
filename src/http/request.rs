@@ -5,7 +5,8 @@ use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, E
 use super::{Method, HeaderMap, Version};
 
 #[derive(Debug)]
-pub struct Request<T> {
+pub struct Request<T> 
+where T : Serialize {
     parts: Parts,
     body: T,
     partial: bool,
@@ -267,7 +268,8 @@ impl Builder {
     ///     .body(())
     ///     .unwrap();
     /// ```
-    pub fn body<T>(self, body: T) -> WebResult<Request<T>> {
+    pub fn body<T>(self, body: T) -> WebResult<Request<T>>
+    where T : Serialize {
         self.inner.map(move |head| {
             Request {
                 parts: head,
@@ -312,7 +314,8 @@ impl Request<()> {
     }
 }
 
-impl<T> Request<T> {
+impl<T> Request<T>
+    where T : Serialize {
     pub fn method(&self) -> &Method {
         &self.parts.method
     }
@@ -467,14 +470,15 @@ impl Default for Parts {
     }
 }
 
-impl<T> Serialize for Request<T> {
+impl<T> Serialize for Request<T>
+    where T : Serialize {
     fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
         self.parts.method.serialize(buffer)?;
         self.parts.path.serialize(buffer)?;
         buffer.write_u8(b' ').map_err(WebError::from)?;
         self.parts.version.serialize(buffer)?;
         self.parts.header.serialize(buffer)?;
-
+        self.body.serialize(buffer)?;
         Ok(())
     }
 }
