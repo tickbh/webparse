@@ -19,6 +19,7 @@ pub enum WebError {
 
     UrlInvalid,
     UrlCodeInvalid,
+    InvalidStatusCode,
 
     IntoError,
     Extension(&'static str),
@@ -39,6 +40,7 @@ impl WebError {
             WebError::Partial => "invalid HTTP length",
             WebError::UrlInvalid => "invalid Url",
             WebError::UrlCodeInvalid => "invalid Url Code",
+            WebError::InvalidStatusCode => "invalid Status Code",
 
             WebError::IntoError => "into value error",
             WebError::Extension(_) => "std error",

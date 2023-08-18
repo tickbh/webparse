@@ -4,13 +4,17 @@ use crate::{Serialize, WebError};
 
 
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Version {
     None,
     Http10,
     Http11,
     Http2,
     Http3,
+}
+
+impl Copy for Version {
+    
 }
 
 impl Version {

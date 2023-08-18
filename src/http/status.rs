@@ -20,6 +20,8 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
+use crate::{WebError, WebResult};
+
 /// An HTTP status code (`status-code` in RFC 7230 et al.).
 ///
 /// Constants are provided for known status codes, including those in the IANA
@@ -70,20 +72,20 @@ impl StatusCode {
     /// assert!(err.is_err());
     /// ```
     #[inline]
-    pub fn from_u16(src: u16) -> Result<StatusCode, InvalidStatusCode> {
+    pub fn from_u16(src: u16) -> WebResult<StatusCode> {
         if src < 100 || src >= 1000 {
-            return Err(InvalidStatusCode::new());
+            return Err(WebError::InvalidStatusCode);
         }
 
         NonZeroU16::new(src)
             .map(StatusCode)
-            .ok_or_else(InvalidStatusCode::new)
+            .ok_or(WebError::InvalidStatusCode)
     }
 
     /// Converts a &[u8] to a status code
-    pub fn from_bytes(src: &[u8]) -> Result<StatusCode, InvalidStatusCode> {
+    pub fn from_bytes(src: &[u8]) -> WebResult<StatusCode> {
         if src.len() != 3 {
-            return Err(InvalidStatusCode::new());
+            return Err(WebError::InvalidStatusCode);
         }
 
         let a = src[0].wrapping_sub(b'0') as u16;
@@ -91,13 +93,13 @@ impl StatusCode {
         let c = src[2].wrapping_sub(b'0') as u16;
 
         if a == 0 || a > 9 || b > 9 || c > 9 {
-            return Err(InvalidStatusCode::new());
+            return Err(WebError::InvalidStatusCode);
         }
 
         let status = (a * 100) + (b * 10) + c;
         NonZeroU16::new(status)
             .map(StatusCode)
-            .ok_or_else(InvalidStatusCode::new)
+            .ok_or(WebError::InvalidStatusCode)
     }
 
     /// Returns the `u16` corresponding to this `StatusCode`.
@@ -253,9 +255,9 @@ impl From<StatusCode> for u16 {
 }
 
 impl FromStr for StatusCode {
-    type Err = InvalidStatusCode;
+    type Err = WebError;
 
-    fn from_str(s: &str) -> Result<StatusCode, InvalidStatusCode> {
+    fn from_str(s: &str) -> WebResult<StatusCode> {
         StatusCode::from_bytes(s.as_ref())
     }
 }
@@ -268,28 +270,28 @@ impl<'a> From<&'a StatusCode> for StatusCode {
 }
 
 impl<'a> TryFrom<&'a [u8]> for StatusCode {
-    type Error = InvalidStatusCode;
+    type Error = WebError;
 
     #[inline]
-    fn try_from(t: &'a [u8]) -> Result<Self, Self::Error> {
+    fn try_from(t: &'a [u8]) -> WebResult<Self> {
         StatusCode::from_bytes(t)
     }
 }
 
 impl<'a> TryFrom<&'a str> for StatusCode {
-    type Error = InvalidStatusCode;
+    type Error = WebError;
 
     #[inline]
-    fn try_from(t: &'a str) -> Result<Self, Self::Error> {
+    fn try_from(t: &'a str) -> WebResult<Self> {
         t.parse()
     }
 }
 
 impl TryFrom<u16> for StatusCode {
-    type Error = InvalidStatusCode;
+    type Error = WebError;
 
     #[inline]
-    fn try_from(t: u16) -> Result<Self, Self::Error> {
+    fn try_from(t: u16) -> WebResult<Self> {
         StatusCode::from_u16(t)
     }
 }

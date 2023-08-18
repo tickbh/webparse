@@ -14,6 +14,5 @@ pub use name::HeaderName;
 pub use value::HeaderValue;
 
 pub use request::Request;
-pub use status::StatusCode;
 pub use response::Response;
-
+pub use status::StatusCode;
