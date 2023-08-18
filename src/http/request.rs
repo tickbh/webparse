@@ -199,9 +199,9 @@ impl Builder {
         <HeaderValue as TryFrom<V>>::Error: Into<WebError>,
     {
         self.and_then(move |mut head| {
-            let name = <HeaderName as TryFrom<K>>::try_from(key).map_err(Into::into)?;
-            let value = <HeaderValue as TryFrom<V>>::try_from(value).map_err(Into::into)?;
-            head.header.headers.insert(name, value);
+            // let name = <HeaderName as TryFrom<K>>::try_from(key).map_err(Into::into)?;
+            // let value = <HeaderValue as TryFrom<V>>::try_from(value).map_err(Into::into)?;
+            head.header.insert(key, value);
             Ok(head)
         })
     }

@@ -1,4 +1,4 @@
-use webparse::{Url, Request, HeaderName};
+use webparse::{Url, Request, HeaderName, HeaderValue};
 
 extern crate webparse;
 
@@ -42,13 +42,21 @@ fn main() {
     assert_eq!(req.url_ref().unwrap(), "https://www.rust-lang.org/" );
 
 
-    let req = Request::builder()
+    let mut req = Request::builder()
         .header("Accept", "text/html")
         .header("X-Custom-Foo", "bar");
-    let headers = req.headers_ref().unwrap();
+    let headers = req.headers_mut().unwrap();
+    headers["AAAA"] = HeaderValue::Stand("ok");
     let xx = &headers["Accept"];
+    let aaa = &headers["AAAA"];
     println!("xxx = {:?}", xx);
-    // assert_eq!( headers["Accept".try_into()], "text/html" );
+    println!("aaa = {:?}", aaa);
+
+    for value in headers.iter() {
+        println!("____={:?}", value.0);
+        println!("____={:?}", value.1);
+    }
+    // assert_eq!( headers["Accept"], "text/html" );
     // assert_eq!( headers["X-Custom-Foo"], "bar" );
     
 }

@@ -335,7 +335,7 @@ impl Helper {
     
     #[inline]
     pub(crate) fn parse_header(buffer: &mut Buffer, header: &mut HeaderMap) -> WebResult<()> {
-        header.headers.clear();
+        header.clear();
 
         loop {
             let b = peek!(buffer)?;
@@ -355,7 +355,7 @@ impl Helper {
             Self::skip_spaces(buffer)?;
             let value = Helper::parse_header_value(buffer)?;
             Self::skip_new_line(buffer)?;
-            header.headers.insert(name, value);
+            header.insert_exact(name, value);
         }
     }
 
