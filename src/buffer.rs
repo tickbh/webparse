@@ -1,7 +1,6 @@
 use std::io::{Read, Write, Result};
 use std::ptr;
 use std::fmt;
-use std::cmp;
 
 use log::{warn, info, trace};
 
@@ -99,23 +98,10 @@ impl Buffer {
         }
         &mut self.val[self.end .. (self.end+write_bytes-1)]
     }
-    
-    // pub fn drain(&mut self, pos: usize) {
-    //     self.start = self.start - cmp::min(self.start, pos);
-    //     self.end = self.end - cmp::min(self.end, pos);
-    //     let pos = cmp::min(self.val.len(), pos);
-    //     self.val.drain(..pos);
-    //     self.fix_buffer();
-    // }
 
-    // pub fn drain_collect(&mut self, pos: usize) -> Vec<u8> {
-    //     self.start = self.start - cmp::min(self.start, pos);
-    //     self.end = self.end - cmp::min(self.end, pos);
-    //     let pos = cmp::min(self.val.len(), pos);
-    //     let ret = self.val.drain(..pos).collect();
-    //     self.fix_buffer();
-    //     ret
-    // }
+    pub fn write_data(self) -> Vec<u8> {
+        self.val[self.start .. self.end].to_vec()
+    }
     
     // pub fn drain_all_collect(&mut self) -> Vec<u8> {
     //     let (rpos, wpos) = (self.start, self.end);
@@ -251,8 +237,6 @@ impl Read for Buffer {
         self.start += read;
         Ok(read)
     }
-
-    
 }
 
 impl Write for Buffer {
@@ -278,8 +262,6 @@ impl Write for Buffer {
         Ok(())
     }
 }
-
-
 
 impl Iterator for Buffer {
     type Item = u8;

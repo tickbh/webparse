@@ -40,6 +40,8 @@ fn main() {
     request.serialize(&mut buffer).expect("ok");
     println!("aaaaaaaaaaaaaaa {}", String::from_utf8_lossy(buffer.get_write_data()));
 
+    println!("aaaaaaaaaaaaaaa11111 {}", String::from_utf8_lossy(&request.httpdata().unwrap()));
+
     let mut req = Request::builder();
     assert_eq!(req.url_ref().unwrap(), "/" );
     req = req.url("https://www.rust-lang.org/");

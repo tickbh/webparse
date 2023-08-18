@@ -279,6 +279,7 @@ impl Builder {
         })
     }
 
+
     // private
 
     fn and_then<F>(self, func: F) -> Self
@@ -421,10 +422,10 @@ impl<T> Request<T>
         &mut self.parts.extensions
     }
 
-    pub fn get_header_buffer(&self) -> WebResult<Buffer> {
-        
-
-        Err(WebError::Partial)
+    pub fn httpdata(&self) -> WebResult<Vec<u8>>  {
+        let mut buffer = Buffer::new();
+        self.serialize(&mut buffer)?;
+        return Ok(buffer.write_data());
     }
 }
 

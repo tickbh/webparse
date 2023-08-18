@@ -25,3 +25,11 @@ impl Serialize for Vec<u8> {
         Ok(())
     }
 }
+
+// impl TryFrom<Vec<u8>> for &[u8] {
+//     type Error=WebError;
+
+//     fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+//         todo!()
+//     }
+// }
