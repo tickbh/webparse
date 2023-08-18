@@ -1,4 +1,6 @@
+use std::{fmt::Display, io::Write};
 
+use crate::{Serialize, WebError};
 
 #[derive(Debug, Clone)]
 pub enum Method {
@@ -52,4 +54,33 @@ impl Method {
     /// TRACE
     pub const TRACE: Method = Method::Trace;
     pub const STRACE: &'static str = "TRACE";
+}
+
+impl Display for Method {
+    
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Method::Options => f.write_str("OPTIONS"),
+            Method::Get => f.write_str("GET"),
+            Method::Post => f.write_str("POST"),
+            Method::Put => f.write_str("PUT"),
+            Method::Delete => f.write_str("DELETE"),
+            Method::Head => f.write_str("HEAD"),
+            Method::Trace => f.write_str("TRACE"),
+            Method::Connect => f.write_str("CONNECT"),
+            Method::Patch => f.write_str("PATCH"),
+            Method::None => f.write_str("None"),
+            Method::Extension(s) => f.write_str(s.as_str()),
+        }
+    }
+}
+
+impl Serialize for Method {
+    fn serialize(&self, buffer: &mut crate::Buffer) -> crate::WebResult<()> {
+        match self {
+            Method::None => return Err(WebError::Serialize("method")),
+            _ => buffer.write(format!("{} ", self).as_bytes()).map_err(WebError::from)?,
+        };
+        Ok(())
+    }
 }

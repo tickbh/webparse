@@ -1,6 +1,6 @@
-use std::{hash::Hash, fmt};
+use std::{hash::Hash, fmt, io::Write};
 
-use crate::WebError;
+use crate::{WebError, Serialize, Buffer, WebResult};
 
 pub enum HeaderName {
     Stand(&'static str),
@@ -17,6 +17,8 @@ impl PartialEq for HeaderName {
         }
     }
 }
+
+
 
 impl Eq for HeaderName {
 
@@ -66,6 +68,17 @@ impl TryFrom<String> for HeaderName {
     }
 }
 
+
+impl Serialize for HeaderName {
+
+    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+        match self {
+            Self::Stand(name) => buffer.write(format!("{}: ", *name).as_bytes()).map_err(WebError::from)?,
+            Self::Value(name) => buffer.write(format!("{}: ", name).as_bytes()).map_err(WebError::from)?,
+        };
+        Ok(())
+    }
+}
 
 macro_rules! standard_headers {
     (

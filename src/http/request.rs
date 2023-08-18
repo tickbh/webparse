@@ -1,7 +1,7 @@
 
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write};
 
-use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions};
+use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize};
 use super::{Method, HeaderMap, Version};
 
 #[derive(Debug)]
@@ -417,6 +417,12 @@ impl<T> Request<T> {
     pub fn extensions_mut(&mut self) -> &mut Extensions {
         &mut self.parts.extensions
     }
+
+    pub fn get_header_buffer(&self) -> WebResult<Buffer> {
+        
+
+        Err(WebError::Partial)
+    }
 }
 
 impl Parts {
@@ -458,5 +464,17 @@ impl Default for Parts {
             path: String::new(),
             extensions: Extensions::new(),
         }
+    }
+}
+
+impl<T> Serialize for Request<T> {
+    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+        self.parts.method.serialize(buffer)?;
+        self.parts.path.serialize(buffer)?;
+        buffer.write_u8(b' ').map_err(WebError::from)?;
+        self.parts.version.serialize(buffer)?;
+        self.parts.header.serialize(buffer)?;
+
+        Ok(())
     }
 }

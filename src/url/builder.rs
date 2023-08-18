@@ -49,10 +49,11 @@ impl Builder {
         })
     }
     
-    pub fn domain(self, domain: String) -> Self
+    pub fn domain<T>(self, domain: T) -> Self
+    where T: Into<String>
     {
         self.map(move |mut inner| {
-            inner.domain = Some(domain);
+            inner.domain = Some(domain.into());
             Ok(inner)
         })
     }
@@ -88,6 +89,10 @@ impl Builder {
         Builder {
             inner: self.inner.and_then(func),
         }
+    }
+
+    pub fn build(self) -> Result<Url, WebError> {
+        self.inner
     }
 }
 

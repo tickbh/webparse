@@ -1,6 +1,6 @@
-use std::fmt;
+use std::{fmt, io::Write};
 
-use crate::{WebError, Helper};
+use crate::{WebError, Helper, Serialize, Buffer, WebResult};
 
 #[derive(Hash)]
 pub enum HeaderValue {
@@ -95,5 +95,15 @@ impl PartialEq<str> for HeaderValue {
 impl PartialEq<HeaderValue> for str {
     fn eq(&self, url: &HeaderValue) -> bool {
         url == self
+    }
+}
+
+impl Serialize for HeaderValue {
+    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+        match self {
+            Self::Stand(name) => buffer.write(format!("{}\r\n", *name).as_bytes()).map_err(WebError::from)?,
+            Self::Value(vec) => buffer.write(format!("{}\r\n", String::from_utf8_lossy(vec)).as_bytes()).map_err(WebError::from)?,
+        };
+        Ok(())
     }
 }

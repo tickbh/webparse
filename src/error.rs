@@ -22,6 +22,7 @@ pub enum WebError {
 
     IntoError,
     Extension(&'static str),
+    Serialize(&'static str),
     Io(std::io::Error),
 }
 
@@ -41,6 +42,7 @@ impl WebError {
 
             WebError::IntoError => "into value error",
             WebError::Extension(_) => "std error",
+            WebError::Serialize(_) => "serialize error",
             WebError::Io(_) => "io error",
         }
     }

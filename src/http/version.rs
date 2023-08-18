@@ -1,3 +1,7 @@
+use std::{fmt::Display, io::Write};
+
+use crate::{Serialize, WebError};
+
 
 
 #[derive(Debug, Eq, PartialEq)]
@@ -18,4 +22,27 @@ impl Version {
     pub const SHTTP2: &'static str = "HTTP/2";
     pub const  HTTP3: Version = Version::Http3;
     pub const SHTTP3: &'static str = "HTTP/3";
+}
+
+impl Display for Version {
+    
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Version::Http10 => f.write_str("HTTP/1.0"),
+            Version::Http11 => f.write_str("HTTP/1.1"),
+            Version::Http2 => f.write_str("HTTP/2"),
+            Version::Http3 => f.write_str("HTTP/3"),
+            Version::None => f.write_str("None"),
+        }
+    }
+}
+
+impl Serialize for Version {
+    fn serialize(&self, buffer: &mut crate::Buffer) -> crate::WebResult<()> {
+        match self {
+            Version::None => return Err(WebError::Serialize("version")),
+            _ => buffer.write(format!("{}\r\n", self).as_bytes()).map_err(WebError::from)?,
+        };
+        Ok(())
+    }
 }

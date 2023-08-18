@@ -1,6 +1,6 @@
-use std::{collections::HashMap, fmt, hash::Hash, ops::{Index, IndexMut}};
+use std::{collections::HashMap, fmt, hash::Hash, ops::{Index, IndexMut}, io::Write};
 
-use crate::{WebError, helper, Helper, WebResult, HeaderName, HeaderValue};
+use crate::{WebError, helper, Helper, WebResult, HeaderName, HeaderValue, Serialize, Buffer};
 
 
 #[derive(Debug)]
@@ -119,5 +119,18 @@ impl IntoIterator for HeaderMap {
 
     fn into_iter(self) -> Self::IntoIter {
         self.headers.into_iter()
+    }
+}
+
+
+impl Serialize for HeaderMap {
+
+    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+        for value in self.iter() {
+            value.0.serialize(buffer)?;
+            value.1.serialize(buffer)?;
+        }
+        buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;
+        Ok(())
     }
 }

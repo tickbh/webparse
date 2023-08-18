@@ -1,4 +1,4 @@
-use webparse::{Url, Request, HeaderName, HeaderValue};
+use webparse::{url, Url, Request, HeaderName, HeaderValue, Serialize, Buffer};
 
 extern crate webparse;
 
@@ -36,6 +36,10 @@ fn main() {
     println!("host len = {:?}", request.get_host());
     println!("host len = {:?}", request.get_connect_url());
 
+    let mut buffer = Buffer::new();
+    request.serialize(&mut buffer).expect("ok");
+    println!("aaaaaaaaaaaaaaa {}", String::from_utf8_lossy(buffer.get_write_data()));
+
     let mut req = Request::builder();
     assert_eq!(req.url_ref().unwrap(), "/" );
     req = req.url("https://www.rust-lang.org/");
@@ -52,11 +56,15 @@ fn main() {
     println!("xxx = {:?}", xx);
     println!("aaa = {:?}", aaa);
 
+
     for value in headers.iter() {
         println!("____={:?}", value.0);
         println!("____={:?}", value.1);
     }
     assert_eq!( &headers["Accept"], "text/html" );
     assert_eq!( &headers["X-Custom-Foo"], "bar" );
+
+    let u = url::Builder::new().scheme("https").domain("www.baidu.com").build().unwrap();
+    println!("u = {}", u);
     
 }

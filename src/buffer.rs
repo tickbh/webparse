@@ -44,10 +44,6 @@ impl Buffer {
         }
     }
     
-    pub fn get_data(&self) -> &Vec<u8> {
-        &self.val
-    }
-
     pub fn get_write_data(&self) -> &[u8] {
         &self.val[self.start .. self.end]
     }
@@ -63,7 +59,6 @@ impl Buffer {
             0
         }
     }
-
 
     pub fn set_start(&mut self, start: usize) {
         self.start = start;
@@ -105,30 +100,30 @@ impl Buffer {
         &mut self.val[self.end .. (self.end+write_bytes-1)]
     }
     
-    pub fn drain(&mut self, pos: usize) {
-        self.start = self.start - cmp::min(self.start, pos);
-        self.end = self.end - cmp::min(self.end, pos);
-        let pos = cmp::min(self.val.len(), pos);
-        self.val.drain(..pos);
-        self.fix_buffer();
-    }
+    // pub fn drain(&mut self, pos: usize) {
+    //     self.start = self.start - cmp::min(self.start, pos);
+    //     self.end = self.end - cmp::min(self.end, pos);
+    //     let pos = cmp::min(self.val.len(), pos);
+    //     self.val.drain(..pos);
+    //     self.fix_buffer();
+    // }
 
-    pub fn drain_collect(&mut self, pos: usize) -> Vec<u8> {
-        self.start = self.start - cmp::min(self.start, pos);
-        self.end = self.end - cmp::min(self.end, pos);
-        let pos = cmp::min(self.val.len(), pos);
-        let ret = self.val.drain(..pos).collect();
-        self.fix_buffer();
-        ret
-    }
+    // pub fn drain_collect(&mut self, pos: usize) -> Vec<u8> {
+    //     self.start = self.start - cmp::min(self.start, pos);
+    //     self.end = self.end - cmp::min(self.end, pos);
+    //     let pos = cmp::min(self.val.len(), pos);
+    //     let ret = self.val.drain(..pos).collect();
+    //     self.fix_buffer();
+    //     ret
+    // }
     
-    pub fn drain_all_collect(&mut self) -> Vec<u8> {
-        let (rpos, wpos) = (self.start, self.end);
-        self.clear();
-        self.val.drain(rpos..wpos).collect()
-    }
+    // pub fn drain_all_collect(&mut self) -> Vec<u8> {
+    //     let (rpos, wpos) = (self.start, self.end);
+    //     self.clear();
+    //     self.val.drain(rpos..wpos).collect()
+    // }
 
-    pub fn fix_buffer(&mut self) -> bool {
+    pub fn refresh(&mut self) -> bool {
         if self.start >= self.end {
             self.start = 0;
             self.end = 0;
@@ -226,6 +221,9 @@ impl Buffer {
         slice
     }
 
+    pub fn write_u8(&mut self, b: u8) -> Result<usize> {
+        self.write(&[b])
+    }
 
 }
 
