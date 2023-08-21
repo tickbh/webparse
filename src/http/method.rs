@@ -2,7 +2,7 @@ use std::{fmt::Display, io::Write};
 
 use crate::{Serialize, WebError};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Method {
     None,
     Options,
@@ -14,6 +14,8 @@ pub enum Method {
     Trace,
     Connect,
     Patch,
+    //http2 协议头
+    Pri,
     Extension(String),
 }
 
@@ -54,6 +56,10 @@ impl Method {
     /// TRACE
     pub const TRACE: Method = Method::Trace;
     pub const STRACE: &'static str = "TRACE";
+
+    /// PRI
+    pub const PRI: Method = Method::Pri;
+    pub const SPRI: &'static str = "PRI";
 }
 
 impl Display for Method {
@@ -69,6 +75,7 @@ impl Display for Method {
             Method::Trace => f.write_str("TRACE"),
             Method::Connect => f.write_str("CONNECT"),
             Method::Patch => f.write_str("PATCH"),
+            Method::Pri => f.write_str("PRI"),
             Method::None => f.write_str("None"),
             Method::Extension(s) => f.write_str(s.as_str()),
         }

@@ -89,7 +89,7 @@ impl Buffer {
     }
     
     pub fn get_read_array(&self, max_bytes: usize) -> &[u8] {
-        &self.val[self.end .. (self.end+max_bytes-1)]
+        &self.val[self.cursor .. std::cmp::min(self.end, self.cursor+max_bytes-1)]
     }
     
     pub fn get_write_array(&mut self, write_bytes: usize) -> &mut [u8] {
@@ -102,12 +102,6 @@ impl Buffer {
     pub fn write_data(self) -> Vec<u8> {
         self.val[self.start .. self.end].to_vec()
     }
-    
-    // pub fn drain_all_collect(&mut self) -> Vec<u8> {
-    //     let (rpos, wpos) = (self.start, self.end);
-    //     self.clear();
-    //     self.val.drain(rpos..wpos).collect()
-    // }
 
     pub fn refresh(&mut self) -> bool {
         if self.start >= self.end {

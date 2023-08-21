@@ -10,3 +10,4 @@ keywords = []
 
 [dependencies]
 log="0.4.19"
+bitflags="2.4"

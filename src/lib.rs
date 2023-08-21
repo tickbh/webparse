@@ -1,4 +1,6 @@
 
+#[macro_use] extern crate bitflags;
+
 mod buffer;
 pub mod http;
 mod error;

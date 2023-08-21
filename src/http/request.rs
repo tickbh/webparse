@@ -2,7 +2,7 @@
 use std::{collections::HashMap, io::Write};
 
 use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize};
-use super::{Method, HeaderMap, Version};
+use super::{Method, HeaderMap, Version, http2};
 
 #[derive(Debug)]
 pub struct Request<T> 
@@ -355,7 +355,19 @@ impl<T> Request<T>
 
     pub fn parse_buffer(&mut self, buffer:&mut Buffer) -> WebResult<()> {
         Helper::skip_empty_lines(buffer)?;
+        {
+            let first = buffer.get_read_array(http2::HTTP2_MAGIC.len());
+            if first == http2::HTTP2_MAGIC {
+                self.parts.version = Version::Http2;
+                buffer.advance(http2::HTTP2_MAGIC.len());
+                return Ok(());
+            }
+        }
         self.parts.method = Helper::parse_method(buffer)?;
+        // 是否转成http2协议
+        if self.parts.method == Method::Pri {
+
+        }
         Helper::skip_spaces(buffer)?;
         self.parts.path = Helper::parse_token(buffer)?.to_string();
         Helper::skip_spaces(buffer)?;
