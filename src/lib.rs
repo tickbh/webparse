@@ -10,7 +10,7 @@ mod helper;
 mod extensions;
 mod serialize;
 
-pub use http::{HeaderMap, HeaderName, HeaderValue, Method, Version, Request, Response};
+pub use http::{HeaderMap, HeaderName, HeaderValue, Method, Version, Request, Response, HttpError};
 pub use error::{WebError, WebResult};
 pub use buffer::Buffer;
 pub use url::{Url, Scheme};

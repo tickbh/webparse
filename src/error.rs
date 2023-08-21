@@ -1,22 +1,25 @@
 use std::{fmt::{self, Result}, result, error::Error};
 
+use crate::http::HttpError;
+
 #[derive(Debug)]
 pub enum WebError {
-    /// Invalid byte in header name.
-    HeaderName,
-    /// Invalid byte in header value.
-    HeaderValue,
-    /// Invalid byte in new line.
-    NewLine,
-    /// Invalid byte in Response status.
-    Status,
-    /// Invalid byte where token is required.
-    Token,
-    /// Invalid byte in HTTP version.
-    Version,
-    /// Partial
-    Partial,
+    // /// Invalid byte in header name.
+    // HeaderName,
+    // /// Invalid byte in header value.
+    // HeaderValue,
+    // /// Invalid byte in new line.
+    // NewLine,
+    // /// Invalid byte in Response status.
+    // Status,
+    // /// Invalid byte where token is required.
+    // Token,
+    // /// Invalid byte in HTTP version.
+    // Version,
+    // /// Partial
+    // Partial,
 
+    Http(HttpError),
     UrlInvalid,
     UrlCodeInvalid,
     InvalidStatusCode,
@@ -30,18 +33,19 @@ pub enum WebError {
 impl WebError {
     #[inline]
     fn description_str(&self) -> &'static str {
-        match *self {
-            WebError::HeaderName => "invalid header name",
-            WebError::HeaderValue => "invalid header value",
-            WebError::NewLine => "invalid new line",
-            WebError::Status => "invalid response status",
-            WebError::Token => "invalid token",
-            WebError::Version => "invalid HTTP version",
-            WebError::Partial => "invalid HTTP length",
+        match self {
+            // WebError::HeaderName => "invalid header name",
+            // WebError::HeaderValue => "invalid header value",
+            // WebError::NewLine => "invalid new line",
+            // WebError::Status => "invalid response status",
+            // WebError::Token => "invalid token",
+            // WebError::Version => "invalid HTTP version",
+            // WebError::Partial => "invalid HTTP length",
             WebError::UrlInvalid => "invalid Url",
             WebError::UrlCodeInvalid => "invalid Url Code",
             WebError::InvalidStatusCode => "invalid Status Code",
 
+            WebError::Http(e) => e.description_str(),
             WebError::IntoError => "into value error",
             WebError::Extension(_) => "std error",
             WebError::Serialize(_) => "serialize error",
@@ -65,6 +69,12 @@ impl From<std::num::ParseIntError> for WebError {
 impl From<std::io::Error> for WebError {
     fn from(e: std::io::Error) -> Self {
         WebError::Io(e)
+    }
+}
+
+impl From<HttpError> for WebError {
+    fn from(e: HttpError) -> Self {
+        WebError::Http(e)
     }
 }
 

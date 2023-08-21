@@ -1,4 +1,4 @@
-use crate::{Buffer, WebResult, WebError, byte_map, next, expect, peek};
+use crate::{Buffer, WebResult, WebError, byte_map, next, expect, peek, HttpError};
 use super::{Method, Version, HeaderMap, HeaderName, HeaderValue, Scheme};
 
 
@@ -222,7 +222,7 @@ impl Helper {
             Version::SHTTP2 => Ok(Version::Http2),
             Version::SHTTP3 => Ok(Version::Http3),
             _ => {
-                Err(WebError::Version)
+                Err(WebError::from(HttpError::Version))
             }
         }
     }
@@ -254,27 +254,27 @@ impl Helper {
 
     #[inline]
     pub(crate) fn parse_token<'a>(buffer: &'a mut Buffer) -> WebResult<&'a str> {
-        Self::parse_token_by_func(buffer, Self::is_token, WebError::Token)
+        Self::parse_token_by_func(buffer, Self::is_token, WebError::from(HttpError::Token))
     }
 
     #[inline]
     pub(crate) fn parse_header_name<'a>(buffer: &'a mut Buffer) -> WebResult<HeaderName> {
-        let token = Self::parse_token_by_func(buffer, Self::is_header_name_token, WebError::HeaderName)?;
+        let token = Self::parse_token_by_func(buffer, Self::is_header_name_token, WebError::from(HttpError::HeaderName))?;
         match HeaderName::from_bytes(token.as_bytes()) {
             Some(name) => Ok(name),
-            _ => Err(WebError::HeaderName)
+            _ => Err(WebError::from(HttpError::from(HttpError::HeaderName)))
         }
     }
 
     #[inline]
     pub(crate) fn parse_header_value<'a>(buffer: &'a mut Buffer) -> WebResult<HeaderValue> {
-        let token = Self::parse_token_by_func(buffer, Self::is_header_value_token, WebError::HeaderValue)?;
+        let token = Self::parse_token_by_func(buffer, Self::is_header_value_token, WebError::from(HttpError::HeaderValue))?;
         Ok(HeaderValue::Value(token.as_bytes().to_vec()))
     }
 
     #[inline]
     pub(crate) fn parse_scheme<'a>(buffer: &'a mut Buffer) -> WebResult<&'a str> {
-        let token = Self::parse_token_by_func(buffer, Scheme::is_scheme_token, WebError::HeaderValue)?;
+        let token = Self::parse_token_by_func(buffer, Scheme::is_scheme_token, WebError::from(HttpError::HeaderValue))?;
         Ok(token)
     }
 
@@ -282,7 +282,7 @@ impl Helper {
     pub(crate) fn skip_new_line(buffer: &mut Buffer) -> WebResult<()> {
         match next!(buffer)? {
             b'\r' => {
-                expect!(buffer.next() == b'\n' => Err(WebError::NewLine));
+                expect!(buffer.next() == b'\n' => Err(WebError::from(HttpError::NewLine)));
                 buffer.slice();
             },
             b'\n' => {
@@ -290,7 +290,7 @@ impl Helper {
             },
             b' ' => {
             },
-            _ => return Err(WebError::NewLine)
+            _ => return Err(WebError::from(HttpError::NewLine))
         };
         Ok(())
     }
@@ -302,7 +302,7 @@ impl Helper {
             match b {
                 Some(b'\r') => {
                     buffer.bump();
-                    expect!(buffer.next() == b'\n' => Err(WebError::NewLine));
+                    expect!(buffer.next() == b'\n' => Err(WebError::from(HttpError::NewLine)));
                 }
                 Some(b'\n') => {
                     buffer.bump();
@@ -311,7 +311,7 @@ impl Helper {
                     buffer.slice();
                     return Ok(());
                 }
-                None => return Err(WebError::Partial),
+                None => return Err(WebError::from(HttpError::Partial)),
             }
         }
     }
@@ -328,7 +328,7 @@ impl Helper {
                     buffer.slice();
                     return Ok(());
                 }
-                None => return Err(WebError::Partial),
+                None => return Err(WebError::from(HttpError::Partial)),
             }
         }
     }
@@ -341,7 +341,7 @@ impl Helper {
             let b = peek!(buffer)?;
             if b == b'\r' {
                 buffer.next();
-                expect!(buffer.next() == b'\n' => Err(WebError::NewLine));
+                expect!(buffer.next() == b'\n' => Err(WebError::from(HttpError::NewLine)));
                 return Ok(());
             }
             if b == b'\n' {
@@ -351,7 +351,7 @@ impl Helper {
 
             let name = Helper::parse_header_name(buffer)?;
             Self::skip_spaces(buffer)?;
-            expect!(buffer.next() == b':' => Err(WebError::HeaderName));
+            expect!(buffer.next() == b':' => Err(WebError::from(HttpError::HeaderName)));
             Self::skip_spaces(buffer)?;
             let value = Helper::parse_header_value(buffer)?;
             Self::skip_new_line(buffer)?;

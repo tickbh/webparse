@@ -10,7 +10,7 @@ macro_rules! next {
     ($bytes:ident) => ({
         match $bytes.next() {
             Some(b) => Ok(b),
-            None => Err(WebError::Partial)
+            None => Err(WebError::from(crate::HttpError::Partial))
         }
     })
 }
@@ -20,7 +20,7 @@ macro_rules! peek {
     ($bytes:ident) => ({
         match $bytes.peek() {
             Some(b) => Ok(b),
-            None => Err(WebError::Partial)
+            None => Err(WebError::from(crate::HttpError::Partial))
         }
     })
 }

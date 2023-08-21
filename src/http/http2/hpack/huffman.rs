@@ -29,7 +29,7 @@ impl HuffmanDecoder {
         let mut current_len: u8 = 0;
         let mut result: Vec<u8> = Vec::new();
 
-        for b in buf.bit_iter() {
+        for b in buf.bit_iter(None) {
             current_len += 1;
             current <<= 1;
             if b {

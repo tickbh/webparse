@@ -205,8 +205,11 @@ impl Buffer {
         self.write(&[b])
     }
 
-    pub fn bit_iter<'a>(&'a mut self) -> BitIterator {
-        BitIterator::new(self)
+    pub fn bit_iter<'a>(&'a mut self, len: Option<usize>) -> BitIterator {
+        match len {
+            Some(l) => BitIterator::new(self, std::cmp::min(self.cursor + l, self.end)),
+            None => BitIterator::new(self, self.end),
+        }
     }
 
 }
@@ -275,18 +278,20 @@ impl Iterator for Buffer {
     }
 }
 
-struct BitIterator<'a> {
+pub struct BitIterator<'a> {
     buffer_iterator: &'a mut Buffer,
     current_byte: Option<u8>,
     pos: u8,
+    end: usize,
 }
 
 impl<'a> BitIterator<'a> {
-    pub fn new(iterator: &'a mut Buffer) -> BitIterator {
+    pub fn new(iterator: &'a mut Buffer, end: usize) -> BitIterator {
         BitIterator {
             buffer_iterator: iterator,
             current_byte: None,
             pos: 7,
+            end,
         }
     }
 }
@@ -295,7 +300,7 @@ impl<'a> Iterator for BitIterator<'a> {
     type Item = bool;
 
     fn next(&mut self) -> Option<bool> {
-        if self.current_byte.is_none() {
+        if self.current_byte.is_none() && self.buffer_iterator.get_cursor() < self.end {
             self.current_byte = self.buffer_iterator.next();
             self.pos = 7;
         }

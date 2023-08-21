@@ -5,13 +5,13 @@ mod flag;
 mod kind;
 mod frame;
 mod payload;
-mod hpack;
+// mod hpack;
 
 pub use frame::Frame;
 pub use payload::Payload;
 pub use flag::Flag;
 pub use kind::Kind;
-pub use hpack::*;
+// pub use hpack::*;
 
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
