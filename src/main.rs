@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use webparse::{url, Url, Request, HeaderName, HeaderValue, Serialize, Buffer, Response};
 
 extern crate webparse;
@@ -74,6 +76,13 @@ fn main() {
     .header("X-Custom-Foo", "bar").body("my is web").unwrap();
     
     println!("ssssssssssss {}", String::from_utf8_lossy(&response.httpdata().unwrap()));
+
+    let mut xx = HashMap::<(u32, u8), u8>::new();
+    xx.insert((48, 5), 6);
+
+    // xx.get(&b"xx");
+
+    println!("aaa {:?}", xx.get(&(48, 5)));
     // let response = url::Builder::
     
 }

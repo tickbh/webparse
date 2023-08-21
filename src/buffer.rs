@@ -205,6 +205,10 @@ impl Buffer {
         self.write(&[b])
     }
 
+    pub fn bit_iter<'a>(&'a mut self) -> BitIterator {
+        BitIterator::new(self)
+    }
+
 }
 
 impl fmt::Debug for Buffer {
@@ -268,5 +272,51 @@ impl Iterator for Buffer {
         } else {
             None
         }
+    }
+}
+
+struct BitIterator<'a> {
+    buffer_iterator: &'a mut Buffer,
+    current_byte: Option<u8>,
+    pos: u8,
+}
+
+impl<'a> BitIterator<'a> {
+    pub fn new(iterator: &'a mut Buffer) -> BitIterator {
+        BitIterator {
+            buffer_iterator: iterator,
+            current_byte: None,
+            pos: 7,
+        }
+    }
+}
+
+impl<'a> Iterator for BitIterator<'a> {
+    type Item = bool;
+
+    fn next(&mut self) -> Option<bool> {
+        if self.current_byte.is_none() {
+            self.current_byte = self.buffer_iterator.next();
+            self.pos = 7;
+        }
+
+        // If we still have `None`, it means the buffer has been exhausted
+        if self.current_byte.is_none() {
+            return None;
+        }
+
+        let b = self.current_byte.unwrap();
+
+        let is_set = (b & (1 << self.pos)) == (1 << self.pos);
+        if self.pos == 0 {
+            // We have exhausted all bits from the current byte -- try to get
+            // a new one on the next pass.
+            self.current_byte = None;
+        } else {
+            // Still more bits left here...
+            self.pos -= 1;
+        }
+
+        Some(is_set)
     }
 }
