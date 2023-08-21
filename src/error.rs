@@ -4,25 +4,9 @@ use crate::http::HttpError;
 
 #[derive(Debug)]
 pub enum WebError {
-    // /// Invalid byte in header name.
-    // HeaderName,
-    // /// Invalid byte in header value.
-    // HeaderValue,
-    // /// Invalid byte in new line.
-    // NewLine,
-    // /// Invalid byte in Response status.
-    // Status,
-    // /// Invalid byte where token is required.
-    // Token,
-    // /// Invalid byte in HTTP version.
-    // Version,
-    // /// Partial
-    // Partial,
-
     Http(HttpError),
     UrlInvalid,
     UrlCodeInvalid,
-    InvalidStatusCode,
 
     IntoError,
     Extension(&'static str),
@@ -43,7 +27,6 @@ impl WebError {
             // WebError::Partial => "invalid HTTP length",
             WebError::UrlInvalid => "invalid Url",
             WebError::UrlCodeInvalid => "invalid Url Code",
-            WebError::InvalidStatusCode => "invalid Status Code",
 
             WebError::Http(e) => e.description_str(),
             WebError::IntoError => "into value error",

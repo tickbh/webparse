@@ -18,6 +18,9 @@ pub enum HttpError {
     Version,
     /// Partial
     Partial,
+    /// StatusCode
+    InvalidStatusCode,
+
 }
 
 impl HttpError {
@@ -31,6 +34,7 @@ impl HttpError {
             HttpError::Token => "invalid token",
             HttpError::Version => "invalid HTTP version",
             HttpError::Partial => "invalid HTTP length",
+            HttpError::InvalidStatusCode => "invalid status code",
         }
     }
 }

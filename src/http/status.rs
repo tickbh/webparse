@@ -20,7 +20,7 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
-use crate::{WebError, WebResult, Serialize, Buffer};
+use crate::{WebError, WebResult, Serialize, Buffer, HttpError};
 
 /// An HTTP status code (`status-code` in RFC 7230 et al.).
 ///
@@ -67,18 +67,18 @@ impl StatusCode {
     #[inline]
     pub fn from_u16(src: u16) -> WebResult<StatusCode> {
         if src < 100 || src >= 1000 {
-            return Err(WebError::InvalidStatusCode);
+            return Err(WebError::from(HttpError::InvalidStatusCode));
         }
 
         NonZeroU16::new(src)
             .map(StatusCode)
-            .ok_or(WebError::InvalidStatusCode)
+            .ok_or(WebError::from(HttpError::InvalidStatusCode))
     }
 
     /// Converts a &[u8] to a status code
     pub fn from_bytes(src: &[u8]) -> WebResult<StatusCode> {
         if src.len() != 3 {
-            return Err(WebError::InvalidStatusCode);
+            return Err(WebError::from(HttpError::InvalidStatusCode));
         }
 
         let a = src[0].wrapping_sub(b'0') as u16;
@@ -86,13 +86,13 @@ impl StatusCode {
         let c = src[2].wrapping_sub(b'0') as u16;
 
         if a == 0 || a > 9 || b > 9 || c > 9 {
-            return Err(WebError::InvalidStatusCode);
+            return Err(WebError::from(HttpError::InvalidStatusCode));
         }
 
         let status = (a * 100) + (b * 10) + c;
         NonZeroU16::new(status)
             .map(StatusCode)
-            .ok_or(WebError::InvalidStatusCode)
+            .ok_or(WebError::from(HttpError::InvalidStatusCode))
     }
 
     /// Returns the `u16` corresponding to this `StatusCode`.
@@ -517,7 +517,7 @@ impl Serialize for StatusCode  {
             Some(s) => {
                 buffer.write(format!("{} {}\r\n", self.as_str(), s).as_bytes()).map_err(WebError::from)?;
             }
-            _ => return Err(WebError::InvalidStatusCode)
+            _ => return Err(WebError::from(HttpError::InvalidStatusCode))
         }
         Ok(())
     }
