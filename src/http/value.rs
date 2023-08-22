@@ -94,6 +94,21 @@ impl TryFrom<String> for HeaderValue {
     }
 }
 
+impl Eq for HeaderValue {
+
+}
+
+impl PartialEq<HeaderValue> for HeaderValue {
+    fn eq(&self, other: &HeaderValue) -> bool {
+        match (self, other) {
+            (Self::Stand(l0), Self::Stand(r0)) => l0 == r0,
+            (Self::Value(l0), Self::Value(r0)) => l0 == r0,
+            (Self::Stand(l0), Self::Value(r0)) => l0.as_bytes() == r0,
+            (Self::Value(l0), Self::Stand(r0)) => l0 == r0.as_bytes(),
+        }
+    }
+}
+
 impl PartialEq<str> for HeaderValue {
     fn eq(&self, other: &str) -> bool {
         match self {

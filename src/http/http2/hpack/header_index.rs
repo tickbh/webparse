@@ -1,4 +1,4 @@
-use std::{collections::{VecDeque, vec_deque}, fmt};
+use std::{collections::{VecDeque, vec_deque, HashMap}, fmt};
 use lazy_static::lazy_static;
 use crate::{HeaderName, HeaderValue};
 
@@ -170,6 +170,14 @@ impl HeaderIndex {
     pub fn add_header(&mut self, name: HeaderName, value: HeaderValue) {
         self.dynamic_table.add_header(name, value)
     }
+
+    pub fn find_header(&self, header: &(HeaderName, HeaderValue)) -> Option<(usize, bool)> {
+        if STATIC_HASH.contains_key(header) {
+            Some((STATIC_HASH.get(header).unwrap() + 1, true))
+        } else {
+            None
+        }
+    }
 }
 
 /// (HPACK, Appendix A)
@@ -240,6 +248,8 @@ static STATIC_TABLE_RAW: &'static [(&'static str, &'static str)] = &[
 
 
 lazy_static! {
+    // static ref STATIC_HASH: HashMap<(HeaderName, HeaderValue), usize> = HashMap::new();
+
     static ref STATIC_TABLE: Vec<(HeaderName, HeaderValue)> = {
         let mut m = Vec::<(HeaderName, HeaderValue)>::new();
         for &(code, code_val) in STATIC_TABLE_RAW.iter() {
@@ -247,4 +257,23 @@ lazy_static! {
         }
         m
     };
+
+    static ref STATIC_HASH: HashMap<(HeaderName, HeaderValue), usize> = {
+        let mut h = HashMap::new();
+        for (idx, &(code, code_val)) in STATIC_TABLE_RAW.iter().enumerate() {
+            h.insert((HeaderName::try_from(code).unwrap(), HeaderValue::from_static(code_val)), idx);
+        }
+        h
+    };
+
+    // static ref STATIC_HASH: HashMap<(HeaderName, HeaderValue), usize> = HashMap::new();
+
+    // static ref (STATIC_TABLE, STATIC_HASH): (Vec<(HeaderName, HeaderValue)>, HashMap<(HeaderName, HeaderValue), usize>) = {
+    //     let mut m = Vec::<(HeaderName, HeaderValue)>::new();
+    //     let mut h = HashMap<(HeaderName, HeaderValue), usize> = HashMap::new();;
+    //     for &(code, code_val) in STATIC_TABLE_RAW.iter() {
+    //         m.push((HeaderName::try_from(code).unwrap(), HeaderValue::from_static(code_val)));
+    //     }
+    //     m
+    // };
 }
