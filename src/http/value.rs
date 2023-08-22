@@ -1,4 +1,4 @@
-use std::{fmt, io::Write};
+use std::{fmt, io::Write, borrow::Cow};
 
 use crate::{WebError, Helper, Serialize, Buffer, WebResult};
 
@@ -110,11 +110,14 @@ impl PartialEq<HeaderValue> for str {
 }
 
 impl Serialize for HeaderValue {
-    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         match self {
-            Self::Stand(name) => buffer.write(format!("{}\r\n", *name).as_bytes()).map_err(WebError::from)?,
-            Self::Value(vec) => buffer.write(format!("{}\r\n", String::from_utf8_lossy(vec)).as_bytes()).map_err(WebError::from)?,
-        };
-        Ok(())
+            Self::Stand(name) => {
+                Ok(Cow::Borrowed( name.as_bytes()))
+            }
+            Self::Value(vec) => {
+                Ok(Cow::Borrowed(&**vec))
+            }
+        }
     }
 }

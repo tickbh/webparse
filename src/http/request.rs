@@ -1,5 +1,5 @@
 
-use std::{collections::HashMap, io::Write};
+use std::{collections::HashMap, io::Write, borrow::Cow};
 
 use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize};
 use super::{Method, HeaderMap, Version, http2};
@@ -494,5 +494,10 @@ impl<T> Serialize for Request<T>
         self.parts.header.serialize(buffer)?;
         self.body.serialize(buffer)?;
         Ok(())
+    }
+
+
+    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
+        Err(WebError::Serialize("request can't serial bytes"))
     }
 }

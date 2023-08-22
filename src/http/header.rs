@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, hash::Hash, ops::{Index, IndexMut}, io::Write};
+use std::{collections::HashMap, fmt, hash::Hash, ops::{Index, IndexMut}, io::Write, borrow::Cow};
 
 use crate::{WebError, helper, Helper, WebResult, HeaderName, HeaderValue, Serialize, Buffer};
 
@@ -124,11 +124,16 @@ impl IntoIterator for HeaderMap {
 
 
 impl Serialize for HeaderMap {
+    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
+        Err(WebError::Serialize("header map can't call header map"))
+    }
 
     fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
         for value in self.iter() {
             value.0.serialize(buffer)?;
+            buffer.write(": ".as_bytes()).map_err(WebError::from)?;
             value.1.serialize(buffer)?;
+            buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;
         }
         buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;
         Ok(())

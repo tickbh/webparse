@@ -14,6 +14,7 @@
 //! assert!(StatusCode::OK.is_success());
 //! ```
 
+use std::borrow::Cow;
 use std::{convert::TryFrom, io::Write};
 use std::num::NonZeroU16;
 use std::error::Error;
@@ -520,6 +521,16 @@ impl Serialize for StatusCode  {
             _ => return Err(WebError::from(HttpError::InvalidStatusCode))
         }
         Ok(())
+    }
+
+    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
+        match self.canonical_reason() {
+            Some(s) => {
+                Ok(Cow::Owned(format!("{} {}\r\n", self.as_str(), s).into_bytes()) )
+            }
+            _ => Err(WebError::from(HttpError::InvalidStatusCode))
+        }
+
     }
 }
 

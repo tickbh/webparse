@@ -1,4 +1,4 @@
-use std::{any::Any, io::Write};
+use std::{any::Any, io::Write, borrow::Cow};
 
 use crate::{HeaderMap, Version, Serialize, WebResult, Extensions, WebError, HeaderName, HeaderValue, Buffer};
 
@@ -585,5 +585,9 @@ impl<T> Serialize for Response<T>
         self.parts.header.serialize(buffer)?;
         self.body.serialize(buffer)?;
         Ok(())
+    }
+
+    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
+        Err(WebError::Serialize("request can't serial bytes"))
     }
 }

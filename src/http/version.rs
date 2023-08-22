@@ -1,6 +1,6 @@
-use std::{fmt::Display, io::Write};
+use std::{fmt::Display, io::Write, borrow::Cow};
 
-use crate::{Serialize, WebError};
+use crate::{Serialize, WebError, WebResult};
 
 
 
@@ -48,5 +48,13 @@ impl Serialize for Version {
             _ => buffer.write(format!("{}", self).as_bytes()).map_err(WebError::from)?,
         };
         Ok(())
+    }
+
+
+    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
+        match self {
+            Version::None => Err(WebError::Serialize("version")),
+            _ => Ok(Cow::Owned(format!("{}", self).into_bytes()))
+        }
     }
 }

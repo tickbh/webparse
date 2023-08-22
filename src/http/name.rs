@@ -1,4 +1,4 @@
-use std::{hash::Hash, fmt, io::Write};
+use std::{hash::Hash, fmt, io::Write, borrow::Cow};
 
 use crate::{WebError, Serialize, Buffer, WebResult};
 
@@ -72,12 +72,11 @@ impl TryFrom<String> for HeaderName {
 
 impl Serialize for HeaderName {
 
-    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         match self {
-            Self::Stand(name) => buffer.write(format!("{}: ", *name).as_bytes()).map_err(WebError::from)?,
-            Self::Value(name) => buffer.write(format!("{}: ", name).as_bytes()).map_err(WebError::from)?,
-        };
-        Ok(())
+            Self::Stand(name) => Ok(Cow::Borrowed(name.as_bytes())),
+            Self::Value(name) => Ok(Cow::Borrowed(name.as_bytes())),
+        }
     }
 }
 

@@ -1,6 +1,6 @@
-use std::{fmt::Display, io::Write};
+use std::{fmt::Display, io::Write, borrow::Cow};
 
-use crate::{Serialize, WebError};
+use crate::{Serialize, WebError, WebResult};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Method {
@@ -83,11 +83,10 @@ impl Display for Method {
 }
 
 impl Serialize for Method {
-    fn serialize(&self, buffer: &mut crate::Buffer) -> crate::WebResult<()> {
+    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         match self {
-            Method::None => return Err(WebError::Serialize("method")),
-            _ => buffer.write(format!("{} ", self).as_bytes()).map_err(WebError::from)?,
-        };
-        Ok(())
+            Method::None => Err(WebError::Serialize("method")),
+            _ => Ok(Cow::Owned(format!("{} ", self).into_bytes())),
+        }
     }
 }
