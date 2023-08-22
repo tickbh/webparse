@@ -1,9 +1,5 @@
 use super::{Kind, Payload, StreamIdentifier, Flag};
 
-
-
-
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FrameHeader {
     pub length: u32,

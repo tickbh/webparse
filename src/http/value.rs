@@ -2,7 +2,7 @@ use std::{fmt, io::Write};
 
 use crate::{WebError, Helper, Serialize, Buffer, WebResult};
 
-#[derive(Hash)]
+#[derive(Hash, Clone)]
 pub enum HeaderValue {
     Stand(&'static str),
     Value(Vec<u8>),
@@ -11,6 +11,13 @@ pub enum HeaderValue {
 impl HeaderValue {
     pub fn from_static(s: &'static str) -> HeaderValue {
         HeaderValue::Stand(s)
+    }
+
+    pub fn bytes_len(&self) -> usize {
+        match self {
+            Self::Stand(s) => s.as_bytes().len(),
+            Self::Value(s) => s.len(),
+        }
     }
 }
 

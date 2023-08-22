@@ -2,6 +2,7 @@ use std::{hash::Hash, fmt, io::Write};
 
 use crate::{WebError, Serialize, Buffer, WebResult};
 
+#[derive(Clone)]
 pub enum HeaderName {
     Stand(&'static str),
     Value(String),
@@ -77,6 +78,19 @@ impl Serialize for HeaderName {
             Self::Value(name) => buffer.write(format!("{}: ", name).as_bytes()).map_err(WebError::from)?,
         };
         Ok(())
+    }
+}
+
+impl HeaderName {
+    pub fn from_static(s: &'static str) -> HeaderName {
+        HeaderName::Stand(s)
+    }
+
+    pub fn bytes_len(&self) -> usize {
+        match self {
+            Self::Stand(s) => s.as_bytes().len(),
+            Self::Value(s) => s.as_bytes().len(),
+        }
     }
 }
 

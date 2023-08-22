@@ -88,8 +88,20 @@ impl Buffer {
         self.cursor
     }
     
+    pub fn is_end(&self) -> bool {
+        self.cursor == self.end || self.start == self.end
+    }
+
+    pub fn now(&self) -> u8 {
+        self.val[self.cursor]
+    }
+
     pub fn get_read_array(&self, max_bytes: usize) -> &[u8] {
         &self.val[self.cursor .. std::cmp::min(self.end, self.cursor+max_bytes-1)]
+    }
+    
+    pub fn get_left_array(&self) -> &[u8] {
+        &self.val[self.cursor .. self.end]
     }
     
     pub fn get_write_array(&mut self, write_bytes: usize) -> &mut [u8] {
@@ -211,7 +223,6 @@ impl Buffer {
             None => BitIterator::new(self, self.end),
         }
     }
-
 }
 
 impl fmt::Debug for Buffer {

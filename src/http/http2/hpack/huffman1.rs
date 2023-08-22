@@ -1,26 +1,12 @@
+//! A module exposing utilities for encoding and decoding Huffman-coded octet
+//! strings, under the Huffman code defined by HPACK.
+//! (HPACK-draft-10, Appendix B)
+
+use lazy_static::lazy_static;
+
 use std::collections::HashMap;
 
 use crate::{WebResult, Buffer};
-use lazy_static::lazy_static;
-
-
-
-/// Represents the error variants that the `HuffmanDecoder` can return.
-#[derive(PartialEq)]
-#[derive(Copy)]
-#[derive(Clone)]
-#[derive(Debug)]
-pub enum HuffmanDecoderError {
-    /// Any padding strictly larger than 7 bits MUST be interpreted as an error
-    PaddingTooLarge,
-    /// Any padding that does not correspond to the most significant bits of
-    /// EOS MUST be interpreted as an error.
-    InvalidPadding,
-    /// If EOS is ever found in the string, it causes an error.
-    EOSInString,
-}
-
-
 
 pub struct HuffmanDecoder;
 

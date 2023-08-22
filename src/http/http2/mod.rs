@@ -6,14 +6,16 @@ mod kind;
 mod frame;
 mod payload;
 mod error;
-// mod hpack;
+mod hpack;
 
 pub use frame::Frame;
 pub use payload::Payload;
 pub use flag::Flag;
 pub use kind::Kind;
 pub use error::Http2Error;
-// pub use hpack::*;
+
+use crate::{Request, serialize, Buffer, WebResult};
+pub use hpack::*;
 
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -65,4 +67,15 @@ pub fn encode_u32(buf: &mut [u8], val: u32) -> usize {
     buf[2] = (val >> 8) as u8;
     buf[3] = val as u8;
     4
+}
+
+pub struct Http2;
+
+impl Http2 {
+
+    pub fn parse_buffer<T: serialize::Serialize>(request: &mut Request<T>, buffer:&mut Buffer) -> WebResult<()> {
+
+
+        Ok(())
+    }
 }

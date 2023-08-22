@@ -6,7 +6,7 @@ mod status;
 pub mod response;
 mod name;
 mod value;
-mod http2;
+pub mod http2;
 mod error;
 
 pub use version::Version;
@@ -19,5 +19,6 @@ pub use error::HttpError;
 pub use request::Request;
 pub use response::Response;
 pub use status::StatusCode;
+
 
 

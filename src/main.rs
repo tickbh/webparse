@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use webparse::{url, Url, Request, HeaderName, HeaderValue, Serialize, Buffer, Response};
+use webparse::http::http2::Decoder;
 
 extern crate webparse;
 
@@ -85,4 +86,14 @@ fn main() {
     println!("aaa {:?}", xx.get(&(48, 5)));
     // let response = url::Builder::
     
+
+    let http2 = vec![0x82, 0x86, 0x84, 0x41, 0x8c, 0xf1, 0xe3, 0xc2, 0xe5, 0xf2, 0x3a, 0x6b, 0xa0, 0xab, 0x90, 0xf4, 0xff];
+    let mut buf = Buffer::new_vec(http2);
+
+    let mut decode = Decoder::new();
+    let result = decode.decode_with_cb(&mut buf, |n, v| {
+        println!("n = {:?}, v = {:?}", n, v);
+    });
+    println!("result = {:?}", result);
+
 }

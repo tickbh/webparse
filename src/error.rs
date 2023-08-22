@@ -1,11 +1,11 @@
 use std::{fmt::{self, Result}, result, error::Error};
 
-use crate::{http::HttpError, url::UrlError};
+use crate::{http::HttpError, url::UrlError, Http2Error};
 
 #[derive(Debug)]
 pub enum WebError {
     Http(HttpError),
-
+    Http2(Http2Error),
     Url(UrlError),
     IntoError,
     Extension(&'static str),
@@ -27,6 +27,7 @@ impl WebError {
 
             WebError::Url(e) => e.description_str(),
             WebError::Http(e) => e.description_str(),
+            WebError::Http2(e) => e.description_str(),
             WebError::IntoError => "into value error",
             WebError::Extension(_) => "std error",
             WebError::Serialize(_) => "serialize error",
