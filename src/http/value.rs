@@ -13,6 +13,10 @@ impl HeaderValue {
         HeaderValue::Stand(s)
     }
 
+    pub fn from_bytes(b: &[u8]) -> HeaderValue {
+        HeaderValue::Value(b.to_vec())
+    }
+
     pub fn bytes_len(&self) -> usize {
         match self {
             Self::Stand(s) => s.as_bytes().len(),

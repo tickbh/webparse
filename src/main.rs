@@ -87,13 +87,35 @@ fn main() {
     // let response = url::Builder::
     
 
+    let mut decode = Decoder::new();
+
     let http2 = vec![0x82, 0x86, 0x84, 0x41, 0x8c, 0xf1, 0xe3, 0xc2, 0xe5, 0xf2, 0x3a, 0x6b, 0xa0, 0xab, 0x90, 0xf4, 0xff];
     let mut buf = Buffer::new_vec(http2);
 
-    let mut decode = Decoder::new();
     let result = decode.decode_with_cb(&mut buf, |n, v| {
         println!("n = {:?}, v = {:?}", n, v);
     });
     println!("result = {:?}", result);
+    let http2 = vec![0x82, 0x86, 0x84, 0xbe, 0x58, 0x08, 0x6e, 0x6f, 0x2d, 0x63, 0x61, 0x63, 0x68, 0x65];
+    let mut buf = Buffer::new_vec(http2);
+    let result = decode.decode_with_cb(&mut buf, |n, v| {
+        println!("n = {:?}, v = {:?}", n, v);
+    });
+    println!("result = {:?}", result);
+
+    {
+        
+
+//         8287 85bf 4088 25a8 49e9 5ba9 7d7f 8925 | ....@.%.I.[.}..%
+//          a849 e95b b8e8 b4bf  
+        let http2 = vec![0x82, 0x87, 0x85, 0xbf, 0x40, 0x88, 0x25, 0xa8, 0x49, 0xe9, 0x5b, 0xa9, 
+        0x7d, 0x7f, 0x89, 0x25, 0xa8, 0x49, 0xe9, 0x5b, 0xb8, 0xe8, 0xb4, 0xbf ];
+        let mut buf = Buffer::new_vec(http2);
+
+        let result = decode.decode_with_cb(&mut buf, |n, v| {
+            println!("n = {:?}, v = {:?}", n, v);
+        });
+        println!("result = {:?}", result);
+    }
 
 }

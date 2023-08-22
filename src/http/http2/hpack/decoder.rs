@@ -131,9 +131,8 @@ impl Decoder {
 
                         // Since we are to add the decoded header to the header table, we need to
                         // convert them into owned buffers that the decoder can keep internally.
-                        let name = name.into_owned();
-                        let value = value.into_owned();
-
+                        let name = name.clone();
+                        let value = value.clone();
                         ((name, value), consumed)
                     };
                     // // This cannot be done in the same scope as the `decode_literal` call, since
@@ -141,10 +140,8 @@ impl Decoder {
                     // // borrow on `self` that the `decode_literal` return value had. Since adding
                     // // a header to the table requires a `&mut self`, it fails to compile.
                     // // Manually separating it out here works around it...
-                    // self.header_table.add_header(name, value);
-
-                    // consumed
-                    0
+                    self.index.add_header(name, value);
+                    consumed
                 },
                 FieldRepresentation::LiteralWithoutIndexing => {
                     // let ((name, value), consumed) =
@@ -172,6 +169,8 @@ impl Decoder {
                     0
                 }
             };
+
+            buf.advance(consumed);
         }
         Ok(())
     }
@@ -252,8 +251,7 @@ impl Decoder {
             let mut decoder = HuffmanDecoder::new();
             let decoded = match decoder.decode(raw_string) {
                 Err(e) => {
-                    return Err(Http2Error::into(DecoderError::StringDecodingError(
-                        StringDecodingError::HuffmanDecoderError(e))));
+                    return Err(e);
                 },
                 Ok(res) => res,
             };
@@ -266,7 +264,7 @@ impl Decoder {
     }
 
     fn decode_literal(&self, buf: &[u8], index: bool)
-            -> WebResult<((Cow<[u8]>, Cow<[u8]>), usize)> {
+            -> WebResult<((HeaderName, HeaderValue), usize)> {
         let prefix = if index {
             6
         } else {
@@ -277,20 +275,20 @@ impl Decoder {
         // First read the name appropriately
         let name = if table_index == 0 {
             // Read name string as literal
-            let (name, name_len) = try!(decode_string(&buf[consumed..]));
+            let (name, name_len) = Self::decode_string(&buf[consumed..])?;
             consumed += name_len;
-            name
+            HeaderName::from_bytes(&name).unwrap()
         } else {
             // Read name indexed from the table
-            let (name, _) = try!(self.get_from_table(table_index));
-            Cow::Borrowed(name)
+            let (name, _) = self.get_from_table(table_index)?;
+            name.clone()
         };
 
         // Now read the value as a literal...
-        let (value, value_len) = try!(decode_string(&buf[consumed..]));
+        let (value, value_len) = Self::decode_string(&buf[consumed..])?;
         consumed += value_len;
 
-        Ok(((name, value), consumed))
+        Ok(((name, HeaderValue::from_bytes(&value)), consumed))
     }
 
 
@@ -300,9 +298,7 @@ impl Decoder {
         Ok(((name, value), 1))
     }
 
-    fn get_from_table(&self, index: usize) -> WebResult<((&HeaderName, &HeaderValue))> {
-        // self.header_table.get_from_table(index).ok_or(
-        //     DecoderError::HeaderIndexOutOfBounds)
-        Err(WebError::IntoError)
+    fn get_from_table(&self, index: usize) -> WebResult<(&HeaderName, &HeaderValue)> {
+        self.index.get_from_index(index as usize).ok_or(Http2Error::into(DecoderError::HeaderIndexOutOfBounds))
     }
 }

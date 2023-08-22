@@ -1,12 +1,13 @@
 use std::fmt;
 use crate::WebError;
 
-use super::DecoderError;
+use super::{DecoderError, HuffmanDecoderError};
 
 
 #[derive(Debug)]
 pub enum Http2Error {
     Decoder(DecoderError),
+    Huffman(HuffmanDecoderError),
 
 }
 
@@ -16,6 +17,7 @@ impl Http2Error {
     pub fn description_str(&self) -> &'static str {
         match *self {
             Self::Decoder(_) => "",
+            Self::Huffman(_) => "",
         }
     }
 
@@ -33,5 +35,11 @@ impl fmt::Display for Http2Error {
 impl From<DecoderError> for Http2Error {
     fn from(e: DecoderError) -> Self {
         Http2Error::Decoder(e)
+    }
+}
+
+impl From<HuffmanDecoderError> for Http2Error {
+    fn from(e: HuffmanDecoderError) -> Self {
+        Http2Error::Huffman(e)
     }
 }

@@ -166,6 +166,10 @@ impl HeaderIndex {
             }
         }
     }
+
+    pub fn add_header(&mut self, name: HeaderName, value: HeaderValue) {
+        self.dynamic_table.add_header(name, value)
+    }
 }
 
 /// (HPACK, Appendix A)

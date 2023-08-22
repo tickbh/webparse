@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{WebResult, Buffer};
+use crate::{WebResult, Buffer, Http2Error};
 use lazy_static::lazy_static;
 
 
@@ -38,16 +38,19 @@ impl HuffmanDecoder {
     /// It assumes that the entire buffer should be considered as the Huffman
     /// encoding of an octet string and handles the padding rules
     /// accordingly.
-    pub fn decode(&mut self, buf: &mut Buffer) -> WebResult<Vec<u8>> {
+    pub fn decode(&mut self, buf: &[u8]) -> WebResult<Vec<u8>> {
         let mut current: u32 = 0;
         let mut current_len: u8 = 0;
+        let mut all_true = true;
         let mut result: Vec<u8> = Vec::new();
 
-        for b in buf.bit_iter(None) {
+        for b in BitIterator::new(buf.iter()) {
             current_len += 1;
             current <<= 1;
             if b {
                 current |= 1;
+            } else {
+                all_true = false;
             }
 
             let key = (current, current_len);
@@ -56,6 +59,7 @@ impl HuffmanDecoder {
                 result.push(*val);
                 current = 0;
                 current_len = 0;
+                all_true = true;
             }
         }
 
@@ -65,38 +69,78 @@ impl HuffmanDecoder {
         // // EOS symbol's code.
 
         // // First: the check for the length of the padding
-        // if current_len > 7 {
-        //     return Err(HuffmanDecoderError::PaddingTooLarge)
-        // }
+        if current_len > 7 {
+            return Err(Http2Error::into(HuffmanDecoderError::PaddingTooLarge))
+        }
 
-        // // Second: the padding corresponds to the most-significant bits of the
-        // // EOS symbol.
-        // // Align both of them to have their most significant bit as the most
-        // // significant bit of a u32.
-        // let right_align_current = if current_len == 0 {
-        //     0
-        // } else {
-        //     current << (32 - current_len)
-        // };
-        // let right_align_eos = self.eos_codepoint.0 << (32 - self.eos_codepoint.1);
-        // // Now take only the necessary amount of most significant bit of EOS.
-        // // The mask defines a bit pattern of `current_len` leading set bits,
-        // // followed by the rest of the bits 0.
-        // let mask = if current_len == 0 {
-        //     0
-        // } else {
-        //     ((1 << current_len) - 1) << (32 - current_len)
-        // };
-        // // The mask is now used to strip the unwanted bits of the EOS
-        // let eos_mask = right_align_eos & mask;
-
-        // if eos_mask != right_align_current {
-        //     return Err(HuffmanDecoderError::InvalidPadding);
-        // }
+        // 后续必须以全为1的字码填充
+        if !all_true {
+            return Err(Http2Error::into(HuffmanDecoderError::PaddingTooLarge))
+        }
 
         Ok(result)
     }
 }
+
+
+
+/// A helper struct that represents an iterator over individual bits of all
+/// bytes found in a wrapped Iterator over bytes.
+/// Bits are represented as `bool`s, where `true` corresponds to a set bit and
+/// `false` to a 0 bit.
+///
+/// Bits are yielded in order of significance, starting from the
+/// most-significant bit.
+struct BitIterator<'a, I: Iterator> {
+    buffer_iterator: I,
+    current_byte: Option<&'a u8>,
+    /// The bit-position within the current byte
+    pos: u8,
+}
+
+impl<'a, I: Iterator> BitIterator<'a, I>
+        where I: Iterator<Item=&'a u8> {
+    pub fn new(iterator: I) -> BitIterator<'a, I> {
+        BitIterator::<'a, I> {
+            buffer_iterator: iterator,
+            current_byte: None,
+            pos: 7,
+        }
+    }
+}
+
+impl<'a, I> Iterator for BitIterator<'a, I>
+        where I: Iterator<Item=&'a u8> {
+    type Item = bool;
+
+    fn next(&mut self) -> Option<bool> {
+        if self.current_byte.is_none() {
+            self.current_byte = self.buffer_iterator.next();
+            self.pos = 7;
+        }
+
+        // If we still have `None`, it means the buffer has been exhausted
+        if self.current_byte.is_none() {
+            return None;
+        }
+
+        let b = *self.current_byte.unwrap();
+
+        let is_set = (b & (1 << self.pos)) == (1 << self.pos);
+        if self.pos == 0 {
+            // We have exhausted all bits from the current byte -- try to get
+            // a new one on the next pass.
+            self.current_byte = None;
+        } else {
+            // Still more bits left here...
+            self.pos -= 1;
+        }
+
+        Some(is_set)
+    }
+}
+
+
 
 const EOS_VALUE: u32 = 0x3fffffff;
 const EOS_LEN: u8 = 30;
