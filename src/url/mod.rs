@@ -1,13 +1,15 @@
 
 mod scheme;
 mod builder;
+mod error;
 
 use std::fmt::Display;
 
 pub use scheme::Scheme;
 pub use builder::Builder;
+pub use error::UrlError;
 
-use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper};
+use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper };
 
 
 
@@ -49,12 +51,12 @@ impl Url {
             // 转码字符, 后面必须跟两位十六进制数字
             if b == b'%' {
                 if !can_convert {
-                    return Err(WebError::UrlInvalid);
+                    return Err(WebError::from(UrlError::UrlInvalid));
                 }
                 let t = Helper::convert_hex(next!(buffer)?);
                 let u = Helper::convert_hex(next!(buffer)?);
                 if t.is_none() || u.is_none() {
-                    return Err(WebError::UrlInvalid);
+                    return Err(WebError::from(UrlError::UrlInvalid));
                 }
                 result.push(t.unwrap() * 16 + u.unwrap());
             } else {
@@ -66,7 +68,7 @@ impl Url {
         buffer.set_end(ori_end);
         match String::from_utf8(result) {
             Ok(s) => Ok(Some(s)),
-            Err(_) => Err(WebError::UrlInvalid)
+            Err(_) => Err(WebError::from(UrlError::UrlInvalid))
         }
     }
 
@@ -86,14 +88,14 @@ impl Url {
         if Helper::is_alpha(b) {
             scheme = Scheme::parse_scheme(&mut buffer)?;
             scheme_end = buffer.get_cursor();
-            expect!(buffer.next() == b':' => Err(WebError::UrlInvalid));
-            expect!(buffer.next() == b'/' => Err(WebError::UrlInvalid));
-            expect!(buffer.next() == b'/' => Err(WebError::UrlInvalid));
+            expect!(buffer.next() == b':' => Err(WebError::from(UrlError::UrlInvalid)));
+            expect!(buffer.next() == b'/' => Err(WebError::from(UrlError::UrlInvalid)));
+            expect!(buffer.next() == b'/' => Err(WebError::from(UrlError::UrlInvalid)));
         } else if b == b'/' {
             is_first_slash = true;
             has_domain = false;
         } else {
-            return Err(WebError::UrlInvalid);
+            return Err(WebError::from(UrlError::UrlInvalid));
         }
         
         let mut check_func = Helper::is_token;
@@ -120,20 +122,20 @@ impl Url {
             if b == b':' {
                 //未存在协议头, 允许path与query
                 if scheme_end == 0 || is_first_slash {
-                    return Err(WebError::UrlInvalid);
+                    return Err(WebError::from(UrlError::UrlInvalid));
                 }
 
                 // 匹配域名, 如果在存在期间检测到@则把当前当作用户结尾
                 if domain_end == 0 {
                     domain_end = buffer.get_cursor() - 1;
                 } else {
-                    return Err(WebError::UrlInvalid);
+                    return Err(WebError::from(UrlError::UrlInvalid));
                 }
 
             } else if b == b'@' {
                 //一开始的冒泡匹配域名,把域名结束当前username结束, 不存在用户密码, 不允许存在'@'
                 if domain_end == 0 {
-                    return Err(WebError::UrlInvalid);
+                    return Err(WebError::from(UrlError::UrlInvalid));
                 }
                 username_end = domain_end;
                 domain_end = 0;
@@ -154,11 +156,11 @@ impl Url {
                 }
                 // 不允许存在多次的'?'
                 if path_end != 0 {
-                    return Err(WebError::UrlInvalid);
+                    return Err(WebError::from(UrlError::UrlInvalid));
                 }
                 path_end = buffer.get_cursor() - 1;
             } else if !check_func(b) {
-                return Err(WebError::UrlInvalid);
+                return Err(WebError::from(UrlError::UrlInvalid));
             }
         }
 
@@ -178,7 +180,7 @@ impl Url {
             if port.is_some() {
                 url.port = match port.unwrap().parse::<u16>() {
                     Ok(v) => Some(v),
-                    Err(_) => return Err(WebError::UrlInvalid),
+                    Err(_) => return Err(WebError::from(UrlError::UrlInvalid)),
                 }
             }
         }
@@ -201,7 +203,7 @@ impl Url {
                 Scheme::Ws => url.port = Some(80),
                 Scheme::Wss => url.port = Some(443),
                 Scheme::Ftp => url.port = Some(21),
-                _ => return Err(WebError::UrlInvalid)
+                _ => return Err(WebError::from(UrlError::UrlInvalid))
             }
         }
 
@@ -235,13 +237,13 @@ impl Url {
             let b = bytes[idx];
             if b == b'%' {
                 if idx + 2 >= bytes.len() {
-                    return Err(WebError::UrlCodeInvalid);
+                    return Err(WebError::from(UrlError::UrlCodeInvalid));
                 }
                 
                 let t = Helper::convert_hex(bytes[idx + 1]);
                 let u = Helper::convert_hex(bytes[idx + 2]);
                 if t.is_none() || u.is_none() {
-                    return Err(WebError::UrlCodeInvalid);
+                    return Err(WebError::from(UrlError::UrlCodeInvalid));
                 }
                 vec.push(t.unwrap() * 16 + u.unwrap());
                 idx += 3;

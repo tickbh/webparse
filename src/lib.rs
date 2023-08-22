@@ -13,7 +13,7 @@ mod serialize;
 pub use http::{HeaderMap, HeaderName, HeaderValue, Method, Version, Request, Response, HttpError};
 pub use error::{WebError, WebResult};
 pub use buffer::Buffer;
-pub use url::{Url, Scheme};
+pub use url::{Url, Scheme, UrlError};
 pub use helper::Helper;
 pub use extensions::Extensions;
 pub use serialize::Serialize;

@@ -82,7 +82,7 @@ impl TryFrom<&str> for Scheme {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if value.len() > 64 {
-            return Err(WebError::UrlInvalid);
+            return Err(WebError::from(crate::UrlError::UrlInvalid));
         }
         match value {
             "http" => Ok(Scheme::Http),

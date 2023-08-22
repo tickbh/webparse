@@ -1,13 +1,12 @@
 use std::{fmt::{self, Result}, result, error::Error};
 
-use crate::http::HttpError;
+use crate::{http::HttpError, url::UrlError};
 
 #[derive(Debug)]
 pub enum WebError {
     Http(HttpError),
-    UrlInvalid,
-    UrlCodeInvalid,
 
+    Url(UrlError),
     IntoError,
     Extension(&'static str),
     Serialize(&'static str),
@@ -25,9 +24,8 @@ impl WebError {
             // WebError::Token => "invalid token",
             // WebError::Version => "invalid HTTP version",
             // WebError::Partial => "invalid HTTP length",
-            WebError::UrlInvalid => "invalid Url",
-            WebError::UrlCodeInvalid => "invalid Url Code",
 
+            WebError::Url(e) => e.description_str(),
             WebError::Http(e) => e.description_str(),
             WebError::IntoError => "into value error",
             WebError::Extension(_) => "std error",
@@ -58,6 +56,12 @@ impl From<std::io::Error> for WebError {
 impl From<HttpError> for WebError {
     fn from(e: HttpError) -> Self {
         WebError::Http(e)
+    }
+}
+
+impl From<UrlError> for WebError {
+    fn from(e: UrlError) -> Self {
+        WebError::Url(e)
     }
 }
 

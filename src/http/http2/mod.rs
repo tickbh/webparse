@@ -5,12 +5,14 @@ mod flag;
 mod kind;
 mod frame;
 mod payload;
+mod error;
 // mod hpack;
 
 pub use frame::Frame;
 pub use payload::Payload;
 pub use flag::Flag;
 pub use kind::Kind;
+pub use error::Http2Error;
 // pub use hpack::*;
 
 
