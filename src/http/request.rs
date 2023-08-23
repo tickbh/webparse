@@ -540,11 +540,7 @@ impl<T> Serialize for Request<T>
                     encode.encode_header_into( (&HeaderName::from_static(":scheme"), &HeaderValue::from_cow(self.parts.url.scheme.serial_bytes()?)), buffer)?;
                 }
                 encode.encode_into(self.parts.header.iter(), buffer)?;
-                // buffer.write_u8(b' ').map_err(WebError::from)?;
-                // self.parts.version.serialize(buffer)?;
-                // buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;
-                // self.parts.header.serialize(buffer)?;
-                // self.body.serialize(buffer)?;
+                self.body.serialize(buffer)?;
                 Ok(())
             }
             _ => self.serialize(buffer)

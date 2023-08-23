@@ -2,6 +2,7 @@ use std::{io::Write, borrow::Cow};
 
 use crate::{Buffer, WebResult, WebError};
 
+static EMPTY_ARRAY: Vec<u8> = vec![];
 pub trait Serialize {
     fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
         buffer.write(&self.serial_bytes()?).map_err(WebError::from)?;
@@ -30,7 +31,7 @@ impl Serialize for String {
 
 impl Serialize for () {
     fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
-        Err(WebError::Serialize("() can't serial bytes"))
+        Ok(Cow::Borrowed(&EMPTY_ARRAY))
     }
 }
 
