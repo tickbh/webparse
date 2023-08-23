@@ -2,7 +2,7 @@
 use std::{collections::HashMap, io::Write, borrow::Cow};
 
 use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize};
-use super::{Method, HeaderMap, Version, http2};
+use super::{Method, HeaderMap, Version, http2::{self, encoder::Encoder}};
 
 #[derive(Debug)]
 pub struct Request<T> 
@@ -363,11 +363,8 @@ impl<T> Request<T>
                 return Ok(());
             }
         }
-        self.parts.method = Helper::parse_method(buffer)?;
-        // 是否转成http2协议
-        if self.parts.method == Method::Pri {
 
-        }
+        self.parts.method = Helper::parse_method(buffer)?;
         Helper::skip_spaces(buffer)?;
         self.parts.path = Helper::parse_token(buffer)?.to_string();
         Helper::skip_spaces(buffer)?;
@@ -486,16 +483,33 @@ impl Default for Parts {
 impl<T> Serialize for Request<T>
     where T : Serialize {
     fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
-        self.parts.method.serialize(buffer)?;
-        self.parts.path.serialize(buffer)?;
-        buffer.write_u8(b' ').map_err(WebError::from)?;
-        self.parts.version.serialize(buffer)?;
-        buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;
-        self.parts.header.serialize(buffer)?;
-        self.body.serialize(buffer)?;
-        Ok(())
+        match self.parts.version {
+            Version::Http11 => {
+                self.parts.method.serialize(buffer)?;
+                buffer.write_u8(b' ').map_err(WebError::from)?;
+                self.parts.path.serialize(buffer)?;
+                buffer.write_u8(b' ').map_err(WebError::from)?;
+                self.parts.version.serialize(buffer)?;
+                buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;
+                self.parts.header.serialize(buffer)?;
+                self.body.serialize(buffer)?;
+                Ok(())
+            }
+            Version::Http2 => {
+                let mut encode = Encoder::new();
+                encode.encode_header_into( (&HeaderName::from_static(":method"), &HeaderValue::from_cow(self.parts.method.serial_bytes()?)), buffer)?;
+                encode.encode_header_into( (&HeaderName::from_static(":path"), &HeaderValue::from_cow(self.parts.path.serial_bytes()?)), buffer)?;
+                encode.encode(self.parts.header.iter());
+                // buffer.write_u8(b' ').map_err(WebError::from)?;
+                // self.parts.version.serialize(buffer)?;
+                // buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;
+                // self.parts.header.serialize(buffer)?;
+                // self.body.serialize(buffer)?;
+                Ok(())
+            }
+            _ => Err(WebError::Extension("un support"))
+        }
     }
-
 
     fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         Err(WebError::Serialize("request can't serial bytes"))

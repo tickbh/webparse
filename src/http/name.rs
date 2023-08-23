@@ -19,8 +19,6 @@ impl PartialEq for HeaderName {
     }
 }
 
-
-
 impl Eq for HeaderName {
 
 }

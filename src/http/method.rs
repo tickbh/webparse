@@ -86,7 +86,28 @@ impl Serialize for Method {
     fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         match self {
             Method::None => Err(WebError::Serialize("method")),
-            _ => Ok(Cow::Owned(format!("{} ", self).into_bytes())),
+            _ => Ok(Cow::Owned(format!("{}", self).into_bytes())),
+        }
+    }
+}
+
+impl TryFrom<&str> for Method {
+    type Error=WebError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            Method::SGET => Ok(Method::GET),
+            Method::SPOST => Ok(Method::POST),
+            Method::SPUT => Ok(Method::PUT),
+            Method::SDELETE => Ok(Method::DELETE),
+            Method::SHEAD => Ok(Method::HEAD),
+            Method::SOPTIONS => Ok(Method::OPTIONS),
+            Method::SCONNECT => Ok(Method::CONNECT),
+            Method::SPATCH => Ok(Method::PATCH),
+            Method::STRACE => Ok(Method::TRACE),
+            _ => {
+                Ok(Method::Extension(value.to_string()))
+            }
         }
     }
 }

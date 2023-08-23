@@ -1,6 +1,6 @@
-use std::{collections::{VecDeque, vec_deque, HashMap}, fmt};
+use std::{collections::{VecDeque, vec_deque, HashMap}, fmt, hash::Hash};
 use lazy_static::lazy_static;
-use crate::{HeaderName, HeaderValue};
+use crate::{HeaderName, HeaderValue, http::value};
 
 
 struct DynamicTable {
@@ -12,6 +12,14 @@ struct DynamicTable {
 pub struct HeaderIndex {
     dynamic_table: DynamicTable,
 }
+
+// type HeaderTuple<'a> = (&'a HeaderName, &'a HeaderValue);
+
+// impl Hash for HeaderTuple<'a> {
+//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        
+//     }
+// }
 
 
 /// An `Iterator` through elements of the `DynamicTable`.
@@ -171,11 +179,21 @@ impl HeaderIndex {
         self.dynamic_table.add_header(name, value)
     }
 
-    pub fn find_header(&self, header: &(HeaderName, HeaderValue)) -> Option<(usize, bool)> {
-        if STATIC_HASH.contains_key(header) {
-            Some((STATIC_HASH.get(header).unwrap() + 1, true))
-        } else {
+    pub fn find_header(&self, header: (&HeaderName, &HeaderValue)) -> Option<(usize, bool)> {
+        
+        if !STATIC_HASH.contains_key(header.0) {
             None
+        } else {
+            let v = &STATIC_HASH[header.0];
+            println!("zzzzzzz = {:?}", header.1);
+            for value in v {
+                println!("aaaa = {:?}", value);
+            }
+            if !v.contains_key(header.1) {
+                None
+            } else {
+                Some((v[header.1], true))
+            }
         }
     }
 }
@@ -248,8 +266,6 @@ static STATIC_TABLE_RAW: &'static [(&'static str, &'static str)] = &[
 
 
 lazy_static! {
-    // static ref STATIC_HASH: HashMap<(HeaderName, HeaderValue), usize> = HashMap::new();
-
     static ref STATIC_TABLE: Vec<(HeaderName, HeaderValue)> = {
         let mut m = Vec::<(HeaderName, HeaderValue)>::new();
         for &(code, code_val) in STATIC_TABLE_RAW.iter() {
@@ -258,10 +274,18 @@ lazy_static! {
         m
     };
 
-    static ref STATIC_HASH: HashMap<(HeaderName, HeaderValue), usize> = {
-        let mut h = HashMap::new();
+    static ref STATIC_HASH: HashMap<HeaderName, HashMap<HeaderValue, usize>> = {
+        let mut h = HashMap::<HeaderName, HashMap<HeaderValue, usize>>::new();
         for (idx, &(code, code_val)) in STATIC_TABLE_RAW.iter().enumerate() {
-            h.insert((HeaderName::try_from(code).unwrap(), HeaderValue::from_static(code_val)), idx);
+            let name = HeaderName::from_static(code);
+            let value = HeaderValue::from_static(code_val);
+            if !h.contains_key(&name) {
+                let mut v = HashMap::new();
+                v.insert(value, idx);
+                h.insert(name, v);
+            } else {
+                h.entry(name).and_modify(|v| { v.insert(value, idx); }  );
+            }
         }
         h
     };

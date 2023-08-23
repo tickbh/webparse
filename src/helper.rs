@@ -197,20 +197,7 @@ impl Helper {
 
     pub(crate) fn parse_method(buffer: &mut Buffer) -> WebResult<Method> {
         let token = Self::parse_token(buffer)?;
-        match token {
-            Method::SGET => Ok(Method::GET),
-            Method::SPOST => Ok(Method::POST),
-            Method::SPUT => Ok(Method::PUT),
-            Method::SDELETE => Ok(Method::DELETE),
-            Method::SHEAD => Ok(Method::HEAD),
-            Method::SOPTIONS => Ok(Method::OPTIONS),
-            Method::SCONNECT => Ok(Method::CONNECT),
-            Method::SPATCH => Ok(Method::PATCH),
-            Method::STRACE => Ok(Method::TRACE),
-            _ => {
-                Ok(Method::Extension(token.to_string()))
-            }
-        }
+        TryFrom::try_from(token)
     }
 
 

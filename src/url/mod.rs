@@ -203,7 +203,7 @@ impl Url {
                 Scheme::Ws => url.port = Some(80),
                 Scheme::Wss => url.port = Some(443),
                 Scheme::Ftp => url.port = Some(21),
-                _ => return Err(WebError::from(UrlError::UrlInvalid))
+                _ => url.port = Some(80),
             }
         }
 

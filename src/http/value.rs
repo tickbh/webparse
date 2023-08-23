@@ -1,8 +1,9 @@
 use std::{fmt, io::Write, borrow::Cow};
+use std::hash::Hash;
 
 use crate::{WebError, Helper, Serialize, Buffer, WebResult};
 
-#[derive(Hash, Clone)]
+#[derive(Clone, Debug)]
 pub enum HeaderValue {
     Stand(&'static str),
     Value(Vec<u8>),
@@ -16,6 +17,10 @@ impl HeaderValue {
     pub fn from_bytes(b: &[u8]) -> HeaderValue {
         HeaderValue::Value(b.to_vec())
     }
+    
+    pub fn from_cow(b: Cow<[u8]>) -> HeaderValue {
+        HeaderValue::Value(Vec::from(b.to_owned()))
+    }
 
     pub fn bytes_len(&self) -> usize {
         match self {
@@ -25,7 +30,21 @@ impl HeaderValue {
     }
 }
 
-impl fmt::Debug for HeaderValue {
+
+impl Hash for HeaderValue {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            HeaderValue::Stand(stand) => {
+                (*stand.as_bytes()).hash(state);
+            },
+            HeaderValue::Value(val) => {
+                val.hash(state);
+            }
+        }
+    }
+}
+
+impl fmt::Display for HeaderValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut f = f.debug_struct("HeaderValue");
         match &self {

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, hash::Hash, ops::{Index, IndexMut}, io::Write, borrow::Cow};
+use std::{collections::{HashMap, hash_map::Iter}, fmt, hash::Hash, ops::{Index, IndexMut}, io::Write, borrow::Cow};
 
 use crate::{WebError, helper, Helper, WebResult, HeaderName, HeaderValue, Serialize, Buffer};
 
@@ -21,7 +21,6 @@ impl HeaderMap {
         self.headers.iter_mut()
     }
 
-    
     pub fn insert_exact(&mut self, name: HeaderName, value: HeaderValue) -> Option<HeaderValue> {
         self.headers.insert(name, value)
     }
@@ -73,6 +72,7 @@ impl HeaderMap {
             0
         }
     }
+
 }
 
 
