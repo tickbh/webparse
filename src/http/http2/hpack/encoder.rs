@@ -43,7 +43,7 @@ impl Encoder {
                 self.index.add_header(header.0.clone(), header.1.clone());
             },
             Some((index, false)) => {
-                self.encode_indexed_name((index, &header.1), false, writer)?;
+                self.encode_indexed_name((index, &header.1), true, writer)?;
             },
             Some((index, true)) => {
                 self.encode_indexed(index, writer)?;

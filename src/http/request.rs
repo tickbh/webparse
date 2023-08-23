@@ -270,7 +270,10 @@ impl Builder {
     /// ```
     pub fn body<T>(self, body: T) -> WebResult<Request<T>>
     where T : Serialize {
-        self.inner.map(move |head| {
+        self.inner.map(move |mut head| {
+            if head.path.len() == 0 {
+                head.path = head.url.path.clone();
+            }
             Request {
                 parts: head,
                 body,
@@ -499,7 +502,7 @@ impl<T> Serialize for Request<T>
                 let mut encode = Encoder::new();
                 encode.encode_header_into( (&HeaderName::from_static(":method"), &HeaderValue::from_cow(self.parts.method.serial_bytes()?)), buffer)?;
                 encode.encode_header_into( (&HeaderName::from_static(":path"), &HeaderValue::from_cow(self.parts.path.serial_bytes()?)), buffer)?;
-                encode.encode(self.parts.header.iter());
+                encode.encode_into(self.parts.header.iter(), buffer)?;
                 // buffer.write_u8(b' ').map_err(WebError::from)?;
                 // self.parts.version.serialize(buffer)?;
                 // buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;

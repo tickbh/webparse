@@ -190,7 +190,11 @@ impl HeaderIndex {
                 println!("aaaa = {:?}", value);
             }
             if !v.contains_key(header.1) {
-                None
+                if v.contains_key(&EMPTY_HEADER_VALUE) {
+                    Some((v[&EMPTY_HEADER_VALUE], false))
+                } else {
+                    None
+                }
             } else {
                 Some((v[header.1], true))
             }
@@ -281,14 +285,16 @@ lazy_static! {
             let value = HeaderValue::from_static(code_val);
             if !h.contains_key(&name) {
                 let mut v = HashMap::new();
-                v.insert(value, idx);
+                v.insert(value, idx + 1);
                 h.insert(name, v);
             } else {
-                h.entry(name).and_modify(|v| { v.insert(value, idx); }  );
+                h.entry(name).and_modify(|v| { v.insert(value, idx + 1); }  );
             }
         }
         h
     };
+
+    static ref EMPTY_HEADER_VALUE: HeaderValue = HeaderValue::Value(vec![]);
 
     // static ref STATIC_HASH: HashMap<(HeaderName, HeaderValue), usize> = HashMap::new();
 
