@@ -1,6 +1,6 @@
-use std::fmt::Display;
+use std::{fmt::Display, borrow::Cow};
 
-use crate::{byte_map, Buffer, Helper, WebResult, WebError};
+use crate::{byte_map, Buffer, Helper, WebResult, WebError, Serialize};
 
 
 
@@ -73,6 +73,17 @@ impl Display for Scheme {
             Scheme::Ftp => f.write_str("ftp"),
             Scheme::Extension(s) => f.write_str(s.as_str()),
             Scheme::None => f.write_str(""),
+        }
+    }
+}
+
+impl Serialize for Scheme {
+    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
+        match self {
+            Scheme::None => Err(WebError::Serialize("scheme")),
+            Scheme::Http => Ok(Cow::Borrowed("http".as_bytes())),
+            Scheme::Https => Ok(Cow::Borrowed("https".as_bytes())),
+            _ => Ok(Cow::Owned(format!("{}", self).into_bytes()))
         }
     }
 }

@@ -1,7 +1,7 @@
 
 use std::{collections::HashMap, io::Write, borrow::Cow, sync::Arc};
 
-use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize};
+use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize, Scheme};
 use super::{Method, HeaderMap, Version, http2::{self, encoder::Encoder, Decoder, HeaderIndex}};
 
 #[derive(Debug)]
@@ -536,6 +536,9 @@ impl<T> Serialize for Request<T>
                 let mut encode = self.get_encoder();
                 encode.encode_header_into( (&HeaderName::from_static(":method"), &HeaderValue::from_cow(self.parts.method.serial_bytes()?)), buffer)?;
                 encode.encode_header_into( (&HeaderName::from_static(":path"), &HeaderValue::from_cow(self.parts.path.serial_bytes()?)), buffer)?;
+                if self.parts.url.scheme != Scheme::None {
+                    encode.encode_header_into( (&HeaderName::from_static(":scheme"), &HeaderValue::from_cow(self.parts.url.scheme.serial_bytes()?)), buffer)?;
+                }
                 encode.encode_into(self.parts.header.iter(), buffer)?;
                 // buffer.write_u8(b' ').map_err(WebError::from)?;
                 // self.parts.version.serialize(buffer)?;

@@ -42,15 +42,6 @@ impl Display for Version {
 }
 
 impl Serialize for Version {
-    fn serialize(&self, buffer: &mut crate::Buffer) -> crate::WebResult<()> {
-        match self {
-            Version::None => return Err(WebError::Serialize("version")),
-            _ => buffer.write(format!("{}", self).as_bytes()).map_err(WebError::from)?,
-        };
-        Ok(())
-    }
-
-
     fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         match self {
             Version::None => Err(WebError::Serialize("version")),

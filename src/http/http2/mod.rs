@@ -36,6 +36,16 @@ impl StreamIdentifier {
     }
 }
 
+
+#[inline(always)]
+pub fn read_u64(buf: &[u8]) -> u64 {
+    if buf.len() < 8 {
+        return 0;
+    }
+    (buf[0] as u64 & 0x7F) << 56 | (buf[1] as u64) << 48 | (buf[2] as u64) << 40 | (buf[3] as u64) << 32 |
+    (buf[5] as u64 & 0x7F) << 24 | (buf[6] as u64) << 16 | (buf[7] as u64) << 8 | buf[8] as u64
+}
+
 #[inline(always)]
 pub fn read_u31(buf: &[u8]) -> u32 {
     if buf.len() < 4 {
@@ -69,6 +79,13 @@ pub fn encode_u32(buf: &mut [u8], val: u32) -> usize {
     4
 }
 
+
+#[inline(always)]
+pub fn encode_u64(buf: &mut [u8], val: u64) -> usize {
+    encode_u32(buf, (val >> 16) as u32);
+    encode_u32(&mut buf[4..], val as u32);
+    8
+}
 pub struct Http2;
 
 impl Http2 {
@@ -78,4 +95,37 @@ impl Http2 {
 
         Ok(())
     }
+}
+
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ErrorCode(pub u32);
+
+impl ErrorCode {
+    pub fn parse(buf: &[u8]) -> ErrorCode {
+        ErrorCode(0)
+    }
+
+    pub fn encode(&self, buf: &mut [u8]) -> usize {
+        encode_u32(buf, self.0)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SizeIncrement(pub u32);
+
+impl SizeIncrement {
+    pub fn parse(buf: &[u8]) -> SizeIncrement {
+        SizeIncrement(0)
+    }
+
+    pub fn encode(&self, buf: &mut [u8]) -> usize {
+        encode_u32(buf, self.0)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ParserSettings {
+    padding: bool,
+    priority: bool
 }
