@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::num::Wrapping;
+use std::sync::Arc;
 
 use crate::{WebResult, Buffer, HeaderName, HeaderValue, WebError, Http2Error};
 
@@ -7,8 +8,6 @@ use super::huffman::{HuffmanDecoderError, HuffmanDecoder};
 use super::HeaderIndex;
 
 
-/// Different variants of how a particular header field can be represented in
-/// an HPACK encoding.
 enum FieldRepresentation {
     Indexed,
     LiteralWithIncrementalIndexing,
@@ -18,10 +17,6 @@ enum FieldRepresentation {
 }
 
 impl FieldRepresentation {
-    /// Based on the given octet, returns the type of the field representation.
-    ///
-    /// The given octet should be the top-order byte of the header field that
-    /// is about to be decoded.
     fn new(octet: u8) -> FieldRepresentation {
         if octet & 128 == 128 {
             // High-order bit set
@@ -86,28 +81,27 @@ pub enum DecoderError {
     HeaderIndexOutOfBounds,
     IntegerDecodingError(IntegerDecodingError),
     StringDecodingError(StringDecodingError),
-    /// The size of the dynamic table can never be allowed to exceed the max
-    /// size mandated to the decoder by the protocol. (by perfroming changes
-    /// made by SizeUpdate blocks).
     InvalidMaxDynamicSize,
 }
 
 
 pub struct Decoder {
-    pub index: HeaderIndex,
+    pub index: Arc<HeaderIndex>,
 }
 
 impl Decoder {
 
     pub fn new() -> Decoder {
-        Decoder { index: HeaderIndex::new() }
+        Decoder { index: Arc::new(HeaderIndex::new()) }
+    }
+
+    pub fn new_index(index: Arc<HeaderIndex>) -> Decoder {
+        Decoder { index }
     }
 
     pub fn decode(&mut self, buf: &mut Buffer) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
         let mut header_list = Vec::new();
-
         self.decode_with_cb(buf, |n, v| header_list.push((n.into_owned(), v.into_owned())))?;
-
         Ok(header_list)
     }
 
@@ -140,7 +134,9 @@ impl Decoder {
                     // // borrow on `self` that the `decode_literal` return value had. Since adding
                     // // a header to the table requires a `&mut self`, it fails to compile.
                     // // Manually separating it out here works around it...
-                    self.index.add_header(name, value);
+                    Arc::get_mut(&mut self.index).map(|v| {
+                        v.add_header(name, value);
+                    });
                     consumed
                 },
                 FieldRepresentation::LiteralWithoutIndexing => {

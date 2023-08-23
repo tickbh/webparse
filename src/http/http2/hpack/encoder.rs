@@ -1,18 +1,23 @@
 
-use std::{io, num::Wrapping};
+use std::{io, num::Wrapping, sync::Arc};
 use crate::{HeaderName, HeaderValue, Serialize};
 use super::HeaderIndex;
 
 pub struct Encoder {
-    pub index: HeaderIndex,
+    pub index: Arc<HeaderIndex>,
 }
 
 
 impl Encoder {
+    
     pub fn new() -> Encoder {
         Encoder {
-            index: HeaderIndex::new(),
+            index: Arc::new(HeaderIndex::new()),
         }
+    }
+    
+    pub fn new_index(index: Arc<HeaderIndex>) -> Encoder {
+        Encoder { index }
     }
 
     pub fn encode<'b, I>(&mut self, headers: I) -> Vec<u8>
@@ -40,7 +45,9 @@ impl Encoder {
         match self.index.find_header(header) {
             None => {
                 self.encode_literal(header, true, writer)?;
-                self.index.add_header(header.0.clone(), header.1.clone());
+                Arc::get_mut(&mut self.index).map(|v| {
+                    v.add_header(header.0.clone(), header.1.clone());
+                });
             },
             Some((index, false)) => {
                 self.encode_indexed_name((index, &header.1), true, writer)?;

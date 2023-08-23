@@ -9,6 +9,7 @@ struct DynamicTable {
     max_size: usize,
 }
 
+#[derive(Debug)]
 pub struct HeaderIndex {
     dynamic_table: DynamicTable,
 }
@@ -180,25 +181,21 @@ impl HeaderIndex {
     }
 
     pub fn find_header(&self, header: (&HeaderName, &HeaderValue)) -> Option<(usize, bool)> {
-        
-        if !STATIC_HASH.contains_key(header.0) {
-            None
-        } else {
+        if STATIC_HASH.contains_key(header.0) {
             let v = &STATIC_HASH[header.0];
-            println!("zzzzzzz = {:?}", header.1);
-            for value in v {
-                println!("aaaa = {:?}", value);
+            if v.contains_key(header.1) {
+                return Some((v[header.1], true))
+            } else if v.contains_key(&EMPTY_HEADER_VALUE) {
+                return Some((v[&EMPTY_HEADER_VALUE], false))
             }
-            if !v.contains_key(header.1) {
-                if v.contains_key(&EMPTY_HEADER_VALUE) {
-                    Some((v[&EMPTY_HEADER_VALUE], false))
-                } else {
-                    None
+        } else {
+            for (idx, value) in self.dynamic_table.iter().enumerate() {
+                if value.0 == header.0 && value.1 == header.1 {
+                    return Some((idx + 1 + STATIC_TABLE.len(), true))
                 }
-            } else {
-                Some((v[header.1], true))
             }
         }
+        None
     }
 }
 
@@ -295,15 +292,4 @@ lazy_static! {
     };
 
     static ref EMPTY_HEADER_VALUE: HeaderValue = HeaderValue::Value(vec![]);
-
-    // static ref STATIC_HASH: HashMap<(HeaderName, HeaderValue), usize> = HashMap::new();
-
-    // static ref (STATIC_TABLE, STATIC_HASH): (Vec<(HeaderName, HeaderValue)>, HashMap<(HeaderName, HeaderValue), usize>) = {
-    //     let mut m = Vec::<(HeaderName, HeaderValue)>::new();
-    //     let mut h = HashMap<(HeaderName, HeaderValue), usize> = HashMap::new();;
-    //     for &(code, code_val) in STATIC_TABLE_RAW.iter() {
-    //         m.push((HeaderName::try_from(code).unwrap(), HeaderValue::from_static(code_val)));
-    //     }
-    //     m
-    // };
 }

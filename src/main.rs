@@ -1,7 +1,8 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
-use webparse::{url, Url, Request, HeaderName, HeaderValue, Serialize, Buffer, Response, Version};
-use webparse::http::http2::Decoder;
+use webparse::{url, Url, Request, HeaderName, HeaderValue, Serialize, Buffer, Response, Version, Helper};
+use webparse::http::http2::{Decoder, HeaderIndex};
 
 extern crate webparse;
 
@@ -24,7 +25,23 @@ fn hexstr_to_vec(s: &str) -> Vec<u8> {
         }
     }
     result
-} 
+}
+
+// fn to_hex(v: u8) -> String {
+//     if v < 10 {
+//         return format!("{}", v);
+//     } else {
+//         return 
+//     }
+// }
+
+fn hex_debug_print(val: &[u8]) {
+    
+    for v in val {
+        print!("{}{}  ", String::from_utf8_lossy(&vec![Helper::to_hex(v / 16)]), String::from_utf8_lossy(&vec![Helper::to_hex(v % 16)]));
+    }
+    println!();
+}
 
 fn main() {
     // let mut request = webparse::Request::builder().body("What is this".to_string()).unwrap();
@@ -91,6 +108,7 @@ fn main() {
     // }
 
     let mut req = Request::builder().version(Version::Http2).method("GET").url("/")
+        .header(":scheme", "http")
         .header(":authority", "www.example.com");
     {
         // let headers = req.headers_mut().unwrap();
@@ -110,7 +128,28 @@ fn main() {
 
     let mut rrr = req.body(()).unwrap();
 
-    println!("req.httpdata() = {:?}", rrr.httpdata());
+    let data = rrr.http2data().unwrap();
+
+    println!("req.httpdata() = {:?}", hex_debug_print(&data));
+
+    let mut decode = Decoder::new();
+    let mut buf = Buffer::new_vec(data);
+    let result = decode.decode_with_cb(&mut buf, |n, v| {
+        println!("n = {:?}, v = {}", n, v);
+    });
+
+    let mut index = Arc::new(HeaderIndex::new());
+    Arc::get_mut(&mut index).map(|v| {
+        v.add_header(HeaderName::from_static("aaa"), HeaderValue::from_static("aa"));
+    });
+
+    let xx = Arc::get_mut(&mut index);
+    println!("========={:?}", xx);
+    let xx111 = Arc::get_mut(&mut index);
+    println!("========={:?}", xx111);
+    rrr.extensions_mut().insert(index);
+    let new = rrr.extensions_mut().get_mut::<Arc<HeaderIndex>>();
+    println!("========={:?}", new);
 
     if true {
         return;

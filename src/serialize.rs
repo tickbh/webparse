@@ -8,6 +8,11 @@ pub trait Serialize {
         Ok(())
     }
 
+    fn serialize_mut(&mut self, buffer: &mut Buffer) -> WebResult<()> {
+        buffer.write(&self.serial_bytes()?).map_err(WebError::from)?;
+        Ok(())
+    }
+
     fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>>;
 }
 

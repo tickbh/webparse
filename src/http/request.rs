@@ -1,8 +1,8 @@
 
-use std::{collections::HashMap, io::Write, borrow::Cow};
+use std::{collections::HashMap, io::Write, borrow::Cow, sync::Arc};
 
 use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize};
-use super::{Method, HeaderMap, Version, http2::{self, encoder::Encoder}};
+use super::{Method, HeaderMap, Version, http2::{self, encoder::Encoder, Decoder, HeaderIndex}};
 
 #[derive(Debug)]
 pub struct Request<T> 
@@ -439,6 +439,31 @@ impl<T> Request<T>
         self.serialize(&mut buffer)?;
         return Ok(buffer.write_data());
     }
+
+    pub fn http2data(&mut self) -> WebResult<Vec<u8>>  {
+        let mut buffer = Buffer::new();
+        self.serialize_mut(&mut buffer)?;
+        return Ok(buffer.write_data());
+    }
+
+    fn get_index(&mut self) -> Arc<HeaderIndex> {
+        match self.extensions().get::<Arc<HeaderIndex>>() {
+            Some(index) => index.clone(),
+            None => {
+                let index = Arc::new(HeaderIndex::new());
+                self.extensions_mut().insert(index.clone());
+                index
+            }
+        }
+    }
+
+    pub fn get_decoder(&mut self) -> Decoder {
+        Decoder::new_index(self.get_index())
+    }
+    
+    pub fn get_encoder(&mut self) -> Encoder {
+        Encoder::new_index(self.get_index())
+    }
 }
 
 impl Parts {
@@ -499,7 +524,16 @@ impl<T> Serialize for Request<T>
                 Ok(())
             }
             Version::Http2 => {
-                let mut encode = Encoder::new();
+                Err(WebError::Extension("http2 will may change dynamic header so so support"))
+            }
+            _ => Err(WebError::Extension("un support"))
+        }
+    }
+
+    fn serialize_mut(&mut self, buffer: &mut Buffer) -> WebResult<()> {
+        match self.parts.version {
+            Version::Http2 => {
+                let mut encode = self.get_encoder();
                 encode.encode_header_into( (&HeaderName::from_static(":method"), &HeaderValue::from_cow(self.parts.method.serial_bytes()?)), buffer)?;
                 encode.encode_header_into( (&HeaderName::from_static(":path"), &HeaderValue::from_cow(self.parts.path.serial_bytes()?)), buffer)?;
                 encode.encode_into(self.parts.header.iter(), buffer)?;
@@ -510,7 +544,7 @@ impl<T> Serialize for Request<T>
                 // self.body.serialize(buffer)?;
                 Ok(())
             }
-            _ => Err(WebError::Extension("un support"))
+            _ => self.serialize(buffer)
         }
     }
 
