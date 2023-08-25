@@ -10,6 +10,8 @@ mod helper;
 mod extensions;
 mod serialize;
 
+mod codec;
+
 pub use http::{HeaderMap, HeaderName, HeaderValue, Method, Version, Request, Response, HttpError};
 pub use http::http2::{Http2Error};
 

@@ -12,3 +12,6 @@ keywords = []
 log="0.4.19"
 bitflags="2.4"
 lazy_static = "1.4.0"
+
+# [dependencies.example]
+# tokio="1"
