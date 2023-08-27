@@ -98,6 +98,14 @@ pub trait Buf {
         ret
     }
 
+    fn peek(&self) -> Option<u8> {
+        if self.has_remaining() {
+            let ret = self.chunk()[0] as u8;
+            Some(ret)
+        } else {
+            None
+        }
+    }
 
     /// Gets an unsigned 16 bit integer from `self` in big-endian byte order.
     ///

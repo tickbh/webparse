@@ -1,4 +1,4 @@
-use std::{sync::{Arc, atomic::AtomicUsize}, slice, mem};
+use std::{sync::{Arc, atomic::AtomicUsize}, slice, mem, io::Read, io::Result};
 
 use super::Buf;
 
@@ -191,6 +191,36 @@ impl Buf for Binary {
     fn advance(&mut self, n: usize) {
         unsafe {
             self.inc_start(n);
+        }
+    }
+}
+
+impl Read for Binary {
+    #[inline(always)]
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let left = self.remaining();
+        if left == 0 || buf.len() == 0 {
+            return Ok(0);
+        }
+        let read = std::cmp::min(left, buf.len());
+        unsafe {
+            std::ptr::copy(&self.chunk()[0], &mut buf[0], read);
+        }
+        self.advance(read);
+        Ok(read)
+    }
+}
+
+impl Iterator for Binary {
+    type Item = u8;
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        if self.has_remaining() {
+            let read = self.chunk()[0];
+            self.advance(1);
+            Some(read)
+        } else {
+            None
         }
     }
 }

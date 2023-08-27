@@ -1,4 +1,4 @@
-use std::{sync::{atomic::AtomicUsize, Arc}, cell::RefCell, rc::Rc, mem::MaybeUninit, ops::{Deref, DerefMut}, cmp, hash, borrow::{Borrow, BorrowMut}, fmt, vec::IntoIter, ptr, slice};
+use std::{sync::{atomic::AtomicUsize, Arc}, cell::RefCell, rc::Rc, mem::MaybeUninit, ops::{Deref, DerefMut}, cmp, hash, borrow::{Borrow, BorrowMut}, fmt, vec::IntoIter, ptr, slice, io::{Read, Result, Write}};
 
 use crate::{Buf, Binary};
 
@@ -7,7 +7,6 @@ use super::BufMut;
 pub struct BinaryMut {
     ptr: *mut Vec<u8>,
     cursor: usize,
-    len: Rc<RefCell<usize>>,
     pub(crate) counter: Rc<RefCell<AtomicUsize>>,
 }
 
@@ -17,19 +16,31 @@ impl BinaryMut {
         BinaryMut::from_vec(Vec::with_capacity(n))
     }
 
+    /// 新建对象
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use webparse::binary;
+    /// use binary::BinaryMut;
+    ///
+    /// let mut bytes = BinaryMut::new();
+    /// assert_eq!(0, bytes.len());
+    /// bytes.reserve(2);
+    /// bytes.put_slice(b"xy");
+    /// assert_eq!(&b"xy"[..], &bytes[..]);
+    /// ```
     pub fn new() -> BinaryMut {
         BinaryMut::with_capacity(0)
     }
 
     #[inline]
     pub(crate) fn from_vec(vec: Vec<u8>) -> BinaryMut {
-        let len = vec.len();
         let ptr = Box::into_raw(Box::new(vec));
 
         BinaryMut {
             ptr,
             cursor: 0,
-            len: Rc::new(RefCell::new(len)),
             counter: Rc::new(RefCell::new(AtomicUsize::new(1))),
         }
     }
@@ -57,10 +68,9 @@ impl BinaryMut {
 
     pub fn as_slice(&self) -> &[u8] {
         unsafe {
-            &(*self.ptr)[self.cursor..*(*self.len).borrow()]
+            &(*self.ptr)[self.cursor..]
         }
     }
-
 
     #[inline]
     fn as_slice_mut(&mut self) -> &mut [u8] {
@@ -75,9 +85,55 @@ impl BinaryMut {
         self.cursor += self.cursor;
     }
 
+    /// 判断对象的长度
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use webparse::binary;
+    /// use binary::BinaryMut;
+    ///
+    /// let b = BinaryMut::from(&b"hello"[..]);
+    /// assert_eq!(b.len(), 5);
+    /// ```
+    #[inline]
     pub fn len(&self) -> usize {
         unsafe {
             (*self.ptr).len() - self.cursor
+        }
+    }
+
+    /// 判断对象是否为空
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use webparse::binary;
+    /// use binary::BinaryMut;
+    ///
+    /// let b = BinaryMut::with_capacity(64);
+    /// assert!(b.is_empty());
+    /// ```
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// 返回对象大小的容量
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use webparse::binary;
+    /// use binary::BinaryMut;
+    ///
+    /// let b = BinaryMut::with_capacity(64);
+    /// assert_eq!(b.capacity(), 64);
+    /// ```
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        unsafe {
+            (*self.ptr).capacity()
         }
     }
 
@@ -107,10 +163,9 @@ impl BinaryMut {
         }
     }
 
-    fn put_slice(&mut self, src: &[u8]) {
+    pub fn put_slice(&mut self, src: &[u8]) {
         self.extend_from_slice(src);
     }
-
 
     #[inline]
     pub fn freeze(mut self) -> Binary {
@@ -166,7 +221,6 @@ impl Clone for BinaryMut {
         Self {
             ptr: self.ptr.clone(), 
             cursor: self.cursor.clone(), 
-            len: self.len.clone(),
             counter: self.counter.clone()
         }
     }
@@ -210,7 +264,8 @@ unsafe impl BufMut for BinaryMut {
     }
 
     unsafe fn advance_mut(&mut self, cnt: usize) {
-        *((*self.len).borrow_mut()) += cnt;
+        let len = (*self.ptr).len();
+        (*self.ptr).set_len(len + cnt);
     }
 
     fn chunk_mut(&mut self) -> &mut [MaybeUninit<u8>] {
@@ -225,90 +280,90 @@ unsafe impl BufMut for BinaryMut {
 
 
 
-// impl AsRef<[u8]> for BinaryMut {
-//     #[inline]
-//     fn as_ref(&self) -> &[u8] {
-//         self.as_slice()
-//     }
-// }
+impl AsRef<[u8]> for BinaryMut {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.as_slice()
+    }
+}
 
-// impl Deref for BinaryMut {
-//     type Target = [u8];
+impl Deref for BinaryMut {
+    type Target = [u8];
 
-//     #[inline]
-//     fn deref(&self) -> &[u8] {
-//         self.as_ref()
-//     }
-// }
+    #[inline]
+    fn deref(&self) -> &[u8] {
+        self.as_ref()
+    }
+}
 
-// impl AsMut<[u8]> for BinaryMut {
-//     #[inline]
-//     fn as_mut(&mut self) -> &mut [u8] {
-//         self.as_slice_mut()
-//     }
-// }
+impl AsMut<[u8]> for BinaryMut {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.as_slice_mut()
+    }
+}
 
-// impl DerefMut for BinaryMut {
-//     #[inline]
-//     fn deref_mut(&mut self) -> &mut [u8] {
-//         self.as_mut()
-//     }
-// }
+impl DerefMut for BinaryMut {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [u8] {
+        self.as_mut()
+    }
+}
 
-// impl<'a> From<&'a [u8]> for BinaryMut {
-//     fn from(src: &'a [u8]) -> BinaryMut {
-//         BinaryMut::from_vec(src.to_vec())
-//     }
-// }
+impl<'a> From<&'a [u8]> for BinaryMut {
+    fn from(src: &'a [u8]) -> BinaryMut {
+        BinaryMut::from_vec(src.to_vec())
+    }
+}
 
-// impl<'a> From<&'a str> for BinaryMut {
-//     fn from(src: &'a str) -> BinaryMut {
-//         BinaryMut::from(src.as_bytes())
-//     }
-// }
+impl<'a> From<&'a str> for BinaryMut {
+    fn from(src: &'a str) -> BinaryMut {
+        BinaryMut::from(src.as_bytes())
+    }
+}
 
-// impl From<BinaryMut> for Binary {
-//     fn from(src: BinaryMut) -> Binary {
-//         src.freeze()
-//     }
-// }
+impl From<BinaryMut> for Binary {
+    fn from(src: BinaryMut) -> Binary {
+        src.freeze()
+    }
+}
 
-// impl PartialEq for BinaryMut {
-//     fn eq(&self, other: &BinaryMut) -> bool {
-//         self.as_slice() == other.as_slice()
-//     }
-// }
+impl PartialEq for BinaryMut {
+    fn eq(&self, other: &BinaryMut) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
 
-// impl PartialOrd for BinaryMut {
-//     fn partial_cmp(&self, other: &BinaryMut) -> Option<cmp::Ordering> {
-//         self.as_slice().partial_cmp(other.as_slice())
-//     }
-// }
+impl PartialOrd for BinaryMut {
+    fn partial_cmp(&self, other: &BinaryMut) -> Option<cmp::Ordering> {
+        self.as_slice().partial_cmp(other.as_slice())
+    }
+}
 
-// impl Ord for BinaryMut {
-//     fn cmp(&self, other: &BinaryMut) -> cmp::Ordering {
-//         self.as_slice().cmp(other.as_slice())
-//     }
-// }
+impl Ord for BinaryMut {
+    fn cmp(&self, other: &BinaryMut) -> cmp::Ordering {
+        self.as_slice().cmp(other.as_slice())
+    }
+}
 
-// impl Eq for BinaryMut {}
+impl Eq for BinaryMut {}
 
-// impl Default for BinaryMut {
-//     #[inline]
-//     fn default() -> BinaryMut {
-//         BinaryMut::new()
-//     }
-// }
+impl Default for BinaryMut {
+    #[inline]
+    fn default() -> BinaryMut {
+        BinaryMut::new()
+    }
+}
 
-// impl hash::Hash for BinaryMut {
-//     fn hash<H>(&self, state: &mut H)
-//     where
-//         H: hash::Hasher,
-//     {
-//         let s: &[u8] = self.as_ref();
-//         s.hash(state);
-//     }
-// }
+impl hash::Hash for BinaryMut {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
+        let s: &[u8] = self.as_ref();
+        s.hash(state);
+    }
+}
 
 // impl Borrow<[u8]> for BinaryMut {
 //     fn borrow(&self) -> &[u8] {
@@ -396,3 +451,47 @@ impl fmt::Write for BinaryMut {
 //         }
 //     }
 // }
+
+
+impl Iterator for BinaryMut {
+    type Item = u8;
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        if self.has_remaining() {
+            let read = self.chunk()[0];
+            self.advance(1);
+            Some(read)
+        } else {
+            None
+        }
+    }
+}
+
+impl Read for BinaryMut {
+    #[inline(always)]
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let left = self.remaining();
+        if left == 0 || buf.len() == 0 {
+            return Ok(0);
+        }
+        let read = std::cmp::min(left, buf.len());
+        unsafe {
+            std::ptr::copy(&self.chunk()[0], &mut buf[0], read);
+        }
+        self.advance(read);
+        Ok(read)
+    }
+}
+
+
+impl Write for BinaryMut {
+    #[inline(always)]
+    fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        self.put_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> Result<()> {
+        Ok(())
+    }
+}
