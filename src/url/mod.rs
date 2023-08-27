@@ -9,7 +9,7 @@ pub use scheme::Scheme;
 pub use builder::Builder;
 pub use error::UrlError;
 
-use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper };
+use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper, BinaryMut };
 
 
 
@@ -73,7 +73,7 @@ impl Url {
     }
 
     pub fn parse(url: &str) -> WebResult<Url> {
-        let mut buffer = Buffer::new_buf(url.as_bytes());
+        let mut buffer = BinaryMut::from(url.as_bytes());
         let mut b = peek!(buffer)?;
         let mut scheme = Scheme::None;
         let mut scheme_end = 0;

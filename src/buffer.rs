@@ -176,7 +176,7 @@ impl Buffer {
         }
     }
 
-        #[inline]
+    #[inline]
     pub fn slice_skip(&mut self, skip: usize) -> &[u8] {
         debug_assert!(self.cursor - skip >= self.start);
         let cursor = self.cursor;

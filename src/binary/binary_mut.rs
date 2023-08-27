@@ -7,6 +7,7 @@ use super::BufMut;
 pub struct BinaryMut {
     ptr: *mut Vec<u8>,
     cursor: usize,
+    start: usize,
     pub(crate) counter: Rc<RefCell<AtomicUsize>>,
 }
 
@@ -41,6 +42,7 @@ impl BinaryMut {
         BinaryMut {
             ptr,
             cursor: 0,
+            start: 0,
             counter: Rc::new(RefCell::new(AtomicUsize::new(1))),
         }
     }
@@ -207,6 +209,36 @@ impl BinaryMut {
             self.advance_mut(cnt);
         }
     }
+
+    pub fn commit(&mut self) {
+        self.start = self.cursor
+    }
+
+    #[inline]
+    pub fn slice_skip(&mut self, skip: usize) -> &[u8] {
+        debug_assert!(self.cursor - skip >= self.start);
+        let cursor = self.cursor;
+        let start = self.start;
+        self.commit();
+        let head = &self.chunk()[start .. (cursor - skip)];
+        head
+    }
+
+    #[inline]
+    pub fn slice(&mut self) -> &[u8] {
+        self.slice_skip(0)
+    }
+
+    #[inline]
+    pub fn retreat(&mut self, n: usize) {
+        self.cursor = self.cursor - n;
+        debug_assert!(self.cursor >= self.start, "overflow");
+    }
+
+    #[inline]
+    pub fn bump(&mut self) {
+        self.advance(1);
+    }
 }
 
 impl From<Vec<u8>> for BinaryMut {
@@ -220,7 +252,8 @@ impl Clone for BinaryMut {
         (*self.counter).borrow().fetch_add(1, std::sync::atomic::Ordering::Acquire);
         Self {
             ptr: self.ptr.clone(), 
-            cursor: self.cursor.clone(), 
+            cursor: self.cursor.clone(),
+            start: self.start.clone(),
             counter: self.counter.clone()
         }
     }
@@ -256,6 +289,25 @@ impl Buf for BinaryMut {
             self.inc_start(n);
         }
     }
+
+    fn commit(&mut self) {
+        self.start = self.cursor
+    }
+
+    fn slice_skip(&mut self, skip: usize) -> &[u8] {
+        debug_assert!(self.cursor - skip >= self.start);
+        let cursor = self.cursor;
+        let start = self.start;
+        self.commit();
+        let head = &self.chunk()[start .. (cursor - skip)];
+        head
+    }
+    
+    fn retreat(&mut self, n: usize) {
+        self.cursor = self.cursor - n;
+        debug_assert!(self.cursor >= self.start, "overflow");
+    }
+
 }
 
 unsafe impl BufMut for BinaryMut {
@@ -276,6 +328,8 @@ unsafe impl BufMut for BinaryMut {
             (*self.ptr).spare_capacity_mut()
         }
     }
+
+    
 }
 
 

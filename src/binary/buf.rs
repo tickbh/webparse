@@ -55,6 +55,21 @@ pub trait Buf {
         self.remaining() > 0
     }
 
+    fn commit(&mut self) {}
+
+    fn slice_skip(&mut self, skip: usize) -> &[u8];
+
+    fn slice(&mut self) -> &[u8] {
+        self.slice_skip(0)
+    }
+
+    fn retreat(&mut self, n: usize) {
+    }
+
+    fn bump(&mut self) {
+        self.advance(1);
+    }
+
     /// 拷贝数据 `self` into `dst`.
     ///
     /// # Examples
@@ -894,6 +909,10 @@ impl Buf for &[u8] {
     fn advance(&mut self, cnt: usize) {
         *self = &self[cnt..];
     }
+
+    fn slice_skip(&mut self, skip: usize) -> &[u8] {
+        &self.chunk()[..(self.len() - skip)]
+    }
 }
 
 impl<T: AsRef<[u8]>> Buf for std::io::Cursor<T> {
@@ -926,5 +945,9 @@ impl<T: AsRef<[u8]>> Buf for std::io::Cursor<T> {
 
         assert!(pos <= self.get_ref().as_ref().len());
         self.set_position(pos as u64);
+    }
+
+    fn slice_skip(&mut self, skip: usize) -> &[u8] {
+        &self.chunk()[..(self.get_ref().as_ref().len() - skip)]
     }
 }

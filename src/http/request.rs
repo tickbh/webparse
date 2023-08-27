@@ -1,7 +1,7 @@
 
 use std::{collections::HashMap, io::Write, borrow::Cow, sync::Arc};
 
-use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize, Scheme};
+use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize, Scheme, BinaryMut, Buf};
 use super::{Method, HeaderMap, Version, http2::{self, encoder::Encoder, Decoder, HeaderIndex}};
 
 #[derive(Debug)]
@@ -356,10 +356,10 @@ impl<T> Request<T>
         Ok(())
     }
 
-    pub fn parse_buffer(&mut self, buffer:&mut Buffer) -> WebResult<()> {
+    pub fn parse_buffer(&mut self, buffer:&mut BinaryMut) -> WebResult<()> {
         Helper::skip_empty_lines(buffer)?;
         {
-            let first = buffer.get_read_array(http2::HTTP2_MAGIC.len());
+            let first = &buffer.chunk()[..http2::HTTP2_MAGIC.len()];
             if first == http2::HTTP2_MAGIC {
                 self.parts.version = Version::Http2;
                 buffer.advance(http2::HTTP2_MAGIC.len());
@@ -400,7 +400,7 @@ impl<T> Request<T>
 
     pub fn parse(&mut self, buf:&[u8]) -> WebResult<()> {
         self.partial = true;
-        let mut buffer = Buffer::new_buf(buf);
+        let mut buffer = BinaryMut::from(buf);
         self.parse_buffer(&mut buffer)
     }
 

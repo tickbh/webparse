@@ -193,6 +193,10 @@ impl Buf for Binary {
             self.inc_start(n);
         }
     }
+
+    fn slice_skip(&mut self, skip: usize) -> &[u8] {
+        todo!()
+    }
 }
 
 impl Read for Binary {

@@ -1,6 +1,6 @@
 use std::{fmt::Display, borrow::Cow};
 
-use crate::{byte_map, Buffer, Helper, WebResult, WebError, Serialize};
+use crate::{byte_map, Buffer, Helper, WebResult, WebError, Serialize, BinaryMut};
 
 
 
@@ -56,7 +56,7 @@ impl Scheme {
 
     
 
-    pub fn parse_scheme(buffer: &mut Buffer) -> WebResult<Scheme> {
+    pub fn parse_scheme(buffer: &mut BinaryMut) -> WebResult<Scheme> {
         let scheme = Helper::parse_scheme(buffer)?;
         Scheme::try_from(scheme)
     }

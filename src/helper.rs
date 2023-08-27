@@ -1,4 +1,4 @@
-use crate::{Buffer, WebResult, WebError, byte_map, next, expect, peek, HttpError};
+use crate::{BinaryMut, BufMut, Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError};
 use super::{Method, Version, HeaderMap, HeaderName, HeaderValue, Scheme};
 
 
@@ -195,13 +195,13 @@ impl Helper {
         Self::HEADER_VALUE_MAP[b as usize]
     }
 
-    pub(crate) fn parse_method(buffer: &mut Buffer) -> WebResult<Method> {
+    pub(crate) fn parse_method(buffer: &mut BinaryMut) -> WebResult<Method> {
         let token = Self::parse_token(buffer)?;
         TryFrom::try_from(token)
     }
 
 
-    pub(crate) fn parse_version(buffer: &mut Buffer) -> WebResult<Version> {
+    pub(crate) fn parse_version(buffer: &mut BinaryMut) -> WebResult<Version> {
         let token = Self::parse_token(buffer)?;
         match token {
             Version::SHTTP10 => Ok(Version::Http10),
@@ -215,7 +215,7 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn parse_token_by_func<'a>(buffer: &'a mut Buffer, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
+    pub(crate) fn parse_token_by_func<'a>(buffer: &'a mut BinaryMut, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
         let mut b = next!(buffer)?;
         if !func(b) {
             return Err(err);
@@ -240,12 +240,12 @@ impl Helper {
 
 
     #[inline]
-    pub(crate) fn parse_token<'a>(buffer: &'a mut Buffer) -> WebResult<&'a str> {
+    pub(crate) fn parse_token<'a>(buffer: &'a mut BinaryMut) -> WebResult<&'a str> {
         Self::parse_token_by_func(buffer, Self::is_token, WebError::from(HttpError::Token))
     }
 
     #[inline]
-    pub(crate) fn parse_header_name<'a>(buffer: &'a mut Buffer) -> WebResult<HeaderName> {
+    pub(crate) fn parse_header_name<'a>(buffer: &'a mut BinaryMut) -> WebResult<HeaderName> {
         let token = Self::parse_token_by_func(buffer, Self::is_header_name_token, WebError::from(HttpError::HeaderName))?;
         match HeaderName::from_bytes(token.as_bytes()) {
             Some(name) => Ok(name),
@@ -254,19 +254,19 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn parse_header_value<'a>(buffer: &'a mut Buffer) -> WebResult<HeaderValue> {
+    pub(crate) fn parse_header_value<'a>(buffer: &'a mut BinaryMut) -> WebResult<HeaderValue> {
         let token = Self::parse_token_by_func(buffer, Self::is_header_value_token, WebError::from(HttpError::HeaderValue))?;
         Ok(HeaderValue::Value(token.as_bytes().to_vec()))
     }
 
     #[inline]
-    pub(crate) fn parse_scheme<'a>(buffer: &'a mut Buffer) -> WebResult<&'a str> {
+    pub(crate) fn parse_scheme<'a>(buffer: &'a mut BinaryMut) -> WebResult<&'a str> {
         let token = Self::parse_token_by_func(buffer, Scheme::is_scheme_token, WebError::from(HttpError::HeaderValue))?;
         Ok(token)
     }
 
     #[inline]
-    pub(crate) fn skip_new_line(buffer: &mut Buffer) -> WebResult<()> {
+    pub(crate) fn skip_new_line(buffer: &mut BinaryMut) -> WebResult<()> {
         match next!(buffer)? {
             b'\r' => {
                 expect!(buffer.next() == b'\n' => Err(WebError::from(HttpError::NewLine)));
@@ -283,7 +283,7 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn skip_empty_lines(buffer: &mut Buffer) -> WebResult<()> {
+    pub(crate) fn skip_empty_lines(buffer: &mut BinaryMut) -> WebResult<()> {
         loop {
             let b = buffer.peek();
             match b {
@@ -304,7 +304,7 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn skip_spaces(buffer: &mut Buffer) -> WebResult<()> {
+    pub(crate) fn skip_spaces(buffer: &mut BinaryMut) -> WebResult<()> {
         loop {
             let b = buffer.peek();
             match b {
@@ -321,7 +321,7 @@ impl Helper {
     }
     
     #[inline]
-    pub(crate) fn parse_header(buffer: &mut Buffer, header: &mut HeaderMap) -> WebResult<()> {
+    pub(crate) fn parse_header(buffer: &mut BinaryMut, header: &mut HeaderMap) -> WebResult<()> {
         header.clear();
 
         loop {
