@@ -1,13 +1,16 @@
 use std::{sync::{Arc, atomic::AtomicUsize}, slice, mem};
 
+use super::Buf;
+
 static EMPTY_ARRAY: &[u8] = &[];
 
 
 pub struct Binary {
-    pub ptr: *const u8,
-    pub counter: Arc<AtomicUsize>,
-    pub cursor: usize,
-    pub len: usize,
+    pub(crate) ptr: *const u8,
+    pub(crate) counter: Arc<AtomicUsize>,
+    // 游标可以得出指针的初始位置
+    pub(crate) cursor: usize,
+    pub(crate) len: usize,
     vtable: &'static Vtable,
 }
 
@@ -86,7 +89,6 @@ impl Binary {
         self.len
     }
 
-
     /// Returns true if the `Bytes` has a length of 0.
     ///
     /// # Examples
@@ -110,11 +112,17 @@ impl Binary {
     }
 
     #[inline]
+    fn as_slice(&self) -> &[u8] {
+        unsafe { slice::from_raw_parts(self.ptr, self.len) }
+    }
+
+    #[inline]
     unsafe fn inc_start(&mut self, by: usize) {
         // should already be asserted, but debug assert for tests
-        debug_assert!(self.len >= by, "internal: inc_start out of bounds");
+        debug_assert!(self.len >= self.cursor + by, "internal: inc_start out of bounds");
         self.len -= by;
         self.ptr = self.ptr.add(by);
+        self.cursor += self.cursor;
     }
 }
 
@@ -170,3 +178,19 @@ impl From<Vec<u8>> for Binary {
     }
 }
 
+
+impl Buf for Binary {
+    fn remaining(&self) -> usize {
+        self.len
+    }
+
+    fn chunk(&self) -> &[u8] {
+        self.as_slice()
+    }
+
+    fn advance(&mut self, n: usize) {
+        unsafe {
+            self.inc_start(n);
+        }
+    }
+}

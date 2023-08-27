@@ -1,0 +1,398 @@
+use std::{sync::{atomic::AtomicUsize, Arc}, cell::RefCell, rc::Rc, mem::MaybeUninit, ops::{Deref, DerefMut}, cmp, hash, borrow::{Borrow, BorrowMut}, fmt, vec::IntoIter, ptr, slice};
+
+use crate::{Buf, Binary};
+
+use super::BufMut;
+
+pub struct BinaryMut {
+    ptr: *mut Vec<u8>,
+    cursor: usize,
+    len: Rc<RefCell<usize>>,
+    pub(crate) counter: Rc<RefCell<AtomicUsize>>,
+}
+
+impl BinaryMut {
+
+    pub fn with_capacity(n: usize) -> BinaryMut {
+        BinaryMut::from_vec(Vec::with_capacity(n))
+    }
+
+    pub fn new() -> BinaryMut {
+        BinaryMut::with_capacity(0)
+    }
+
+    #[inline]
+    pub(crate) fn from_vec(vec: Vec<u8>) -> BinaryMut {
+        let len = vec.len();
+        let ptr = Box::into_raw(Box::new(vec));
+
+        BinaryMut {
+            ptr,
+            cursor: 0,
+            len: Rc::new(RefCell::new(len)),
+            counter: Rc::new(RefCell::new(AtomicUsize::new(1))),
+        }
+    }
+
+    /// 获取引用的数量
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use webparse::binary;
+    /// use binary::BinaryMut;
+    ///
+    /// let b = BinaryMut::new();
+    /// {
+    /// let b1 = b.clone();
+    /// assert!(b1.get_refs() == 2);
+    /// drop(b1);
+    /// }
+    /// assert!(b.get_refs() == 1);
+    /// ```
+    pub fn get_refs(&self) -> usize {
+        println!("value = {}",  (*self.counter).borrow().load(std::sync::atomic::Ordering::SeqCst));
+        (*self.counter).borrow().load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        unsafe {
+            &(*self.ptr)[self.cursor..*(*self.len).borrow()]
+        }
+    }
+
+
+    #[inline]
+    fn as_slice_mut(&mut self) -> &mut [u8] {
+        unsafe { &mut (*self.ptr)[self.cursor..] }
+    }
+
+
+    #[inline]
+    unsafe fn inc_start(&mut self, by: usize) {
+        // should already be asserted, but debug assert for tests
+        debug_assert!(self.remaining() >= by, "internal: inc_start out of bounds");
+        self.cursor += self.cursor;
+    }
+
+    pub fn len(&self) -> usize {
+        unsafe {
+            (*self.ptr).len() - self.cursor
+        }
+    }
+
+    pub fn reserve(&mut self, additional: usize) {
+        unsafe {
+            let len = (*self.ptr).len();
+            let rem = (*self.ptr).capacity() - len;
+            if rem >= additional {
+                return;
+            }
+
+            (*self.ptr).reserve(additional)
+        }
+
+    }
+
+
+    fn put<T: crate::Buf>(&mut self, mut src: T)
+    where
+        Self: Sized,
+    {
+        while src.has_remaining() {
+            let s = src.chunk();
+            let l = s.len();
+            self.extend_from_slice(s);
+            src.advance(l);
+        }
+    }
+
+    fn put_slice(&mut self, src: &[u8]) {
+        self.extend_from_slice(src);
+    }
+
+
+    #[inline]
+    pub fn freeze(mut self) -> Binary {
+        unsafe {
+            Binary::from((*self.ptr).clone())
+        }
+    }
+
+    /// Appends given bytes to this `BytesMut`.
+    ///
+    /// If this `BytesMut` object does not have enough capacity, it is resized
+    /// first.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bytes::BytesMut;
+    ///
+    /// let mut buf = BytesMut::with_capacity(0);
+    /// buf.extend_from_slice(b"aaabbb");
+    /// buf.extend_from_slice(b"cccddd");
+    ///
+    /// assert_eq!(b"aaabbbcccddd", &buf[..]);
+    /// ```
+    #[inline]
+    pub fn extend_from_slice(&mut self, extend: &[u8]) {
+        let cnt = extend.len();
+        self.reserve(cnt);
+
+        unsafe {
+            let dst = self.chunk_mut();
+            // Reserved above
+            debug_assert!(dst.len() >= cnt);
+
+            ptr::copy_nonoverlapping(extend.as_ptr(), dst.as_mut_ptr().cast(), cnt);
+        }
+
+        unsafe {
+            self.advance_mut(cnt);
+        }
+    }
+}
+
+impl From<Vec<u8>> for BinaryMut {
+    fn from(value: Vec<u8>) -> Self {
+        BinaryMut::from_vec(value)
+    }
+}
+
+impl Clone for BinaryMut {
+    fn clone(&self) -> Self {
+        (*self.counter).borrow().fetch_add(1, std::sync::atomic::Ordering::Acquire);
+        Self {
+            ptr: self.ptr.clone(), 
+            cursor: self.cursor.clone(), 
+            len: self.len.clone(),
+            counter: self.counter.clone()
+        }
+    }
+}
+
+impl Drop for BinaryMut {
+    fn drop(&mut self) {
+        use std::sync::atomic::Ordering;
+        println!("drop === {:?} -----", self.counter);
+
+        if (*self.counter).borrow_mut().fetch_sub(1, Ordering::Release) == 1 {
+            let _vec = unsafe { Box::from_raw(self.ptr) };
+        }
+
+        println!("drop end!!!!");
+    }
+}
+
+
+impl Buf for BinaryMut {
+    fn remaining(&self) -> usize {
+        unsafe {
+            (*self.ptr).len() - self.cursor
+        }
+    }
+
+    fn chunk(&self) -> &[u8] {
+        self.as_slice()
+    }
+
+    fn advance(&mut self, n: usize) {
+        unsafe {
+            self.inc_start(n);
+        }
+    }
+}
+
+unsafe impl BufMut for BinaryMut {
+    fn remaining_mut(&self) -> usize {
+        usize::MAX - self.len()
+    }
+
+    unsafe fn advance_mut(&mut self, cnt: usize) {
+        *((*self.len).borrow_mut()) += cnt;
+    }
+
+    fn chunk_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+        unsafe {
+            if (*self.ptr).len() == (*self.ptr).capacity() {
+                self.reserve(128);
+            }
+            (*self.ptr).spare_capacity_mut()
+        }
+    }
+}
+
+
+
+// impl AsRef<[u8]> for BinaryMut {
+//     #[inline]
+//     fn as_ref(&self) -> &[u8] {
+//         self.as_slice()
+//     }
+// }
+
+// impl Deref for BinaryMut {
+//     type Target = [u8];
+
+//     #[inline]
+//     fn deref(&self) -> &[u8] {
+//         self.as_ref()
+//     }
+// }
+
+// impl AsMut<[u8]> for BinaryMut {
+//     #[inline]
+//     fn as_mut(&mut self) -> &mut [u8] {
+//         self.as_slice_mut()
+//     }
+// }
+
+// impl DerefMut for BinaryMut {
+//     #[inline]
+//     fn deref_mut(&mut self) -> &mut [u8] {
+//         self.as_mut()
+//     }
+// }
+
+// impl<'a> From<&'a [u8]> for BinaryMut {
+//     fn from(src: &'a [u8]) -> BinaryMut {
+//         BinaryMut::from_vec(src.to_vec())
+//     }
+// }
+
+// impl<'a> From<&'a str> for BinaryMut {
+//     fn from(src: &'a str) -> BinaryMut {
+//         BinaryMut::from(src.as_bytes())
+//     }
+// }
+
+// impl From<BinaryMut> for Binary {
+//     fn from(src: BinaryMut) -> Binary {
+//         src.freeze()
+//     }
+// }
+
+// impl PartialEq for BinaryMut {
+//     fn eq(&self, other: &BinaryMut) -> bool {
+//         self.as_slice() == other.as_slice()
+//     }
+// }
+
+// impl PartialOrd for BinaryMut {
+//     fn partial_cmp(&self, other: &BinaryMut) -> Option<cmp::Ordering> {
+//         self.as_slice().partial_cmp(other.as_slice())
+//     }
+// }
+
+// impl Ord for BinaryMut {
+//     fn cmp(&self, other: &BinaryMut) -> cmp::Ordering {
+//         self.as_slice().cmp(other.as_slice())
+//     }
+// }
+
+// impl Eq for BinaryMut {}
+
+// impl Default for BinaryMut {
+//     #[inline]
+//     fn default() -> BinaryMut {
+//         BinaryMut::new()
+//     }
+// }
+
+// impl hash::Hash for BinaryMut {
+//     fn hash<H>(&self, state: &mut H)
+//     where
+//         H: hash::Hasher,
+//     {
+//         let s: &[u8] = self.as_ref();
+//         s.hash(state);
+//     }
+// }
+
+// impl Borrow<[u8]> for BinaryMut {
+//     fn borrow(&self) -> &[u8] {
+//         self.as_ref()
+//     }
+// }
+
+// impl BorrowMut<[u8]> for BinaryMut {
+//     fn borrow_mut(&mut self) -> &mut [u8] {
+//         self.as_mut()
+//     }
+// }
+
+impl fmt::Write for BinaryMut {
+    #[inline]
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        if self.remaining_mut() >= s.len() {
+            self.put_slice(s.as_bytes());
+            Ok(())
+        } else {
+            Err(fmt::Error)
+        }
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
+        fmt::write(self, args)
+    }
+}
+
+// impl IntoIterator for BinaryMut {
+//     type Item = u8;
+//     type IntoIter = IntoIter<BinaryMut>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         IntoIter::new(self)
+//     }
+// }
+
+// impl<'a> IntoIterator for &'a BinaryMut {
+//     type Item = &'a u8;
+//     type IntoIter = core::slice::Iter<'a, u8>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.as_ref().iter()
+//     }
+// }
+
+// impl Extend<u8> for BinaryMut {
+//     fn extend<T>(&mut self, iter: T)
+//     where
+//         T: IntoIterator<Item = u8>,
+//     {
+//         let iter = iter.into_iter();
+
+//         let (lower, _) = iter.size_hint();
+//         self.reserve(lower);
+
+//         // TODO: optimize
+//         // 1. If self.kind() == KIND_VEC, use Vec::extend
+//         // 2. Make `reserve` inline-able
+//         for b in iter {
+//             self.reserve(1);
+//             self.put_u8(b);
+//         }
+//     }
+// }
+
+// impl<'a> Extend<&'a u8> for BinaryMut {
+//     fn extend<T>(&mut self, iter: T)
+//     where
+//         T: IntoIterator<Item = &'a u8>,
+//     {
+//         self.extend(iter.into_iter().copied())
+//     }
+// }
+
+// impl Extend<Bytes> for BinaryMut {
+//     fn extend<T>(&mut self, iter: T)
+//     where
+//         T: IntoIterator<Item = Bytes>,
+//     {
+//         for bytes in iter {
+//             self.extend_from_slice(&bytes)
+//         }
+//     }
+// }
