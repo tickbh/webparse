@@ -271,10 +271,10 @@ impl Helper {
         match next!(buffer)? {
             b'\r' => {
                 expect!(buffer.next() == b'\n' => Err(WebError::from(HttpError::NewLine)));
-                buffer.slice();
+                buffer.mark_slice();
             },
             b'\n' => {
-                buffer.slice();
+                buffer.mark_slice();
             },
             b' ' => {
             },
@@ -289,14 +289,14 @@ impl Helper {
             let b = buffer.peek();
             match b {
                 Some(b'\r') => {
-                    buffer.bump();
+                    buffer.mark_bump();
                     expect!(buffer.next() == b'\n' => Err(WebError::from(HttpError::NewLine)));
                 }
                 Some(b'\n') => {
-                    buffer.bump();
+                    buffer.mark_bump();
                 }
                 Some(..) => {
-                    buffer.slice();
+                    buffer.mark_slice();
                     return Ok(());
                 }
                 None => return Err(WebError::from(HttpError::Partial)),
@@ -310,10 +310,10 @@ impl Helper {
             let b = buffer.peek();
             match b {
                 Some(b' ') => {
-                    buffer.bump();
+                    buffer.mark_bump();
                 }
                 Some(..) => {
-                    buffer.slice();
+                    buffer.mark_slice();
                     return Ok(());
                 }
                 None => return Err(WebError::from(HttpError::Partial)),
@@ -328,12 +328,12 @@ impl Helper {
         loop {
             let b = peek!(buffer)?;
             if b == b'\r' {
-                buffer.next();
+                buffer.get_next();
                 expect!(buffer.next() == b'\n' => Err(WebError::from(HttpError::NewLine)));
                 return Ok(());
             }
             if b == b'\n' {
-                buffer.next();
+                buffer.get_next();
                 return Ok(());
             }
 

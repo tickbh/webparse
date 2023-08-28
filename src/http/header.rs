@@ -73,6 +73,10 @@ impl HeaderMap {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.headers.len()
+    }
+
 }
 
 

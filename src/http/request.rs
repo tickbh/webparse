@@ -324,6 +324,24 @@ impl<T> Request<T>
         &self.parts.method
     }
 
+    #[inline]
+    pub fn version(&self) -> &Version {
+        &self.parts.version
+    }
+    
+    #[inline]
+    pub fn path(&self) -> &String {
+        &self.parts.path
+    }
+
+    pub fn headers(&self) -> &HeaderMap {
+        &self.parts.header
+    }
+
+    pub fn headers_mut(&mut self) -> &mut HeaderMap {
+        &mut self.parts.header
+    }
+
     pub fn get_host(&self) -> Option<String> {
         self.parts.get_host()
     }
@@ -356,14 +374,14 @@ impl<T> Request<T>
         Ok(())
     }
 
-    pub fn parse_buffer(&mut self, buffer:&mut BinaryMut) -> WebResult<()> {
+    pub fn parse_buffer(&mut self, buffer:&mut BinaryMut) -> WebResult<usize> {
         Helper::skip_empty_lines(buffer)?;
         {
             let first = &buffer.chunk()[..http2::HTTP2_MAGIC.len()];
             if first == http2::HTTP2_MAGIC {
                 self.parts.version = Version::Http2;
                 buffer.advance(http2::HTTP2_MAGIC.len());
-                return Ok(());
+                return Ok(http2::HTTP2_MAGIC.len());
             }
         }
 
@@ -395,10 +413,10 @@ impl<T> Request<T>
                 url
             }
         };
-        Ok(())
+        Ok(buffer.cursor())
     }
 
-    pub fn parse(&mut self, buf:&[u8]) -> WebResult<()> {
+    pub fn parse(&mut self, buf:&[u8]) -> WebResult<usize> {
         self.partial = true;
         let mut buffer = BinaryMut::from(buf);
         self.parse_buffer(&mut buffer)
@@ -418,6 +436,7 @@ impl<T> Request<T>
     pub fn extensions(&self) -> &Extensions {
         &self.parts.extensions
     }
+
 
     /// Returns a mutable reference to the associated extensions.
     ///
@@ -550,4 +569,41 @@ impl<T> Serialize for Request<T>
     fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         Err(WebError::Serialize("request can't serial bytes"))
     }
+}
+
+
+mod tests {
+use crate::{Request, Version, Method};
+
+macro_rules! req {
+    ($name:ident, $buf:expr, |$arg:ident| $body:expr) => (
+    #[test]
+    fn $name() {
+
+        let mut req = Request::new();
+        println!("aaaaaaaaa");
+        let size = req.parse($buf.as_ref()).unwrap();
+        println!("bbbbbbbb");
+        assert_eq!(size, $buf.len());
+        println!("cccccccccccccc");
+        closure(req);
+
+        fn closure($arg: Request<()>) {
+            $body
+        }
+    }
+    )
+}
+
+req! {
+    urltest_001,
+    b"GET /bar;par?b HTTP/1.1\r\nHost: foo\r\n\r\n",
+    |req| {
+        assert_eq!(req.method(), &Method::Get);
+        assert_eq!(req.path(), "/bar;par?b");
+        assert_eq!(req.version(), &Version::Http11);
+        assert_eq!(req.headers().len(), 1);
+        // assert_eq!(req.headers()["Host"], b"foo");
+    }
+}
 }

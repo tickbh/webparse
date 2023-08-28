@@ -43,14 +43,26 @@ fn hex_debug_print(val: &[u8]) {
     println!();
 }
 
+fn debug_request_parse() {
+    let mut request = Request::new();
+        // // let value = url::Url::parse("/path");
+    let _result = request.parse(b"GET http://www.baidu.com/ HTTP/1.1\r\nHost: www.baidu.com\r\nUser-Agent: curl/7.74.0\r\nAccept: */*\r\nProxy-Connection: Keep-Alive\r\n\r\n");
+    println!("result = {:?}", request);
+    println!("is_partial = {}", request.is_partial());
+    println!("body len = {}", request.get_body_len());
+    println!("host len = {:?}", request.get_host());
+    println!("host len = {:?}", request.get_connect_url());
+}
+
 fn main() {
+    debug_request_parse();
     let v = vec![1u8, 2, 3, 5, 7, 9, 10].into_boxed_slice();
     let mut b = Binary::from(v);
     {
-        b.next();
+        b.get_next();
         let c = b.clone_slice();
         drop(c);
-        b.next();
+        b.get_next();
         let d = b.clone_slice();
         drop(d);
     }
@@ -219,7 +231,6 @@ fn main() {
 
     {
         
-
 //         8287 85bf 4088 25a8 49e9 5ba9 7d7f 8925 | ....@.%.I.[.}..%
 //          a849 e95b b8e8 b4bf  
         let http2 = vec![0x82, 0x87, 0x85, 0xbf, 0x40, 0x88, 0x25, 0xa8, 0x49, 0xe9, 0x5b, 0xa9, 

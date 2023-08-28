@@ -67,8 +67,7 @@ pub trait Buf {
     /// 消耗掉多少字节的数据, 做指针偏移
     fn advance(&mut self, n: usize);
 
-    // fn mark_slice_skip(&mut self, skip: usize) -> &[u8];
-
+    /// 获取当前的值, 但不做任何偏移
     fn peek(&self) -> Option<u8> {
         if self.has_remaining() {
             let ret = self.chunk()[0] as u8;
@@ -78,23 +77,13 @@ pub trait Buf {
         }
     }
 
-    // fn mark_commit(&mut self) {}
-
-    // fn mark_slice(&mut self) -> &[u8] {
-    //     self.mark_slice_skip(0)
-    // }
-
     /// 是否还有数据
     fn has_remaining(&self) -> bool {
         self.remaining() > 0
     }
 
-    // fn mark_bump(&mut self) {
-    //     self.advance(1);
-    //     self.mark_commit();
-    // }
-    
-    fn next(&mut self) -> Option<u8> {
+    /// 获取当前的值并将偏移值+1
+    fn get_next(&mut self) -> Option<u8> {
         if self.has_remaining() {
             let val = self.peek().unwrap();
             self.advance(1);

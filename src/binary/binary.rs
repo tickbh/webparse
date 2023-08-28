@@ -1,4 +1,5 @@
-use std::{sync::{Arc, atomic::{AtomicUsize, Ordering}}, slice, mem, io::Read, io::Result, rc::Rc, cell::RefCell, alloc::{dealloc, Layout}};
+use std::{sync::{Arc, atomic::{AtomicUsize, Ordering}}, slice, mem, io::Read, io::Result, rc::Rc, cell::RefCell, alloc::{dealloc, Layout}, marker::PhantomData, hash, vec::IntoIter, borrow::Borrow, cmp};
+use std::ops::Deref;
 
 use crate::MarkBuf;
 
@@ -6,14 +7,18 @@ use super::Buf;
 
 static EMPTY_ARRAY: &[u8] = &[];
 
-
+/// 二进制的封装, 包括静态引用及共享引用对象, 仅支持写操作
 pub struct Binary {
-    pub(crate) ptr: *const u8,
-    pub(crate) counter: Rc<RefCell<AtomicUsize>>,
-    // 游标可以得出指针的初始位置
-    pub(crate) cursor: usize,
-    pub(crate) start: usize,
-    pub(crate) len: usize,
+    ptr: *const u8,
+    // 共享引用计数
+    counter: Rc<RefCell<AtomicUsize>>,
+    // 游标值, 可以得出当前指向的位置
+    cursor: usize,
+    // 标记值, 从上一次标记到现在的游标值, 可以得出偏移的对象
+    mark: usize,
+    // 长度值, 还剩下多少的长度
+    len: usize,
+    // 对象虚表的引用函数
     vtable: &'static Vtable,
 }
 
@@ -56,7 +61,7 @@ unsafe fn shared_clone(bin: &Binary) -> Binary {
         ptr: bin.ptr,
         counter: bin.counter.clone(),
         cursor: bin.cursor,
-        start: bin.start,
+        mark: bin.mark,
         len: bin.len,
         vtable: bin.vtable
     }
@@ -86,7 +91,7 @@ impl Binary {
             ptr: val.as_ptr(), 
             counter: Rc::new(RefCell::new(AtomicUsize::new(0))), 
             cursor: 0,
-            start: 0,
+            mark: 0,
             len: val.len(), 
             vtable: &STATIC_VTABLE
         }
@@ -106,7 +111,7 @@ impl Binary {
         self.len
     }
 
-    /// Returns true if the `Bytes` has a length of 0.
+    /// Returns true if the `Binary` has a length of 0.
     ///
     /// # Examples
     ///
@@ -168,9 +173,9 @@ impl Binary {
     pub fn clone_slice_skip(&mut self, skip: usize) -> Binary {
         let mut new = self.clone();
         unsafe {
-            new.sub_start(self.cursor - self.start);
+            new.sub_start(self.cursor - self.mark);
         }
-        new.len = self.cursor - skip - self.start;
+        new.len = self.cursor - skip - self.mark;
         self.mark_commit();
         new
     }
@@ -191,7 +196,7 @@ impl Binary {
         self.len += by;
         self.ptr = self.ptr.sub(by);
         self.cursor -= by;
-        self.start = std::cmp::min(self.start, self.cursor);
+        self.mark = std::cmp::min(self.mark, self.cursor);
     }
 }
 
@@ -224,13 +229,13 @@ impl From<&'static [u8]> for Binary {
 }
 
 impl From<Box<[u8]>> for Binary {
-    fn from(mut value: Box<[u8]>) -> Self {
+    fn from(value: Box<[u8]>) -> Self {
         let len = value.len();
         let ptr =  Box::into_raw(value) as *mut u8;
         Binary {
             ptr,
             len,
-            start: 0,
+            mark: 0,
             cursor: 0,
             counter: Rc::new(RefCell::new(AtomicUsize::new(1))),
             vtable: &SHARED_VTABLE,
@@ -264,16 +269,16 @@ impl Buf for Binary {
 impl MarkBuf for Binary {
 
     fn mark_slice_skip(&mut self, skip: usize) -> &[u8] {
-        debug_assert!(self.cursor - skip >= self.start);
+        debug_assert!(self.cursor - skip >= self.mark);
         let cursor = self.cursor;
-        let start = self.start;
+        let start = self.mark;
         self.mark_commit();
         let head = &self.as_slice_all()[start .. (cursor - skip)];
         head
     }
     
     fn mark_commit(&mut self) {
-        self.start = self.cursor
+        self.mark = self.cursor
     }
 }
 
@@ -293,26 +298,246 @@ impl Read for Binary {
     }
 }
 
-// impl Iterator for Binary {
+impl Iterator for Binary {
+    type Item = u8;
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        self.get_next()
+    }
+}
+
+
+
+impl Deref for Binary {
+    type Target = [u8];
+
+    #[inline]
+    fn deref(&self) -> &[u8] {
+        self.as_slice()
+    }
+}
+
+impl AsRef<[u8]> for Binary {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.as_slice()
+    }
+}
+
+impl hash::Hash for Binary {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
+        self.as_slice().hash(state);
+    }
+}
+
+impl Borrow<[u8]> for Binary {
+    fn borrow(&self) -> &[u8] {
+        self.as_slice()
+    }
+}
+
+// impl IntoIterator for Binary {
 //     type Item = u8;
-//     #[inline]
-//     fn next(&mut self) -> Option<u8> {
-//         if self.has_remaining() {
-//             let read = self.chunk()[0];
-//             self.advance(1);
-//             Some(read)
-//         } else {
-//             None
-//         }
+//     type IntoIter = IntoIter<Binary>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         IntoIter::new(self)
 //     }
 // }
 
+// impl<'a> IntoIterator for &'a Binary {
+//     type Item = &'a u8;
+//     type IntoIter = core::slice::Iter<'a, u8>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.as_slice().iter()
+//     }
+// }
+
+// impl FromIterator<u8> for Binary {
+//     fn from_iter<T: IntoIterator<Item = u8>>(into_iter: T) -> Self {
+//         Vec::from_iter(into_iter).into()
+//     }
+// }
+
+// impl Eq
+
+impl PartialEq for Binary {
+    fn eq(&self, other: &Binary) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
+
+impl PartialOrd for Binary {
+    fn partial_cmp(&self, other: &Binary) -> Option<cmp::Ordering> {
+        self.as_slice().partial_cmp(other.as_slice())
+    }
+}
+
+impl Ord for Binary {
+    fn cmp(&self, other: &Binary) -> cmp::Ordering {
+        self.as_slice().cmp(other.as_slice())
+    }
+}
+
+impl Eq for Binary {}
+
+impl PartialEq<[u8]> for Binary {
+    fn eq(&self, other: &[u8]) -> bool {
+        self.as_slice() == other
+    }
+}
+
+impl PartialOrd<[u8]> for Binary {
+    fn partial_cmp(&self, other: &[u8]) -> Option<cmp::Ordering> {
+        self.as_slice().partial_cmp(other)
+    }
+}
+
+impl PartialEq<Binary> for [u8] {
+    fn eq(&self, other: &Binary) -> bool {
+        *other == *self
+    }
+}
+
+impl PartialOrd<Binary> for [u8] {
+    fn partial_cmp(&self, other: &Binary) -> Option<cmp::Ordering> {
+        <[u8] as PartialOrd<[u8]>>::partial_cmp(self, other)
+    }
+}
+
+impl PartialEq<str> for Binary {
+    fn eq(&self, other: &str) -> bool {
+        self.as_slice() == other.as_bytes()
+    }
+}
+
+impl PartialOrd<str> for Binary {
+    fn partial_cmp(&self, other: &str) -> Option<cmp::Ordering> {
+        self.as_slice().partial_cmp(other.as_bytes())
+    }
+}
+
+impl PartialEq<Binary> for str {
+    fn eq(&self, other: &Binary) -> bool {
+        *other == *self
+    }
+}
+
+impl PartialOrd<Binary> for str {
+    fn partial_cmp(&self, other: &Binary) -> Option<cmp::Ordering> {
+        <[u8] as PartialOrd<[u8]>>::partial_cmp(self.as_bytes(), other)
+    }
+}
+
+impl PartialEq<Vec<u8>> for Binary {
+    fn eq(&self, other: &Vec<u8>) -> bool {
+        *self == other[..]
+    }
+}
+
+impl PartialOrd<Vec<u8>> for Binary {
+    fn partial_cmp(&self, other: &Vec<u8>) -> Option<cmp::Ordering> {
+        self.as_slice().partial_cmp(&other[..])
+    }
+}
+
+impl PartialEq<Binary> for Vec<u8> {
+    fn eq(&self, other: &Binary) -> bool {
+        *other == *self
+    }
+}
+
+impl PartialOrd<Binary> for Vec<u8> {
+    fn partial_cmp(&self, other: &Binary) -> Option<cmp::Ordering> {
+        <[u8] as PartialOrd<[u8]>>::partial_cmp(self, other)
+    }
+}
+
+impl PartialEq<String> for Binary {
+    fn eq(&self, other: &String) -> bool {
+        *self == other[..]
+    }
+}
+
+impl PartialOrd<String> for Binary {
+    fn partial_cmp(&self, other: &String) -> Option<cmp::Ordering> {
+        self.as_slice().partial_cmp(other.as_bytes())
+    }
+}
+
+impl PartialEq<Binary> for String {
+    fn eq(&self, other: &Binary) -> bool {
+        *other == *self
+    }
+}
+
+impl PartialOrd<Binary> for String {
+    fn partial_cmp(&self, other: &Binary) -> Option<cmp::Ordering> {
+        <[u8] as PartialOrd<[u8]>>::partial_cmp(self.as_bytes(), other)
+    }
+}
+
+impl PartialEq<Binary> for &[u8] {
+    fn eq(&self, other: &Binary) -> bool {
+        *other == *self
+    }
+}
+
+impl PartialOrd<Binary> for &[u8] {
+    fn partial_cmp(&self, other: &Binary) -> Option<cmp::Ordering> {
+        <[u8] as PartialOrd<[u8]>>::partial_cmp(self, other)
+    }
+}
+
+impl PartialEq<Binary> for &str {
+    fn eq(&self, other: &Binary) -> bool {
+        *other == *self
+    }
+}
+
+impl PartialOrd<Binary> for &str {
+    fn partial_cmp(&self, other: &Binary) -> Option<cmp::Ordering> {
+        <[u8] as PartialOrd<[u8]>>::partial_cmp(self.as_bytes(), other)
+    }
+}
+
+impl<'a, T: ?Sized> PartialEq<&'a T> for Binary
+where
+    Binary: PartialEq<T>,
+{
+    fn eq(&self, other: &&'a T) -> bool {
+        *self == **other
+    }
+}
+
+impl<'a, T: ?Sized> PartialOrd<&'a T> for Binary
+where
+    Binary: PartialOrd<T>,
+{
+    fn partial_cmp(&self, other: &&'a T) -> Option<cmp::Ordering> {
+        self.partial_cmp(&**other)
+    }
+}
+
+// impl From
+
+impl Default for Binary {
+    #[inline]
+    fn default() -> Binary {
+        Binary::new()
+    }
+}
+
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::{Binary, Buf};
 
     #[test]
-    fn bytes_refs() {
+    fn binary_refs() {
         {
             let s = Binary::from("aaaa");
             let s1 = s.clone();

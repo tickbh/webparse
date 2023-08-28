@@ -8,7 +8,7 @@ macro_rules! byte_map {
 #[macro_export]
 macro_rules! next {
     ($bytes:ident) => ({
-        match $bytes.next() {
+        match $bytes.get_next() {
             Some(b) => Ok(b),
             None => Err(WebError::from(crate::HttpError::Partial))
         }
