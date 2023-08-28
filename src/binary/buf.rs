@@ -55,6 +55,17 @@ pub trait Buf {
         self.remaining() > 0
     }
 
+    fn next(&mut self) -> Option<u8> {
+        if self.has_remaining() {
+            let val = self.chunk()[0];
+            self.advance(1);
+            Some(val)
+        } else {
+            None
+        }
+    }
+    // fn clone_slice(&self) -> Self;
+
     fn commit(&mut self) {}
 
     fn slice_skip(&mut self, skip: usize) -> &[u8];

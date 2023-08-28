@@ -215,7 +215,7 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn parse_token_by_func<'a>(buffer: &'a mut BinaryMut, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
+    pub(crate) fn parse_token_by_func<'a, T: Buf>(buffer: &'a mut T, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
         let mut b = next!(buffer)?;
         if !func(b) {
             return Err(err);
@@ -260,8 +260,9 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn parse_scheme<'a>(buffer: &'a mut BinaryMut) -> WebResult<&'a str> {
+    pub(crate) fn parse_scheme<'a, T: Buf>(buffer: &'a mut T) -> WebResult<&'a str> {
         let token = Self::parse_token_by_func(buffer, Scheme::is_scheme_token, WebError::from(HttpError::HeaderValue))?;
+        println!("token = {:?}", token);
         Ok(token)
     }
 

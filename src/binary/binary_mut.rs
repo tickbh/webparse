@@ -507,20 +507,6 @@ impl fmt::Write for BinaryMut {
 // }
 
 
-impl Iterator for BinaryMut {
-    type Item = u8;
-    #[inline]
-    fn next(&mut self) -> Option<u8> {
-        if self.has_remaining() {
-            let read = self.chunk()[0];
-            self.advance(1);
-            Some(read)
-        } else {
-            None
-        }
-    }
-}
-
 impl Read for BinaryMut {
     #[inline(always)]
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {

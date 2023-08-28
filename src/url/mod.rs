@@ -9,7 +9,7 @@ pub use scheme::Scheme;
 pub use builder::Builder;
 pub use error::UrlError;
 
-use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper, BinaryMut };
+use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper, BinaryMut, Binary, Buf };
 
 
 
@@ -30,17 +30,51 @@ impl Url {
         Url { scheme: Scheme::None, path: "/".to_string(), username: None, password: None, domain: None, port: None, query: None }
     }
 
-    fn parse_url_token<'a>(buffer: &'a mut Buffer, start: usize, end: usize, can_convert: bool) -> WebResult<Option<String>> {
-        if start >= end {
-            return Ok(None)
-        }
-        let ori_start = buffer.get_start();
-        let ori_cursor = buffer.get_cursor();
-        let ori_end = buffer.get_end();
-        let mut result = Vec::with_capacity(end-start);
-        buffer.set_start(start);
-        buffer.set_cursor(start);
-        buffer.set_end(end);
+    // fn parse_url_token<'a, T: Buf>(buffer: &'a mut T, start: usize, end: usize, can_convert: bool) -> WebResult<Option<String>> {
+    //     if start >= end {
+    //         return Ok(None)
+    //     }
+    //     let ori_start = buffer.get_start();
+    //     let ori_cursor = buffer.get_cursor();
+    //     let ori_end = buffer.get_end();
+    //     let mut result = Vec::with_capacity(end-start);
+    //     buffer.set_start(start);
+    //     buffer.set_cursor(start);
+    //     buffer.set_end(end);
+    //     loop {
+    //         let b = match next!(buffer) {
+    //             Ok(v) => v,
+    //             Err(_) => {
+    //                 break;
+    //             }
+    //         };
+    //         // 转码字符, 后面必须跟两位十六进制数字
+    //         if b == b'%' {
+    //             if !can_convert {
+    //                 return Err(WebError::from(UrlError::UrlInvalid));
+    //             }
+    //             let t = Helper::convert_hex(next!(buffer)?);
+    //             let u = Helper::convert_hex(next!(buffer)?);
+    //             if t.is_none() || u.is_none() {
+    //                 return Err(WebError::from(UrlError::UrlInvalid));
+    //             }
+    //             result.push(t.unwrap() * 16 + u.unwrap());
+    //         } else {
+    //             result.push(b);
+    //         }
+    //     }
+    //     buffer.set_start(ori_start);
+    //     buffer.set_cursor(ori_cursor);
+    //     buffer.set_end(ori_end);
+    //     match String::from_utf8(result) {
+    //         Ok(s) => Ok(Some(s)),
+    //         Err(_) => Err(WebError::from(UrlError::UrlInvalid))
+    //     }
+    // }
+
+    
+    fn parse_url_token<'a>(buffer: &'a mut Binary, can_convert: bool) -> WebResult<Option<String>> {
+        let mut result = Vec::with_capacity(buffer.len());
         loop {
             let b = match next!(buffer) {
                 Ok(v) => v,
@@ -63,9 +97,7 @@ impl Url {
                 result.push(b);
             }
         }
-        buffer.set_start(ori_start);
-        buffer.set_cursor(ori_cursor);
-        buffer.set_end(ori_end);
+        println!("ok ==== {:?}",  String::from_utf8(result.clone()));
         match String::from_utf8(result) {
             Ok(s) => Ok(Some(s)),
             Err(_) => Err(WebError::from(UrlError::UrlInvalid))
@@ -73,24 +105,24 @@ impl Url {
     }
 
     pub fn parse(url: &str) -> WebResult<Url> {
-        let mut buffer = BinaryMut::from(url.as_bytes());
+        let mut buffer = Binary::from(url.as_bytes().to_vec());
         let mut b = peek!(buffer)?;
         let mut scheme = Scheme::None;
-        let mut scheme_end = 0;
-        let mut username_end = 0;
-        let mut password_end = 0;
-        let mut domain_end = 0;
-        let mut port_end = 0;
-        let mut path_end = 0;
-        let mut query_end = 0;
+        // let mut scheme_end = None;
+        let mut username = None;
+        let mut password = None;
+        let mut domain = None;
+        let mut port = None;
+        let mut path = None;
+        let mut query: Option<_> = None;
         let mut is_first_slash = false;
         let mut has_domain = true;
         if Helper::is_alpha(b) {
             scheme = Scheme::parse_scheme(&mut buffer)?;
-            scheme_end = buffer.get_cursor();
             expect!(buffer.next() == b':' => Err(WebError::from(UrlError::UrlInvalid)));
             expect!(buffer.next() == b'/' => Err(WebError::from(UrlError::UrlInvalid)));
             expect!(buffer.next() == b'/' => Err(WebError::from(UrlError::UrlInvalid)));
+            buffer.commit();
         } else if b == b'/' {
             is_first_slash = true;
             has_domain = false;
@@ -104,15 +136,15 @@ impl Url {
             b = match next!(buffer) {
                 Ok(v) => v,
                 Err(_) => {
-                    if path_end != 0 {
-                        query_end = buffer.get_end();
-                    } else if domain_end != 0 {
-                        path_end = buffer.get_end();
-                    } else if domain_end == 0 {
+                    if path.is_some() {
+                        query = Some(buffer.clone_slice());
+                    } else if domain.is_some() {
+                        path = Some(buffer.clone_slice());
+                    } else if domain.is_none() {
                         if has_domain {
-                            domain_end = buffer.get_end();
+                            domain = Some(buffer.clone_slice());
                         } else {
-                            path_end = buffer.get_end();
+                            path = Some(buffer.clone_slice());
                         }
                     }
                     break;
@@ -121,44 +153,45 @@ impl Url {
             // 存在用户名, 解析用户名
             if b == b':' {
                 //未存在协议头, 允许path与query
-                if scheme_end == 0 || is_first_slash {
+                if scheme == Scheme::None || is_first_slash {
                     return Err(WebError::from(UrlError::UrlInvalid));
                 }
 
                 // 匹配域名, 如果在存在期间检测到@则把当前当作用户结尾
-                if domain_end == 0 {
-                    domain_end = buffer.get_cursor() - 1;
+                if domain.is_none() {
+                    domain = Some(buffer.clone_slice_skip(1));
                 } else {
                     return Err(WebError::from(UrlError::UrlInvalid));
                 }
 
             } else if b == b'@' {
                 //一开始的冒泡匹配域名,把域名结束当前username结束, 不存在用户密码, 不允许存在'@'
-                if domain_end == 0 {
+                if domain.is_none() {
                     return Err(WebError::from(UrlError::UrlInvalid));
                 }
-                username_end = domain_end;
-                domain_end = 0;
-                password_end = buffer.get_cursor() - 1;
+                username = domain;
+                domain = None;
+                password = Some(buffer.clone_slice_skip(1));
             } else if b == b'/' {
                 if !is_first_slash {
                     //反斜杠仅存在第一次域名不解析时获取
-                    if domain_end == 0 {
-                        domain_end = buffer.get_cursor() - 1;
+                    buffer.retreat(1);
+                    if domain.is_none() {
+                        domain = Some(buffer.clone_slice());
                     } else {
-                        port_end = buffer.get_cursor() - 1;
+                        port = Some(buffer.clone_slice());
                     }
                     is_first_slash = true;
                 }
             } else if b == b'?' {
-                if domain_end == 0 && has_domain {
-                    domain_end = buffer.get_cursor() - 1;
+                if domain.is_none() && has_domain {
+                    domain = Some(buffer.clone_slice_skip(1));
                 }
                 // 不允许存在多次的'?'
-                if path_end != 0 {
+                if path.is_some() {
                     return Err(WebError::from(UrlError::UrlInvalid));
                 }
-                path_end = buffer.get_cursor() - 1;
+                path = Some(buffer.clone_slice_skip(1));
             } else if !check_func(b) {
                 return Err(WebError::from(UrlError::UrlInvalid));
             }
@@ -166,17 +199,17 @@ impl Url {
 
         let mut url = Url::new();
         url.scheme = scheme;
-        if username_end != 0 {
-            url.username = Self::parse_url_token(&mut buffer, scheme_end + 3, username_end, true)?;
+        if username.is_some() {
+            url.username = Self::parse_url_token(&mut username.unwrap(), true)?;
         }
-        if password_end != 0 {
-            url.password = Self::parse_url_token(&mut buffer, username_end + 1, password_end, true)?;
+        if password.is_some() {
+            url.password = Self::parse_url_token(&mut password.unwrap(), true)?;
         }
-        if domain_end != 0 {
-            url.domain = Self::parse_url_token(&mut buffer, std::cmp::max(password_end + 1, scheme_end + 3), domain_end, true)?;
+        if domain.is_some() {
+            url.domain = Self::parse_url_token(&mut domain.unwrap(), true)?;
         }
-        if port_end != 0 {
-            let port = Self::parse_url_token(&mut buffer, domain_end + 1, port_end, true)?;
+        if port.is_some() {
+            let port = Self::parse_url_token(&mut port.unwrap(), true)?;
             if port.is_some() {
                 url.port = match port.unwrap().parse::<u16>() {
                     Ok(v) => Some(v),
@@ -184,16 +217,13 @@ impl Url {
                 }
             }
         }
-        if path_end != 0 {
-            let mut path_start = 0;
-            if domain_end != 0 {
-                path_start = std::cmp::max(domain_end, port_end);
-            }
-            url.path = Self::parse_url_token(&mut buffer, path_start, path_end, true)?.unwrap_or("/".to_string());
+        
+        if path.is_some() {
+            url.path = Self::parse_url_token(&mut path.unwrap(), true)?.unwrap_or("/".to_string());
         }
         
-        if query_end != 0 {
-            url.query = Self::parse_url_token(&mut buffer, path_end + 1, query_end, true)?;
+        if query.is_some() {
+            url.query = Self::parse_url_token(&mut query.unwrap(), true)?;
         }
 
         if url.port.is_none() {
