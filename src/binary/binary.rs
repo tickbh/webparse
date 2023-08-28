@@ -1,4 +1,6 @@
-use std::{sync::{Arc, atomic::AtomicUsize}, slice, mem, io::Read, io::Result, rc::Rc, cell::RefCell};
+use std::{sync::{Arc, atomic::{AtomicUsize, Ordering}}, slice, mem, io::Read, io::Result, rc::Rc, cell::RefCell, alloc::{dealloc, Layout}};
+
+use crate::MarkBuf;
 
 use super::Buf;
 
@@ -49,6 +51,7 @@ const SHARED_VTABLE: Vtable = Vtable {
 };
 
 unsafe fn shared_clone(bin: &Binary) -> Binary {
+    bin.counter.borrow_mut().fetch_add(1, Ordering::Relaxed);
     Binary {
         ptr: bin.ptr,
         counter: bin.counter.clone(),
@@ -64,8 +67,13 @@ unsafe fn shared_to_vec(bin: &Binary) -> Vec<u8> {
     slice.to_vec()
 }
 
-unsafe fn shared_drop(_bin: &mut Binary) {
-    // nothing to drop for &'static [u8]
+unsafe fn shared_drop(bin: &mut Binary) {
+    println!("now drop = {:?}", bin.as_slice());
+    if (*bin.counter).borrow_mut().fetch_sub(1, Ordering::Release) == 1 {
+        println!("share drop value {:?}", bin.ptr);
+        let ori = bin.ptr.sub(bin.cursor);
+        dealloc(ori as *mut u8, Layout::from_size_align(bin.cursor + bin.len, 1).unwrap());
+    }
 }
 impl Binary {
 
@@ -76,7 +84,7 @@ impl Binary {
     pub fn from_static(val: &'static [u8]) -> Binary {
         Binary { 
             ptr: val.as_ptr(), 
-            counter: Rc::new(RefCell::new(AtomicUsize::new(1))), 
+            counter: Rc::new(RefCell::new(AtomicUsize::new(0))), 
             cursor: 0,
             start: 0,
             len: val.len(), 
@@ -119,6 +127,27 @@ impl Binary {
             (self.vtable.to_vec)(self)
         }
     }
+
+    /// 获取引用的数量
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use webparse::binary;
+    /// use binary::Binary;
+    ///
+    /// let b = Binary::from(vec![1, 2, 3]);
+    /// {
+    /// let b1 = b.clone();
+    /// assert!(b1.get_refs() == 2);
+    /// drop(b1);
+    /// }
+    /// assert!(b.get_refs() == 1);
+    /// ```
+    pub fn get_refs(&self) -> usize {
+        println!("value = {}",  (*self.counter).borrow().load(std::sync::atomic::Ordering::SeqCst));
+        (*self.counter).borrow().load(std::sync::atomic::Ordering::SeqCst)
+    }
     
     #[inline]
     fn as_slice_all(&self) -> &[u8] {
@@ -142,7 +171,7 @@ impl Binary {
             new.sub_start(self.cursor - self.start);
         }
         new.len = self.cursor - skip - self.start;
-        self.commit();
+        self.mark_commit();
         new
     }
 
@@ -196,10 +225,8 @@ impl From<&'static [u8]> for Binary {
 
 impl From<Box<[u8]>> for Binary {
     fn from(mut value: Box<[u8]>) -> Self {
-        let ptr = value.as_mut_ptr();
         let len = value.len();
-        mem::forget(value);
-
+        let ptr =  Box::into_raw(value) as *mut u8;
         Binary {
             ptr,
             len,
@@ -232,20 +259,22 @@ impl Buf for Binary {
             self.inc_start(n);
         }
     }
+}
 
-    fn slice_skip(&mut self, skip: usize) -> &[u8] {
+impl MarkBuf for Binary {
+
+    fn mark_slice_skip(&mut self, skip: usize) -> &[u8] {
         debug_assert!(self.cursor - skip >= self.start);
         let cursor = self.cursor;
         let start = self.start;
-        self.commit();
+        self.mark_commit();
         let head = &self.as_slice_all()[start .. (cursor - skip)];
         head
     }
     
-    fn commit(&mut self) {
+    fn mark_commit(&mut self) {
         self.start = self.cursor
     }
-    
 }
 
 impl Read for Binary {
@@ -277,3 +306,26 @@ impl Read for Binary {
 //         }
 //     }
 // }
+
+#[cfg(test)]
+mod test {
+    use crate::{Binary, Buf};
+
+    #[test]
+    fn bytes_refs() {
+        {
+            let s = Binary::from("aaaa");
+            let s1 = s.clone();
+            assert!(s1.get_refs() == 0);
+            drop(s1);
+            assert!(s.get_refs() == 0);
+        }
+        {
+            let b = Binary::from(vec![1]);
+            let b1 = b.clone();
+            assert!(b1.get_refs() == 2);
+            drop(b1);
+            assert!(b.get_refs() == 1);
+        }
+    }
+}

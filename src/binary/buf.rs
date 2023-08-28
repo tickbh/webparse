@@ -40,6 +40,23 @@ macro_rules! buf_get_impl {
     }};
 }
 
+pub trait MarkBuf: Buf {
+    /// 获取从起始值到当前值的slice引用
+    fn mark_slice_skip(&mut self, skip: usize) -> &[u8];
+
+    /// 把当前值赋值给起始值
+    fn mark_commit(&mut self);
+
+    fn mark_slice(&mut self) -> &[u8] {
+        self.mark_slice_skip(0)
+    }
+
+    fn mark_bump(&mut self) {
+        self.advance(1);
+        self.mark_commit();
+    }
+}
+
 pub trait Buf {
     /// 获取剩余数量
     fn remaining(&self) -> usize;
@@ -50,7 +67,7 @@ pub trait Buf {
     /// 消耗掉多少字节的数据, 做指针偏移
     fn advance(&mut self, n: usize);
 
-    fn slice_skip(&mut self, skip: usize) -> &[u8];
+    // fn mark_slice_skip(&mut self, skip: usize) -> &[u8];
 
     fn peek(&self) -> Option<u8> {
         if self.has_remaining() {
@@ -61,21 +78,21 @@ pub trait Buf {
         }
     }
 
-    fn commit(&mut self) {}
+    // fn mark_commit(&mut self) {}
 
-    fn slice(&mut self) -> &[u8] {
-        self.slice_skip(0)
-    }
+    // fn mark_slice(&mut self) -> &[u8] {
+    //     self.mark_slice_skip(0)
+    // }
 
     /// 是否还有数据
     fn has_remaining(&self) -> bool {
         self.remaining() > 0
     }
 
-    fn bump(&mut self) {
-        self.advance(1);
-        self.commit();
-    }
+    // fn mark_bump(&mut self) {
+    //     self.advance(1);
+    //     self.mark_commit();
+    // }
     
     fn next(&mut self) -> Option<u8> {
         if self.has_remaining() {
@@ -919,9 +936,6 @@ impl Buf for &[u8] {
         *self = &self[cnt..];
     }
 
-    fn slice_skip(&mut self, skip: usize) -> &[u8] {
-        &self.chunk()[..(self.len() - skip)]
-    }
 }
 
 impl<T: AsRef<[u8]>> Buf for std::io::Cursor<T> {
@@ -956,7 +970,4 @@ impl<T: AsRef<[u8]>> Buf for std::io::Cursor<T> {
         self.set_position(pos as u64);
     }
 
-    fn slice_skip(&mut self, skip: usize) -> &[u8] {
-        &self.chunk()[..(self.get_ref().as_ref().len() - skip)]
-    }
 }

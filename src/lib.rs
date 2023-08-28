@@ -14,7 +14,7 @@ mod serialize;
 
 mod codec;
 
-pub use binary::{Binary, Buf, BinaryMut, BufMut};
+pub use binary::{Binary, Buf, MarkBuf, BinaryMut, BufMut};
 
 pub use http::{HeaderMap, HeaderName, HeaderValue, Method, Version, Request, Response, HttpError};
 pub use http::http2::{Http2Error};

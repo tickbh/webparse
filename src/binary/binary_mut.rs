@@ -1,6 +1,6 @@
 use std::{sync::{atomic::AtomicUsize, Arc}, cell::RefCell, rc::Rc, mem::MaybeUninit, ops::{Deref, DerefMut}, cmp, hash, borrow::{Borrow, BorrowMut}, fmt, vec::IntoIter, ptr, slice, io::{Read, Result, Write}};
 
-use crate::{Buf, Binary};
+use crate::{Buf, Binary, MarkBuf};
 
 use super::BufMut;
 
@@ -285,11 +285,18 @@ impl Buf for BinaryMut {
         }
     }
 
-    fn commit(&mut self) {
+
+}
+
+
+
+impl MarkBuf for BinaryMut {
+
+    fn mark_commit(&mut self) {
         self.start = self.cursor
     }
 
-    fn slice_skip(&mut self, skip: usize) -> &[u8] {
+    fn mark_slice_skip(&mut self, skip: usize) -> &[u8] {
         debug_assert!(self.cursor - skip >= self.start);
         let cursor = self.cursor;
         let start = self.start;
@@ -297,7 +304,6 @@ impl Buf for BinaryMut {
         let head = &self.chunk()[start .. (cursor - skip)];
         head
     }
-
 }
 
 unsafe impl BufMut for BinaryMut {

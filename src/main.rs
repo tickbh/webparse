@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use webparse::{url, Url, Request, HeaderName, HeaderValue, Serialize, Buffer, Response, Version, Helper};
+use webparse::{url, Url, Request, HeaderName, HeaderValue, Serialize, Buffer, Response, Version, Helper, Binary, Buf};
 use webparse::http::http2::{Decoder, HeaderIndex};
 
 extern crate webparse;
@@ -44,6 +44,30 @@ fn hex_debug_print(val: &[u8]) {
 }
 
 fn main() {
+    let v = vec![1u8, 2, 3, 5, 7, 9, 10].into_boxed_slice();
+    let mut b = Binary::from(v);
+    {
+        b.next();
+        let c = b.clone_slice();
+        drop(c);
+        b.next();
+        let d = b.clone_slice();
+        drop(d);
+    }
+    drop(b);
+    println!("finish");
+    // let len = v.len();
+    // let raw = Box::into_raw(v) as *mut u8;
+
+    // // Layout::from_size_align(cap, 1);
+
+    // let value = unsafe { Vec::from_raw_parts(raw, len, len) };
+    // println!("value = {:?}", value);
+
+    if true {
+        return;
+    }
+
     // let mut request = webparse::Request::builder().body("What is this".to_string()).unwrap();
     // // let _result = request.parse(b"GET /index.html HTTP/1.1\r\nHost: example.domain\r\n\r\n").unwrap();
     // // println!("result = {:?}", request);

@@ -1,4 +1,4 @@
-use crate::{BinaryMut, BufMut, Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError};
+use crate::{BinaryMut, BufMut, Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError, MarkBuf};
 use super::{Method, Version, HeaderMap, HeaderName, HeaderValue, Scheme};
 
 
@@ -215,7 +215,7 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn parse_token_by_func<'a, T: Buf>(buffer: &'a mut T, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
+    pub(crate) fn parse_token_by_func<'a, T: Buf + MarkBuf>(buffer: &'a mut T, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
         let mut b = next!(buffer)?;
         if !func(b) {
             return Err(err);
@@ -226,12 +226,12 @@ impl Helper {
             if b == b' ' {
                 unsafe {
                     buffer.advance(1);
-                    return Ok(std::str::from_utf8_unchecked(buffer.slice_skip(1)))
+                    return Ok(std::str::from_utf8_unchecked(buffer.mark_slice_skip(1)))
                 }
             } else if !func(b) {
                 return Ok(
                     unsafe {
-                        std::str::from_utf8_unchecked(buffer.slice())
+                        std::str::from_utf8_unchecked(buffer.mark_slice())
                     })
             }
             next!(buffer)?;
@@ -260,7 +260,7 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn parse_scheme<'a, T: Buf>(buffer: &'a mut T) -> WebResult<&'a str> {
+    pub(crate) fn parse_scheme<'a, T: Buf + MarkBuf>(buffer: &'a mut T) -> WebResult<&'a str> {
         let token = Self::parse_token_by_func(buffer, Scheme::is_scheme_token, WebError::from(HttpError::HeaderValue))?;
         println!("token = {:?}", token);
         Ok(token)

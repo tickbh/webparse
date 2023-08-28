@@ -6,5 +6,5 @@ mod buf_mut;
 
 pub use binary_mut::BinaryMut;
 pub use binary::{Binary, Vtable};
-pub use buf::Buf;
+pub use buf::{Buf, MarkBuf};
 pub use buf_mut::BufMut;

@@ -9,7 +9,7 @@ pub use scheme::Scheme;
 pub use builder::Builder;
 pub use error::UrlError;
 
-use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper, BinaryMut, Binary, Buf };
+use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper, BinaryMut, Binary, Buf, MarkBuf };
 
 
 
@@ -79,7 +79,7 @@ impl Url {
             expect!(buffer.next() == b':' => Err(WebError::from(UrlError::UrlInvalid)));
             expect!(buffer.next() == b'/' => Err(WebError::from(UrlError::UrlInvalid)));
             expect!(buffer.next() == b'/' => Err(WebError::from(UrlError::UrlInvalid)));
-            buffer.commit();
+            buffer.mark_commit();
         } else if b == b'/' {
             is_first_slash = true;
             has_domain = false;
@@ -124,7 +124,7 @@ impl Url {
                 } else {
                     return Err(WebError::from(UrlError::UrlInvalid));
                 }
-                buffer.bump();
+                buffer.mark_bump();
             } else if b == b'@' {
                 //一开始的冒泡匹配域名,把域名结束当前username结束, 不存在用户密码, 不允许存在'@'
                 if domain.is_none() {
@@ -133,7 +133,7 @@ impl Url {
                 username = domain;
                 domain = None;
                 password = Some(buffer.clone_slice());
-                buffer.bump();
+                buffer.mark_bump();
             } else if b == b'/' {
                 if !is_first_slash {
                     //反斜杠仅存在第一次域名不解析时获取
@@ -153,7 +153,7 @@ impl Url {
                     return Err(WebError::from(UrlError::UrlInvalid));
                 }
                 path = Some(buffer.clone_slice());
-                buffer.bump();
+                buffer.mark_bump();
             } else if !check_func(b) {
                 return Err(WebError::from(UrlError::UrlInvalid));
             }
