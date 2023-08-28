@@ -246,11 +246,6 @@ impl Buf for Binary {
         self.start = self.cursor
     }
     
-    fn retreat(&mut self, n: usize) {
-        unsafe {
-            self.sub_start(n)
-        }
-    }
 }
 
 impl Read for Binary {

@@ -50,35 +50,41 @@ pub trait Buf {
     /// 消耗掉多少字节的数据, 做指针偏移
     fn advance(&mut self, n: usize);
 
-    /// 是否还有数据
-    fn has_remaining(&self) -> bool {
-        self.remaining() > 0
-    }
+    fn slice_skip(&mut self, skip: usize) -> &[u8];
 
-    fn next(&mut self) -> Option<u8> {
+    fn peek(&self) -> Option<u8> {
         if self.has_remaining() {
-            let val = self.chunk()[0];
-            self.advance(1);
-            Some(val)
+            let ret = self.chunk()[0] as u8;
+            Some(ret)
         } else {
             None
         }
     }
-    // fn clone_slice(&self) -> Self;
 
     fn commit(&mut self) {}
-
-    fn slice_skip(&mut self, skip: usize) -> &[u8];
 
     fn slice(&mut self) -> &[u8] {
         self.slice_skip(0)
     }
 
-    fn retreat(&mut self, n: usize) {
+    /// 是否还有数据
+    fn has_remaining(&self) -> bool {
+        self.remaining() > 0
     }
 
     fn bump(&mut self) {
         self.advance(1);
+        self.commit();
+    }
+    
+    fn next(&mut self) -> Option<u8> {
+        if self.has_remaining() {
+            let val = self.peek().unwrap();
+            self.advance(1);
+            Some(val)
+        } else {
+            None
+        }
     }
 
     /// 拷贝数据 `self` into `dst`.
@@ -124,14 +130,6 @@ pub trait Buf {
         ret
     }
 
-    fn peek(&self) -> Option<u8> {
-        if self.has_remaining() {
-            let ret = self.chunk()[0] as u8;
-            Some(ret)
-        } else {
-            None
-        }
-    }
 
     /// Gets an unsigned 16 bit integer from `self` in big-endian byte order.
     ///

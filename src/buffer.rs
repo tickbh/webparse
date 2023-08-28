@@ -198,13 +198,6 @@ impl Buffer {
     }
     
     #[inline]
-    pub fn retreat(&mut self, n: usize) {
-        self.cursor = self.cursor - n;
-        debug_assert!(self.cursor >= self.start, "overflow");
-    }
-    
-
-    #[inline]
     pub fn slice(&mut self) -> &[u8] {
         let cursor = self.cursor;
         let start = self.start;

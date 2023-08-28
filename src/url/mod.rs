@@ -29,49 +29,6 @@ impl Url {
     pub fn new() -> Url {
         Url { scheme: Scheme::None, path: "/".to_string(), username: None, password: None, domain: None, port: None, query: None }
     }
-
-    // fn parse_url_token<'a, T: Buf>(buffer: &'a mut T, start: usize, end: usize, can_convert: bool) -> WebResult<Option<String>> {
-    //     if start >= end {
-    //         return Ok(None)
-    //     }
-    //     let ori_start = buffer.get_start();
-    //     let ori_cursor = buffer.get_cursor();
-    //     let ori_end = buffer.get_end();
-    //     let mut result = Vec::with_capacity(end-start);
-    //     buffer.set_start(start);
-    //     buffer.set_cursor(start);
-    //     buffer.set_end(end);
-    //     loop {
-    //         let b = match next!(buffer) {
-    //             Ok(v) => v,
-    //             Err(_) => {
-    //                 break;
-    //             }
-    //         };
-    //         // 转码字符, 后面必须跟两位十六进制数字
-    //         if b == b'%' {
-    //             if !can_convert {
-    //                 return Err(WebError::from(UrlError::UrlInvalid));
-    //             }
-    //             let t = Helper::convert_hex(next!(buffer)?);
-    //             let u = Helper::convert_hex(next!(buffer)?);
-    //             if t.is_none() || u.is_none() {
-    //                 return Err(WebError::from(UrlError::UrlInvalid));
-    //             }
-    //             result.push(t.unwrap() * 16 + u.unwrap());
-    //         } else {
-    //             result.push(b);
-    //         }
-    //     }
-    //     buffer.set_start(ori_start);
-    //     buffer.set_cursor(ori_cursor);
-    //     buffer.set_end(ori_end);
-    //     match String::from_utf8(result) {
-    //         Ok(s) => Ok(Some(s)),
-    //         Err(_) => Err(WebError::from(UrlError::UrlInvalid))
-    //     }
-    // }
-
     
     fn parse_url_token<'a>(buffer: &'a mut Binary, can_convert: bool) -> WebResult<Option<String>> {
         let mut result = Vec::with_capacity(buffer.len());
@@ -133,7 +90,7 @@ impl Url {
         let mut check_func = Helper::is_token;
 
         loop {
-            b = match next!(buffer) {
+            b = match peek!(buffer) {
                 Ok(v) => v,
                 Err(_) => {
                     if path.is_some() {
@@ -150,6 +107,10 @@ impl Url {
                     break;
                 }
             };
+
+            // b = peek!(buffer)?;
+            println!("b === {:?}", String::from_utf8_lossy(&[b]));
+            
             // 存在用户名, 解析用户名
             if b == b':' {
                 //未存在协议头, 允许path与query
@@ -159,11 +120,11 @@ impl Url {
 
                 // 匹配域名, 如果在存在期间检测到@则把当前当作用户结尾
                 if domain.is_none() {
-                    domain = Some(buffer.clone_slice_skip(1));
+                    domain = Some(buffer.clone_slice());
                 } else {
                     return Err(WebError::from(UrlError::UrlInvalid));
                 }
-
+                buffer.bump();
             } else if b == b'@' {
                 //一开始的冒泡匹配域名,把域名结束当前username结束, 不存在用户密码, 不允许存在'@'
                 if domain.is_none() {
@@ -171,11 +132,11 @@ impl Url {
                 }
                 username = domain;
                 domain = None;
-                password = Some(buffer.clone_slice_skip(1));
+                password = Some(buffer.clone_slice());
+                buffer.bump();
             } else if b == b'/' {
                 if !is_first_slash {
                     //反斜杠仅存在第一次域名不解析时获取
-                    buffer.retreat(1);
                     if domain.is_none() {
                         domain = Some(buffer.clone_slice());
                     } else {
@@ -185,16 +146,19 @@ impl Url {
                 }
             } else if b == b'?' {
                 if domain.is_none() && has_domain {
-                    domain = Some(buffer.clone_slice_skip(1));
+                    domain = Some(buffer.clone_slice());
                 }
                 // 不允许存在多次的'?'
                 if path.is_some() {
                     return Err(WebError::from(UrlError::UrlInvalid));
                 }
-                path = Some(buffer.clone_slice_skip(1));
+                path = Some(buffer.clone_slice());
+                buffer.bump();
             } else if !check_func(b) {
                 return Err(WebError::from(UrlError::UrlInvalid));
             }
+
+            next!(buffer)?;
         }
 
         let mut url = Url::new();
@@ -298,7 +262,7 @@ impl Display for Url {
         if self.domain.is_some() {
             f.write_fmt(format_args!("{}", self.domain.as_ref().unwrap()))?;
         }
-        if self.port.is_some() {
+        if self.scheme != Scheme::None && self.port.is_some() {
             match (&self.scheme, self.port) {
                 (Scheme::Http, Some(80)) => {}
                 (Scheme::Https, Some(443)) => {}

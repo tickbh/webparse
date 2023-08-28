@@ -229,11 +229,6 @@ impl BinaryMut {
         self.slice_skip(0)
     }
 
-    #[inline]
-    pub fn retreat(&mut self, n: usize) {
-        self.cursor = self.cursor - n;
-        debug_assert!(self.cursor >= self.start, "overflow");
-    }
 
     #[inline]
     pub fn bump(&mut self) {
@@ -301,11 +296,6 @@ impl Buf for BinaryMut {
         self.commit();
         let head = &self.chunk()[start .. (cursor - skip)];
         head
-    }
-    
-    fn retreat(&mut self, n: usize) {
-        self.cursor = self.cursor - n;
-        debug_assert!(self.cursor >= self.start, "overflow");
     }
 
 }
