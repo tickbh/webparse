@@ -356,4 +356,26 @@ impl Helper {
         }
     }
 
+    #[inline]
+    pub(crate) fn hexstr_to_vec(s: &str) -> Vec<u8> {
+        let mut result = vec![];
+        let bytes = s.as_bytes();
+        let mut val = 0;
+        let mut is_first = true;
+        for b in bytes {
+            if b != &b' ' {
+                if is_first {
+                    val = u8::from_str_radix(std::str::from_utf8(&[*b]).unwrap(), 16).unwrap();
+                    is_first = false
+                } else {
+                    val = val * 16 + u8::from_str_radix(std::str::from_utf8(&[*b]).unwrap(), 16).unwrap();
+                    result.push(val);
+                    val = 0;
+                    is_first = true;
+                }
+            }
+        }
+        result
+    }
+
 }

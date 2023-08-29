@@ -1,8 +1,10 @@
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::num::Wrapping;
-use std::sync::Arc;
+use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
-use crate::{WebResult, Buffer, HeaderName, HeaderValue, WebError, Http2Error};
+use crate::{WebResult, Buffer, HeaderName, HeaderValue, WebError, Http2Error, BinaryMut, Buf};
 
 use super::huffman::{HuffmanDecoderError, HuffmanDecoder};
 use super::HeaderIndex;
@@ -86,35 +88,36 @@ pub enum DecoderError {
 
 
 pub struct Decoder {
-    pub index: Arc<HeaderIndex>,
+    pub index: Arc<RwLock<HeaderIndex>>,
 }
 
 impl Decoder {
 
     pub fn new() -> Decoder {
-        Decoder { index: Arc::new(HeaderIndex::new()) }
+        Decoder { index: Arc::new(RwLock::new(HeaderIndex::new())) }
     }
 
-    pub fn new_index(index: Arc<HeaderIndex>) -> Decoder {
+    pub fn new_index(index: Arc<RwLock<HeaderIndex>>) -> Decoder {
         Decoder { index }
     }
 
-    pub fn decode(&mut self, buf: &mut Buffer) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
+    pub fn decode(&mut self, buf: &mut BinaryMut) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
         let mut header_list = Vec::new();
         self.decode_with_cb(buf, |n, v| header_list.push((n.into_owned(), v.into_owned())))?;
         Ok(header_list)
     }
 
-    pub fn decode_with_cb<F>(&mut self, buf: &mut Buffer, mut cb: F) -> WebResult<()>
+    pub fn decode_with_cb<F>(&mut self, buf: &mut BinaryMut, mut cb: F) -> WebResult<()>
     where F: FnMut(Cow<HeaderName>, Cow<HeaderValue>) {
-        while !buf.is_end() {
-            let initial_octet = buf.now();
-            let buffer_leftover = buf.get_left_array();
+        while buf.has_remaining() {
+            let initial_octet = buf.peek().unwrap();
+            let buffer_leftover = buf.chunk();
             let consumed = match FieldRepresentation::new(initial_octet) {
                 FieldRepresentation::Indexed => {
-                    let ((name, value), consumed) =
-                        (self.decode_indexed(initial_octet))?;
-                    cb(Cow::Borrowed(name), Cow::Borrowed(value));
+                    let consumed =
+                        (self.decode_indexed(initial_octet, |name, value| {
+                            cb(Cow::Borrowed(name), Cow::Borrowed(value));
+                        }))?;
                     consumed
                 },
                 FieldRepresentation::LiteralWithIncrementalIndexing => {
@@ -134,9 +137,7 @@ impl Decoder {
                     // // borrow on `self` that the `decode_literal` return value had. Since adding
                     // // a header to the table requires a `&mut self`, it fails to compile.
                     // // Manually separating it out here works around it...
-                    Arc::get_mut(&mut self.index).map(|v| {
-                        v.add_header(name, value);
-                    });
+                    self.index.write().unwrap().add_header(name, value);
                     consumed
                 },
                 FieldRepresentation::LiteralWithoutIndexing => {
@@ -276,8 +277,14 @@ impl Decoder {
             HeaderName::from_bytes(&name).unwrap()
         } else {
             // Read name indexed from the table
-            let (name, _) = self.get_from_table(table_index)?;
-            name.clone()
+            // let mut name;
+            let mut name = HeaderName::Stand("");
+            self.get_from_table(table_index, |n, _| {
+                name = n.clone();
+            })?;
+            name
+            // let (name, _) = self.get_from_table(table_index)?;
+            // name.into_owned()
         };
 
         // Now read the value as a literal...
@@ -288,13 +295,20 @@ impl Decoder {
     }
 
 
-    fn decode_indexed(&self, index: u8) -> WebResult<((&HeaderName, &HeaderValue), usize)> {
+    fn decode_indexed<F>(&self, index: u8, call: F) -> WebResult<usize> 
+    where F : FnOnce(&HeaderName, &HeaderValue){
         let index = index & 0x7f;
-        let (name, value) = self.index.get_from_index(index as usize).ok_or(Http2Error::into(DecoderError::HeaderIndexOutOfBounds))?;
-        Ok(((name, value), 1))
+        let header = self.index.read().unwrap();
+        let (name, value) = header.get_from_index(index as usize).ok_or(Http2Error::into(DecoderError::HeaderIndexOutOfBounds))?;
+        call(name, value);
+        Ok(1)
     }
 
-    fn get_from_table(&self, index: usize) -> WebResult<(&HeaderName, &HeaderValue)> {
-        self.index.get_from_index(index as usize).ok_or(Http2Error::into(DecoderError::HeaderIndexOutOfBounds))
+    fn get_from_table<F>(&self, index: usize, call: F) -> WebResult<()>
+    where F : FnOnce(&HeaderName, &HeaderValue) {
+        let header = self.index.read().unwrap();
+        let (name, value) = header.get_from_index(index as usize).ok_or(Http2Error::into(DecoderError::HeaderIndexOutOfBounds))?;
+        call(name, value);
+        Ok(())
     }
 }

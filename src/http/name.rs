@@ -91,6 +91,21 @@ impl HeaderName {
             Self::Value(s) => s.as_bytes().len(),
         }
     }
+
+    /// 特殊的header头, 比如:method, :path, :scheme以:开头的
+    pub fn is_spec(&self) -> bool {
+        match self {
+            Self::Stand(s) => s.as_bytes().starts_with(b":"),
+            Self::Value(s) => s.as_bytes().starts_with(b":"),
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Stand(s) => s,
+            Self::Value(s) => s,
+        }
+    }
 }
 
 macro_rules! standard_headers {

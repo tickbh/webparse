@@ -1,5 +1,8 @@
 use std::fmt::Display;
+use lazy_static::lazy_static;
 use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper, BinaryMut, Binary, Buf, MarkBuf, Scheme, UrlError };
+
+use super::scheme;
 
 #[derive(Clone, Debug)]
 pub struct Url {
@@ -12,10 +15,38 @@ pub struct Url {
     pub query: Option<String>,
 }
 
+
 impl Url {
-    
+    pub const DEFAULT_PATH: &str = "/";
+
     pub fn new() -> Url {
-        Url { scheme: Scheme::None, path: "/".to_string(), username: None, password: None, domain: None, port: None, query: None }
+        Url { scheme: Scheme::None, path: Self::DEFAULT_PATH.to_string(), username: None, password: None, domain: None, port: None, query: None }
+    }
+
+    #[inline]
+    pub fn merge(&mut self, other: Url) {
+        if other.scheme != Scheme::None && self.scheme != other.scheme {
+            self.scheme = other.scheme;
+        }
+        if other.path != Self::DEFAULT_PATH  && self.path != other.path {
+            self.path = other.path;
+        }
+        if other.username != None  && self.username != other.username {
+            self.username = other.username;
+        }
+        if other.password != None  && self.password != other.password {
+            self.password = other.password;
+        }
+        if other.domain != None  && self.domain != other.domain {
+            self.domain = other.domain;
+        }
+        if other.port != None && other.port != Some(0) && self.port != other.port {
+            self.port = other.port;
+        }
+        if other.query != None  && self.query != other.query {
+            self.query = other.query;
+        }
+        
     }
     
     fn parse_url_token<'a>(buffer: &'a mut Binary, can_convert: bool) -> WebResult<Option<String>> {
@@ -75,7 +106,7 @@ impl Url {
             return Err(WebError::from(UrlError::UrlInvalid));
         }
         
-        let mut check_func = Helper::is_token;
+        let check_func = Helper::is_token;
 
         loop {
             b = match peek!(buffer) {
@@ -96,9 +127,6 @@ impl Url {
                 }
             };
 
-            // b = peek!(buffer)?;
-            println!("b === {:?}", String::from_utf8_lossy(&[b]));
-            
             // 存在用户名, 解析用户名
             if b == b':' {
                 //未存在协议头, 允许path与query, 忽略掉冒号
@@ -184,7 +212,7 @@ impl Url {
                 Scheme::Ws => url.port = Some(80),
                 Scheme::Wss => url.port = Some(443),
                 Scheme::Ftp => url.port = Some(21),
-                _ => url.port = Some(80),
+                _ => url.port = Some(0),
             }
         }
 

@@ -1,22 +1,22 @@
 
-use std::{io, num::Wrapping, sync::Arc};
+use std::{io, num::Wrapping, sync::{Arc, RwLock}, rc::Rc, cell::RefCell};
 use crate::{HeaderName, HeaderValue, Serialize};
 use super::HeaderIndex;
 
 pub struct Encoder {
-    pub index: Arc<HeaderIndex>,
+    pub index: Arc<RwLock<HeaderIndex>>,
 }
 
 
 impl Encoder {
-    
+
     pub fn new() -> Encoder {
         Encoder {
-            index: Arc::new(HeaderIndex::new()),
+            index: Arc::new(RwLock::new(HeaderIndex::new())),
         }
     }
     
-    pub fn new_index(index: Arc<HeaderIndex>) -> Encoder {
+    pub fn new_index(index: Arc<RwLock<HeaderIndex>>) -> Encoder {
         Encoder { index }
     }
 
@@ -42,12 +42,14 @@ impl Encoder {
             writer: &mut W)
             -> io::Result<()> {
         println!("header = {:?}", header);
-        match self.index.find_header(header) {
+        let value = {
+            self.index.read().unwrap().find_header(header)
+        };
+        match value {
             None => {
                 self.encode_literal(header, true, writer)?;
-                Arc::get_mut(&mut self.index).map(|v| {
-                    v.add_header(header.0.clone(), header.1.clone());
-                });
+                self.index.write().unwrap().add_header(header.0.clone(), header.1.clone());
+
             },
             Some((index, false)) => {
                 self.encode_indexed_name((index, &header.1), true, writer)?;
