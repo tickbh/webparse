@@ -1,6 +1,6 @@
-use std::{hash::Hash, fmt, io::Write, borrow::Cow};
+use std::{borrow::Cow, fmt, hash::Hash, io::Write};
 
-use crate::{WebError, Serialize, Buffer, WebResult};
+use crate::{Serialize, WebError, WebResult};
 
 #[derive(Clone)]
 pub enum HeaderName {
@@ -19,19 +19,13 @@ impl PartialEq for HeaderName {
     }
 }
 
-impl Eq for HeaderName {
-
-}
+impl Eq for HeaderName {}
 
 impl Hash for HeaderName {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let bytes = match self {
-            HeaderName::Stand(stand) => {
-                stand.as_bytes()
-            },
-            HeaderName::Value(val) => {
-                val.as_bytes()
-            }
+            HeaderName::Stand(stand) => stand.as_bytes(),
+            HeaderName::Value(val) => val.as_bytes(),
         };
 
         for &b in bytes {
@@ -56,22 +50,20 @@ impl fmt::Debug for HeaderName {
 }
 
 impl TryFrom<&'static str> for HeaderName {
-    type Error=WebError;
+    type Error = WebError;
     fn try_from(value: &'static str) -> Result<Self, Self::Error> {
         Ok(HeaderName::Stand(value))
     }
 }
 
 impl TryFrom<String> for HeaderName {
-    type Error=WebError;
+    type Error = WebError;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Ok(HeaderName::Value(value))
     }
 }
 
-
 impl Serialize for HeaderName {
-
     fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         match self {
             Self::Stand(name) => Ok(Cow::Borrowed(name.as_bytes())),

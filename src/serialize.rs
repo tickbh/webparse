@@ -1,15 +1,15 @@
 use std::{io::Write, borrow::Cow};
 
-use crate::{Buffer, WebResult, WebError};
+use crate::{WebResult, WebError, Buf, BufMut, MarkBuf, Binary, BinaryMut};
 
 static EMPTY_ARRAY: Vec<u8> = vec![];
 pub trait Serialize {
-    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+    fn serialize(&self, buffer: &mut BinaryMut) -> WebResult<()> {
         buffer.write(&self.serial_bytes()?).map_err(WebError::from)?;
         Ok(())
     }
 
-    fn serialize_mut(&mut self, buffer: &mut Buffer) -> WebResult<()> {
+    fn serialize_mut(&mut self, buffer: &mut BinaryMut) -> WebResult<()> {
         buffer.write(&self.serial_bytes()?).map_err(WebError::from)?;
         Ok(())
     }

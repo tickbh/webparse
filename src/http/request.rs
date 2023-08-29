@@ -1,12 +1,26 @@
+use std::{
+    borrow::Cow,
+    cell::RefCell,
+    collections::HashMap,
+    io::Write,
+    rc::Rc,
+    sync::{Arc, RwLock},
+};
 
-use std::{collections::HashMap, io::Write, borrow::Cow, sync::{Arc, RwLock}, rc::Rc, cell::RefCell};
-
-use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize, Scheme, BinaryMut, Buf, buffer, BufMut, MarkBuf};
-use super::{Method, HeaderMap, Version, http2::{self, encoder::Encoder, Decoder, HeaderIndex}};
+use super::{
+    http2::{self, encoder::Encoder, Decoder, HeaderIndex},
+    HeaderMap, Method, Version,
+};
+use crate::{
+    buffer, BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, MarkBuf,
+    Scheme, Serialize, Url, WebError, WebResult,
+};
 
 #[derive(Debug)]
-pub struct Request<T> 
-where T : Serialize {
+pub struct Request<T>
+where
+    T: Serialize,
+{
     parts: Parts,
     body: T,
     partial: bool,
@@ -27,7 +41,6 @@ pub struct Builder {
     inner: WebResult<Parts>,
 }
 
-
 impl Builder {
     /// Creates a new default instance of `Builder` to construct a `Request`.
     ///
@@ -46,7 +59,7 @@ impl Builder {
         Builder::default()
     }
 
-    pub fn from_req<T : Serialize>(req: Request<T>) -> Builder {
+    pub fn from_req<T: Serialize>(req: Request<T>) -> Builder {
         let mut build = Builder::default();
         if req.method() != &Method::None {
             let _ = build.inner.as_mut().map(|head| {
@@ -67,7 +80,7 @@ impl Builder {
         let _ = build.inner.as_mut().map(|head| {
             head.url = req.url().clone();
         });
-        
+
         match req.extensions().get::<Arc<RwLock<HeaderIndex>>>() {
             Some(index) => {
                 let _ = build.inner.as_mut().map(|head| {
@@ -302,7 +315,9 @@ impl Builder {
     ///     .unwrap();
     /// ```
     pub fn body<T>(self, body: T) -> WebResult<Request<T>>
-    where T : Serialize {
+    where
+        T: Serialize,
+    {
         self.inner.map(move |mut head| {
             if head.path.len() == 0 {
                 head.path = head.url.path.clone();
@@ -315,12 +330,11 @@ impl Builder {
         })
     }
 
-
     // private
 
     fn and_then<F>(self, func: F) -> Self
     where
-        F: FnOnce(Parts) -> WebResult<Parts>
+        F: FnOnce(Parts) -> WebResult<Parts>,
     {
         Builder {
             inner: self.inner.and_then(func),
@@ -333,9 +347,7 @@ impl Default for Builder {
     fn default() -> Builder {
         let mut parts = Parts::new();
         parts.method = Method::Get;
-        Builder {
-            inner: Ok(parts),
-        }
+        Builder { inner: Ok(parts) }
     }
 }
 
@@ -354,7 +366,9 @@ impl Request<()> {
 }
 
 impl<T> Request<T>
-    where T : Serialize {
+where
+    T: Serialize,
+{
     pub fn method(&self) -> &Method {
         &self.parts.method
     }
@@ -363,7 +377,7 @@ impl<T> Request<T>
     pub fn version(&self) -> &Version {
         &self.parts.version
     }
-    
+
     #[inline]
     pub fn path(&self) -> &String {
         &self.parts.path
@@ -380,7 +394,7 @@ impl<T> Request<T>
     pub fn headers_mut(&mut self) -> &mut HeaderMap {
         &mut self.parts.header
     }
-    
+
     pub fn url(&self) -> &Url {
         &self.parts.url
     }
@@ -417,7 +431,7 @@ impl<T> Request<T>
         Ok(())
     }
 
-    pub fn parse_http2<B:Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn parse_http2<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut decoder = self.get_decoder();
         let headers = decoder.decode(buffer)?;
         for h in headers {
@@ -452,18 +466,20 @@ impl<T> Request<T>
         self.parts.version = Version::Http2;
         Ok(buffer.mark_commit())
     }
-    
-    pub fn parse2(&mut self, buf:&[u8]) -> WebResult<usize> {
+
+    pub fn parse2(&mut self, buf: &[u8]) -> WebResult<usize> {
         self.partial = true;
         let mut buffer = BinaryMut::from(buf);
         self.parse_http2(&mut buffer)
     }
 
-    pub fn parse_buffer<B:Buf + MarkBuf>(&mut self, buffer:&mut B) -> WebResult<usize> {
+    pub fn parse_buffer<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         Helper::skip_empty_lines(buffer)?;
         {
             let chunks = buffer.chunk();
-            if chunks.len() >= http2::HTTP2_MAGIC.len() && &chunks[..http2::HTTP2_MAGIC.len()] == http2::HTTP2_MAGIC {
+            if chunks.len() >= http2::HTTP2_MAGIC.len()
+                && &chunks[..http2::HTTP2_MAGIC.len()] == http2::HTTP2_MAGIC
+            {
                 self.parts.version = Version::Http2;
                 buffer.advance(http2::HTTP2_MAGIC.len());
                 return self.parse_http2(buffer);
@@ -479,7 +495,7 @@ impl<T> Request<T>
         Helper::parse_header(buffer, &mut self.parts.header)?;
         self.partial = false;
         self.parts.url = match self.parts.method {
-            // Connect 协议, Path则为连接地址, 
+            // Connect 协议, Path则为连接地址,
             Method::Connect => {
                 let mut url = Url::new();
                 Self::parse_connect_by_host(&mut url, &self.parts.path)?;
@@ -501,12 +517,12 @@ impl<T> Request<T>
         Ok(buffer.mark_commit())
     }
 
-    pub fn parse(&mut self, buf:&[u8]) -> WebResult<usize> {
+    pub fn parse(&mut self, buf: &[u8]) -> WebResult<usize> {
         self.partial = true;
         let mut buffer = BinaryMut::from(buf);
         self.parse_buffer(&mut buffer)
     }
-    
+
     /// Returns a reference to the associated extensions.
     ///
     /// # Examples
@@ -520,7 +536,6 @@ impl<T> Request<T>
     pub fn extensions(&self) -> &Extensions {
         &self.parts.extensions
     }
-
 
     /// Returns a mutable reference to the associated extensions.
     ///
@@ -537,16 +552,16 @@ impl<T> Request<T>
         &mut self.parts.extensions
     }
 
-    pub fn httpdata(&self) -> WebResult<Vec<u8>>  {
-        let mut buffer = Buffer::new();
+    pub fn httpdata(&self) -> WebResult<Vec<u8>> {
+        let mut buffer = BinaryMut::new();
         self.serialize(&mut buffer)?;
-        return Ok(buffer.write_data());
+        return Ok(buffer.as_slice().to_vec());
     }
 
-    pub fn http2data(&mut self) -> WebResult<Vec<u8>>  {
-        let mut buffer = Buffer::new();
+    pub fn http2data(&mut self) -> WebResult<Vec<u8>> {
+        let mut buffer = BinaryMut::new();
         self.serialize_mut(&mut buffer)?;
-        return Ok(buffer.write_data());
+        return Ok(buffer.as_slice().to_vec());
     }
 
     fn get_index(&mut self) -> Arc<RwLock<HeaderIndex>> {
@@ -563,14 +578,13 @@ impl<T> Request<T>
     pub fn get_decoder(&mut self) -> Decoder {
         Decoder::new_index(self.get_index())
     }
-    
+
     pub fn get_encoder(&mut self) -> Encoder {
         Encoder::new_index(self.get_index())
     }
 }
 
 impl Parts {
-
     pub fn new() -> Parts {
         Parts::default()
     }
@@ -585,7 +599,11 @@ impl Parts {
     // like wwww.baidu.com:80, wwww.google.com:443
     pub fn get_connect_url(&self) -> Option<String> {
         if self.url.domain.is_some() && self.url.port.is_some() {
-            Some(format!("{}:{}", self.url.domain.as_ref().unwrap(), self.url.port.as_ref().unwrap()))
+            Some(format!(
+                "{}:{}",
+                self.url.domain.as_ref().unwrap(),
+                self.url.port.as_ref().unwrap()
+            ))
         } else {
             None
         }
@@ -594,17 +612,21 @@ impl Parts {
 
 impl Default for Request<()> {
     fn default() -> Self {
-        Self { parts: Default::default(), body: Default::default(), partial: Default::default() }
+        Self {
+            parts: Default::default(),
+            body: Default::default(),
+            partial: Default::default(),
+        }
     }
 }
 
 impl Default for Parts {
     fn default() -> Self {
-        Parts { 
+        Parts {
             method: Method::NONE,
-            header: HeaderMap::new(), 
-            version: Version::Http11, 
-            url: Url::new(), 
+            header: HeaderMap::new(),
+            version: Version::Http11,
+            url: Url::new(),
             path: String::new(),
             extensions: Extensions::new(),
         }
@@ -612,41 +634,61 @@ impl Default for Parts {
 }
 
 impl<T> Serialize for Request<T>
-    where T : Serialize {
-    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+where
+    T: Serialize,
+{
+    fn serialize(&self, buffer: &mut BinaryMut) -> WebResult<()> {
         match self.parts.version {
             Version::Http11 => {
                 self.parts.method.serialize(buffer)?;
-                buffer.write_u8(b' ').map_err(WebError::from)?;
+                buffer.put_u8(b' ');
                 self.parts.path.serialize(buffer)?;
-                buffer.write_u8(b' ').map_err(WebError::from)?;
+                buffer.put_u8(b' ');
                 self.parts.version.serialize(buffer)?;
-                buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;
+                buffer.put_slice("\r\n".as_bytes());
                 self.parts.header.serialize(buffer)?;
                 self.body.serialize(buffer)?;
                 Ok(())
             }
-            Version::Http2 => {
-                Err(WebError::Extension("http2 will may change dynamic header so so support"))
-            }
-            _ => Err(WebError::Extension("un support"))
+            Version::Http2 => Err(WebError::Extension(
+                "http2 will may change dynamic header so so support",
+            )),
+            _ => Err(WebError::Extension("un support")),
         }
     }
 
-    fn serialize_mut(&mut self, buffer: &mut Buffer) -> WebResult<()> {
+    fn serialize_mut(&mut self, buffer: &mut BinaryMut) -> WebResult<()> {
         match self.parts.version {
             Version::Http2 => {
                 let mut encode = self.get_encoder();
-                encode.encode_header_into( (&HeaderName::from_static(":method"), &HeaderValue::from_cow(self.parts.method.serial_bytes()?)), buffer)?;
-                encode.encode_header_into( (&HeaderName::from_static(":path"), &HeaderValue::from_cow(self.parts.path.serial_bytes()?)), buffer)?;
+                encode.encode_header_into(
+                    (
+                        &HeaderName::from_static(":method"),
+                        &HeaderValue::from_cow(self.parts.method.serial_bytes()?),
+                    ),
+                    buffer,
+                )?;
+                encode.encode_header_into(
+                    (
+                        &HeaderName::from_static(":path"),
+                        &HeaderValue::from_cow(self.parts.path.serial_bytes()?),
+                    ),
+                    buffer,
+                )?;
                 if self.parts.url.scheme != Scheme::None {
-                    encode.encode_header_into( (&HeaderName::from_static(":scheme"), &HeaderValue::from_cow(self.parts.url.scheme.serial_bytes()?)), buffer)?;
+                    encode.encode_header_into(
+                        (
+                            &HeaderName::from_static(":scheme"),
+                            &HeaderValue::from_cow(self.parts.url.scheme.serial_bytes()?),
+                        ),
+                        buffer,
+                    )?;
                 }
                 encode.encode_into(self.parts.header.iter(), buffer)?;
                 self.body.serialize(buffer)?;
                 Ok(())
             }
-            _ => self.serialize(buffer)
+            _ => self.serialize(buffer),
         }
     }
 
@@ -655,41 +697,39 @@ impl<T> Serialize for Request<T>
     }
 }
 
-
 mod tests {
-    use crate::{Request, Version, Method, Helper, http::request::Builder, Scheme};
+    use crate::{http::request::Builder, Helper, Method, Request, Scheme, Version};
 
     macro_rules! req {
-        ($name:ident, $buf:expr, |$arg:ident| $body:expr) => (
-        #[test]
-        fn $name() {
-            let mut req = Request::new();
-            let size = req.parse($buf.as_ref()).unwrap();
-            assert_eq!(size, $buf.len());
-            assert_eq!(&req.httpdata().unwrap(), $buf);
-            closure(req);
-            fn closure($arg: Request<()>) {
-                $body
+        ($name:ident, $buf:expr, |$arg:ident| $body:expr) => {
+            #[test]
+            fn $name() {
+                let mut req = Request::new();
+                let size = req.parse($buf.as_ref()).unwrap();
+                assert_eq!(size, $buf.len());
+                assert_eq!(&req.httpdata().unwrap(), $buf);
+                closure(req);
+                fn closure($arg: Request<()>) {
+                    $body
+                }
             }
-        }
-        )
+        };
     }
 
-    
     macro_rules! req2 {
-        ($name:ident, $buf:expr, |$arg:ident| $body:expr) => (
-        #[test]
-        fn $name() {
-            let mut req = Request::new();
-            let size = req.parse2($buf.as_ref()).unwrap();
-            assert_eq!(size, $buf.len());
-            // assert_eq!(&req.httpdata().unwrap(), $buf);
-            closure(req);
-            fn closure($arg: Request<()>) {
-                $body
+        ($name:ident, $buf:expr, |$arg:ident| $body:expr) => {
+            #[test]
+            fn $name() {
+                let mut req = Request::new();
+                let size = req.parse2($buf.as_ref()).unwrap();
+                assert_eq!(size, $buf.len());
+                // assert_eq!(&req.httpdata().unwrap(), $buf);
+                closure(req);
+                fn closure($arg: Request<()>) {
+                    $body
+                }
             }
-        }
-        )
+        };
     }
 
     req! {
@@ -781,7 +821,7 @@ mod tests {
         let buf = Helper::hexstr_to_vec("8286 84be 5808 6e6f 2d63 6163 6865");
         let size = req.parse2(buf.as_ref()).unwrap();
         assert_eq!(size, buf.len());
-        
+
         assert_eq!(req.method(), &Method::Get);
         assert_eq!(req.scheme(), &Scheme::Http);
         assert_eq!(req.path(), "/");
@@ -793,7 +833,9 @@ mod tests {
         assert_eq!(&req.headers()["cache-control"], "no-cache");
 
         let mut req = Builder::from_req(req).body(()).unwrap();
-        let buf = Helper::hexstr_to_vec("8287 85bf 400a 6375 7374 6f6d 2d6b 6579 0c63 7573 746f 6d2d 7661 6c75 65");
+        let buf = Helper::hexstr_to_vec(
+            "8287 85bf 400a 6375 7374 6f6d 2d6b 6579 0c63 7573 746f 6d2d 7661 6c75 65",
+        );
         let size = req.parse2(buf.as_ref()).unwrap();
         assert_eq!(size, buf.len());
         assert_eq!(req.method(), &Method::Get);
@@ -805,8 +847,5 @@ mod tests {
         assert_eq!(req.headers().len(), 2);
         assert_eq!(&req.headers()[":authority"], "www.example.com");
         assert_eq!(&req.headers()["custom-key"], "custom-value");
-
-
     }
 }
-

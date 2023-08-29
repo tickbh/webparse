@@ -1,7 +1,7 @@
-use std::{fmt, io::Write, borrow::Cow};
 use std::hash::Hash;
+use std::{borrow::Cow, fmt, io::Write};
 
-use crate::{WebError, Helper, Serialize, Buffer, WebResult};
+use crate::{Helper, Serialize, WebError, WebResult};
 
 #[derive(Clone, Debug)]
 pub enum HeaderValue {
@@ -17,7 +17,7 @@ impl HeaderValue {
     pub fn from_bytes(b: &[u8]) -> HeaderValue {
         HeaderValue::Value(b.to_vec())
     }
-    
+
     pub fn from_cow(b: Cow<[u8]>) -> HeaderValue {
         HeaderValue::Value(Vec::from(b.to_owned()))
     }
@@ -30,13 +30,12 @@ impl HeaderValue {
     }
 }
 
-
 impl Hash for HeaderValue {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
             HeaderValue::Stand(stand) => {
                 (*stand.as_bytes()).hash(state);
-            },
+            }
             HeaderValue::Value(val) => {
                 val.hash(state);
             }
@@ -55,7 +54,6 @@ impl fmt::Display for HeaderValue {
     }
 }
 
-
 impl TryInto<usize> for &HeaderValue {
     type Error = WebError;
 
@@ -66,24 +64,20 @@ impl TryInto<usize> for &HeaderValue {
                 let mut result = 0usize;
                 for b in v {
                     if !Helper::is_digit(*b) {
-                        return Err(WebError::IntoError)
+                        return Err(WebError::IntoError);
                     }
                     match result.overflowing_mul(10) {
                         (u, false) => {
                             result = u + (b - Helper::DIGIT_0) as usize;
                         }
-                        (_u, true) => {
-                            return Err(WebError::IntoError)
-                        }
+                        (_u, true) => return Err(WebError::IntoError),
                     }
                 }
                 Ok(result)
             }
         }
     }
-
 }
-
 
 impl TryInto<String> for &HeaderValue {
     type Error = WebError;
@@ -91,15 +85,13 @@ impl TryInto<String> for &HeaderValue {
     fn try_into(self) -> Result<String, WebError> {
         match self {
             HeaderValue::Stand(s) => Ok(s.to_string()),
-            HeaderValue::Value(v) => {
-                Ok(String::from_utf8_lossy(v).to_string())
-            }
+            HeaderValue::Value(v) => Ok(String::from_utf8_lossy(v).to_string()),
         }
     }
 }
 
 impl TryFrom<&'static str> for HeaderValue {
-    type Error=WebError;
+    type Error = WebError;
 
     fn try_from(value: &'static str) -> Result<Self, Self::Error> {
         Ok(HeaderValue::Stand(value))
@@ -107,15 +99,13 @@ impl TryFrom<&'static str> for HeaderValue {
 }
 
 impl TryFrom<String> for HeaderValue {
-    type Error=WebError;
+    type Error = WebError;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Ok(HeaderValue::Value(value.into_bytes()))
     }
 }
 
-impl Eq for HeaderValue {
-
-}
+impl Eq for HeaderValue {}
 
 impl PartialEq<HeaderValue> for HeaderValue {
     fn eq(&self, other: &HeaderValue) -> bool {
@@ -161,12 +151,8 @@ impl PartialEq<HeaderValue> for str {
 impl Serialize for HeaderValue {
     fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         match self {
-            Self::Stand(name) => {
-                Ok(Cow::Borrowed( name.as_bytes()))
-            }
-            Self::Value(vec) => {
-                Ok(Cow::Borrowed(&**vec))
-            }
+            Self::Stand(name) => Ok(Cow::Borrowed(name.as_bytes())),
+            Self::Value(vec) => Ok(Cow::Borrowed(&**vec)),
         }
     }
 }

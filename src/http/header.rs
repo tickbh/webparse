@@ -1,22 +1,30 @@
-use std::{collections::{HashMap, hash_map::Iter}, fmt, hash::Hash, ops::{Index, IndexMut}, io::Write, borrow::Cow};
+use std::{
+    borrow::Cow,
+    collections::{hash_map::Iter, HashMap},
+    fmt,
+    hash::Hash,
+    io::Write,
+    ops::{Index, IndexMut},
+};
 
-use crate::{WebError, helper, Helper, WebResult, HeaderName, HeaderValue, Serialize, Buffer};
-
+use crate::{helper, HeaderName, HeaderValue, Helper, Serialize, WebError, WebResult, BinaryMut};
 
 #[derive(Debug)]
 pub struct HeaderMap {
-    headers : HashMap<HeaderName, HeaderValue>,
+    headers: HashMap<HeaderName, HeaderValue>,
 }
 
 impl HeaderMap {
     pub fn new() -> HeaderMap {
-        HeaderMap { headers: HashMap::new() }
+        HeaderMap {
+            headers: HashMap::new(),
+        }
     }
 
     pub fn iter(&self) -> std::collections::hash_map::Iter<HeaderName, HeaderValue> {
         self.headers.iter()
     }
-    
+
     pub fn iter_mut(&mut self) -> std::collections::hash_map::IterMut<HeaderName, HeaderValue> {
         self.headers.iter_mut()
     }
@@ -27,10 +35,10 @@ impl HeaderMap {
 
     pub fn insert<T, V>(&mut self, name: T, value: V) -> Option<HeaderValue>
     where
-    HeaderName: TryFrom<T>,
-    <HeaderName as TryFrom<T>>::Error: Into<WebError>,
-    HeaderValue: TryFrom<V>,
-    <HeaderValue as TryFrom<V>>::Error: Into<WebError>,
+        HeaderName: TryFrom<T>,
+        <HeaderName as TryFrom<T>>::Error: Into<WebError>,
+        HeaderValue: TryFrom<V>,
+        <HeaderValue as TryFrom<V>>::Error: Into<WebError>,
     {
         let name = HeaderName::try_from(name).map_err(Into::into);
         let value = HeaderValue::try_from(value).map_err(Into::into);
@@ -50,7 +58,7 @@ impl HeaderMap {
 
     pub fn get_host(&self) -> Option<String> {
         for iter in &self.headers {
-            println!("name = {:?}", iter.0); 
+            println!("name = {:?}", iter.0);
         }
         if self.headers.contains_key(&HeaderName::HOST) {
             let value = &self.headers[&HeaderName::HOST];
@@ -60,11 +68,11 @@ impl HeaderMap {
         }
     }
 
-    pub fn get_body_len(&self) -> usize  {
+    pub fn get_body_len(&self) -> usize {
         // if self.headers.contains_key(&HeaderName::TRANSFER_ENCODING) {
         //     let value = &self.headers[&HeaderName::CONTENT_LENGTH];
         //     value.try_into().unwrap_or(0)
-        // } else 
+        // } else
         if self.headers.contains_key(&HeaderName::CONTENT_LENGTH) {
             let value = &self.headers[&HeaderName::CONTENT_LENGTH];
             value.try_into().unwrap_or(0)
@@ -76,12 +84,10 @@ impl HeaderMap {
     pub fn len(&self) -> usize {
         self.headers.len()
     }
-
 }
 
-
 impl Index<&'static str> for HeaderMap {
-    type Output=HeaderValue;
+    type Output = HeaderValue;
 
     fn index(&self, index: &'static str) -> &Self::Output {
         let name = HeaderName::Stand(index);
@@ -109,7 +115,6 @@ impl IndexMut<&'static str> for HeaderMap {
 //     }
 // }
 
-
 // impl<'a> Iterator for &'a mut HeaderMap {
 //     type Item = (&'a HeaderName, &'a mut HeaderValue);
 //     fn next(&mut self) -> Option<Self::Item> {
@@ -126,13 +131,12 @@ impl IntoIterator for HeaderMap {
     }
 }
 
-
 impl Serialize for HeaderMap {
     fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         Err(WebError::Serialize("header map can't call header map"))
     }
 
-    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+    fn serialize(&self, buffer: &mut BinaryMut) -> WebResult<()> {
         for value in self.iter() {
             value.0.serialize(buffer)?;
             buffer.write(": ".as_bytes()).map_err(WebError::from)?;

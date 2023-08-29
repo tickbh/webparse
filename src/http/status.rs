@@ -15,13 +15,13 @@
 //! ```
 
 use std::borrow::Cow;
-use std::{convert::TryFrom, io::Write};
-use std::num::NonZeroU16;
 use std::error::Error;
 use std::fmt;
+use std::num::NonZeroU16;
 use std::str::FromStr;
+use std::{convert::TryFrom, io::Write};
 
-use crate::{WebError, WebResult, Serialize, Buffer, HttpError};
+use crate::{HttpError, Serialize, WebError, WebResult, BinaryMut};
 
 /// An HTTP status code (`status-code` in RFC 7230 et al.).
 ///
@@ -46,7 +46,6 @@ use crate::{WebError, WebResult, Serialize, Buffer, HttpError};
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StatusCode(NonZeroU16);
-
 
 impl StatusCode {
     /// Converts a u16 to a status code.
@@ -136,10 +135,14 @@ impl StatusCode {
         // ASCII-only, of length 900 * 3 = 2700 bytes
 
         #[cfg(debug_assertions)]
-        { &CODE_DIGITS[offset..offset+3] }
+        {
+            &CODE_DIGITS[offset..offset + 3]
+        }
 
         #[cfg(not(debug_assertions))]
-        unsafe { CODE_DIGITS.get_unchecked(offset..offset+3) }
+        unsafe {
+            CODE_DIGITS.get_unchecked(offset..offset + 3)
+        }
     }
 
     /// Get the standardised `reason-phrase` for this status code.
@@ -510,27 +513,26 @@ status_codes! {
     (511, NETWORK_AUTHENTICATION_REQUIRED, "Network Authentication Required");
 }
 
-
-
-impl Serialize for StatusCode  {
-    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+impl Serialize for StatusCode {
+    fn serialize(&self, buffer: &mut BinaryMut) -> WebResult<()> {
         match self.canonical_reason() {
             Some(s) => {
-                buffer.write(format!("{} {}\r\n", self.as_str(), s).as_bytes()).map_err(WebError::from)?;
+                buffer
+                    .write(format!("{} {}\r\n", self.as_str(), s).as_bytes())
+                    .map_err(WebError::from)?;
             }
-            _ => return Err(WebError::from(HttpError::InvalidStatusCode))
+            _ => return Err(WebError::from(HttpError::InvalidStatusCode)),
         }
         Ok(())
     }
 
     fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
         match self.canonical_reason() {
-            Some(s) => {
-                Ok(Cow::Owned(format!("{} {}\r\n", self.as_str(), s).into_bytes()) )
-            }
-            _ => Err(WebError::from(HttpError::InvalidStatusCode))
+            Some(s) => Ok(Cow::Owned(
+                format!("{} {}\r\n", self.as_str(), s).into_bytes(),
+            )),
+            _ => Err(WebError::from(HttpError::InvalidStatusCode)),
         }
-
     }
 }
 

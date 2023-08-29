@@ -4,7 +4,7 @@ use std::num::Wrapping;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-use crate::{WebResult, Buffer, HeaderName, HeaderValue, WebError, Http2Error, BinaryMut, Buf, BufMut, MarkBuf};
+use crate::{WebResult, HeaderName, HeaderValue, WebError, Http2Error, BinaryMut, Buf, BufMut, MarkBuf};
 
 use super::huffman::{HuffmanDecoderError, HuffmanDecoder};
 use super::HeaderIndex;

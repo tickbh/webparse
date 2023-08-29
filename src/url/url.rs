@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use lazy_static::lazy_static;
-use crate::{WebResult, Buffer, peek, expect, next, WebError, Helper, BinaryMut, Binary, Buf, MarkBuf, Scheme, UrlError };
+use crate::{WebResult, peek, expect, next, WebError, Helper, BinaryMut, Binary, Buf, MarkBuf, Scheme, UrlError };
 
 use super::scheme;
 

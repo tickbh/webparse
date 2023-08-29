@@ -20,7 +20,7 @@ pub use http::{HeaderMap, HeaderName, HeaderValue, Method, Version, Request, Res
 pub use http::http2::{Http2Error};
 
 pub use error::{WebError, WebResult};
-pub use buffer::Buffer;
+// pub use buffer::Buffer;
 pub use url::{Url, Scheme, UrlError};
 pub use helper::Helper;
 pub use extensions::Extensions;

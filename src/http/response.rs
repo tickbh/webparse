@@ -1,12 +1,16 @@
-use std::{any::Any, io::Write, borrow::Cow};
+use std::{any::Any, borrow::Cow, io::Write};
 
-use crate::{HeaderMap, Version, Serialize, WebResult, Extensions, WebError, HeaderName, HeaderValue, Buffer};
+use crate::{
+    Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, BinaryMut,
+};
 
 use super::StatusCode;
 
 #[derive(Debug)]
 pub struct Response<T>
-where T : Serialize {
+where
+    T: Serialize,
+{
     parts: Parts,
     body: T,
     partial: bool,
@@ -21,9 +25,8 @@ pub struct Parts {
 }
 
 pub struct Builder {
-    inner: WebResult<Parts>
+    inner: WebResult<Parts>,
 }
-
 
 impl Builder {
     /// Creates a new default instance of `Builder` to construct either a
@@ -245,13 +248,11 @@ impl Builder {
     ///     .body(())
     ///     .unwrap();
     /// ```
-    pub fn body<T:Serialize>(self, body: T) -> WebResult<Response<T>> {
-        self.inner.map(move |parts: Parts| {
-            Response {
-                parts,
-                body,
-                partial: false
-            }
+    pub fn body<T: Serialize>(self, body: T) -> WebResult<Response<T>> {
+        self.inner.map(move |parts: Parts| Response {
+            parts,
+            body,
+            partial: false,
         })
     }
 
@@ -259,7 +260,7 @@ impl Builder {
 
     fn and_then<F>(self, func: F) -> Self
     where
-        F: FnOnce(Parts) -> WebResult<Parts>
+        F: FnOnce(Parts) -> WebResult<Parts>,
     {
         Builder {
             inner: self.inner.and_then(func),
@@ -275,7 +276,6 @@ impl Default for Builder {
         }
     }
 }
-
 
 impl Response<()> {
     /// Creates a new builder-style object to manufacture a `Response`
@@ -299,8 +299,7 @@ impl Response<()> {
     }
 }
 
-
-impl<T:Serialize> Response<T> {
+impl<T: Serialize> Response<T> {
     /// Creates a new blank `Response` with the body
     ///
     /// The component ports of this response will be set to their default, e.g.
@@ -540,7 +539,7 @@ impl<T:Serialize> Response<T> {
     /// assert_eq!(mapped_response.body(), &"some string".as_bytes());
     /// ```
     #[inline]
-    pub fn map<F, U:Serialize>(self, f: F) -> Response<U>
+    pub fn map<F, U: Serialize>(self, f: F) -> Response<U>
     where
         F: FnOnce(T) -> U,
     {
@@ -550,35 +549,40 @@ impl<T:Serialize> Response<T> {
             partial: self.partial,
         }
     }
-    
-    pub fn httpdata(&self) -> WebResult<Vec<u8>>  {
-        let mut buffer = Buffer::new();
+
+    pub fn httpdata(&self) -> WebResult<Vec<u8>> {
+        let mut buffer = BinaryMut::new();
         self.serialize(&mut buffer)?;
-        return Ok(buffer.write_data());
+        return Ok(buffer.as_slice().to_vec());
     }
 }
 
-impl<T:Default+Serialize> Default for Response<T> {
+impl<T: Default + Serialize> Default for Response<T> {
     fn default() -> Self {
-        Self { parts: Default::default(), body: Default::default(), partial: Default::default() }
+        Self {
+            parts: Default::default(),
+            body: Default::default(),
+            partial: Default::default(),
+        }
     }
 }
 
 impl Default for Parts {
     fn default() -> Self {
-        Self { 
-            status: StatusCode::OK, 
-            header: HeaderMap::new(), 
-            version: Version::Http11, 
-            extensions: Extensions::new() 
+        Self {
+            status: StatusCode::OK,
+            header: HeaderMap::new(),
+            version: Version::Http11,
+            extensions: Extensions::new(),
         }
     }
 }
 
-
 impl<T> Serialize for Response<T>
-    where T : Serialize {
-    fn serialize(&self, buffer: &mut Buffer) -> WebResult<()> {
+where
+    T: Serialize,
+{
+    fn serialize(&self, buffer: &mut BinaryMut) -> WebResult<()> {
         self.parts.version.serialize(buffer)?;
         buffer.write(" ".as_bytes()).map_err(WebError::from)?;
         self.parts.status.serialize(buffer)?;
