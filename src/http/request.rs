@@ -63,12 +63,12 @@ impl Builder {
                 head.path = req.path().clone();
             });
         }
-        
+
         let _ = build.inner.as_mut().map(|head| {
             head.url = req.url().clone();
         });
         
-        match req.extensions().get::<Arc<HeaderIndex>>() {
+        match req.extensions().get::<Arc<RwLock<HeaderIndex>>>() {
             Some(index) => {
                 let _ = build.inner.as_mut().map(|head| {
                     head.extensions.insert(index.clone());
@@ -373,6 +373,10 @@ impl<T> Request<T>
         &self.parts.header
     }
 
+    pub fn scheme(&self) -> &Scheme {
+        &self.parts.url.scheme
+    }
+
     pub fn headers_mut(&mut self) -> &mut HeaderMap {
         &mut self.parts.header
     }
@@ -653,7 +657,7 @@ impl<T> Serialize for Request<T>
 
 
 mod tests {
-    use crate::{Request, Version, Method, Helper, http::request::Builder};
+    use crate::{Request, Version, Method, Helper, http::request::Builder, Scheme};
 
     macro_rules! req {
         ($name:ident, $buf:expr, |$arg:ident| $body:expr) => (
@@ -765,6 +769,7 @@ mod tests {
         let size = req.parse2(buf.as_ref()).unwrap();
         assert_eq!(size, buf.len());
         assert_eq!(req.method(), &Method::Get);
+        assert_eq!(req.scheme(), &Scheme::Http);
         assert_eq!(req.path(), "/");
         assert_eq!(&req.url().path, "/");
         assert_eq!(req.url().query, None);
@@ -778,12 +783,28 @@ mod tests {
         assert_eq!(size, buf.len());
         
         assert_eq!(req.method(), &Method::Get);
+        assert_eq!(req.scheme(), &Scheme::Http);
         assert_eq!(req.path(), "/");
         assert_eq!(&req.url().path, "/");
         assert_eq!(req.url().query, None);
         assert_eq!(req.version(), &Version::Http2);
-        assert_eq!(req.headers().len(), 1);
+        assert_eq!(req.headers().len(), 2);
         assert_eq!(&req.headers()[":authority"], "www.example.com");
+        assert_eq!(&req.headers()["cache-control"], "no-cache");
+
+        let mut req = Builder::from_req(req).body(()).unwrap();
+        let buf = Helper::hexstr_to_vec("8287 85bf 400a 6375 7374 6f6d 2d6b 6579 0c63 7573 746f 6d2d 7661 6c75 65");
+        let size = req.parse2(buf.as_ref()).unwrap();
+        assert_eq!(size, buf.len());
+        assert_eq!(req.method(), &Method::Get);
+        assert_eq!(req.scheme(), &Scheme::Https);
+        assert_eq!(req.path(), "/index.html");
+        assert_eq!(&req.url().path, "/index.html");
+        assert_eq!(req.url().query, None);
+        assert_eq!(req.version(), &Version::Http2);
+        assert_eq!(req.headers().len(), 2);
+        assert_eq!(&req.headers()[":authority"], "www.example.com");
+        assert_eq!(&req.headers()["custom-key"], "custom-value");
 
 
     }
