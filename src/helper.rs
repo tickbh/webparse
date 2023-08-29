@@ -214,10 +214,14 @@ impl Helper {
         }
     }
 
+    
     #[inline]
-    pub(crate) fn parse_token_by_func<'a, T: Buf + MarkBuf>(buffer: &'a mut T, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
+    pub(crate) fn parse_token_by_func_empty<'a, T: Buf + MarkBuf>(buffer: &'a mut T, func: fn(u8)->bool, err: WebError, empty: bool) -> WebResult<&'a str> {
         let mut b = next!(buffer)?;
         if !func(b) {
+            if empty {
+                return Ok("");
+            }
             return Err(err);
         }
 
@@ -238,6 +242,11 @@ impl Helper {
         }
     }
 
+    #[inline]
+    pub(crate) fn parse_token_by_func<'a, T: Buf + MarkBuf>(buffer: &'a mut T, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
+        Self::parse_token_by_func_empty(buffer, func, err, false)
+    }
+
 
     #[inline]
     pub(crate) fn parse_token<'a>(buffer: &'a mut BinaryMut) -> WebResult<&'a str> {
@@ -255,7 +264,7 @@ impl Helper {
 
     #[inline]
     pub(crate) fn parse_header_value<'a>(buffer: &'a mut BinaryMut) -> WebResult<HeaderValue> {
-        let token = Self::parse_token_by_func(buffer, Self::is_header_value_token, WebError::from(HttpError::HeaderValue))?;
+        let token = Self::parse_token_by_func_empty(buffer, Self::is_header_value_token, WebError::from(HttpError::HeaderValue), true)?;
         Ok(HeaderValue::Value(token.as_bytes().to_vec()))
     }
 

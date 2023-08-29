@@ -46,12 +46,21 @@ fn hex_debug_print(val: &[u8]) {
 fn debug_request_parse() {
     let mut request = Request::new();
         // // let value = url::Url::parse("/path");
-    let _result = request.parse(b"GET http://www.baidu.com/ HTTP/1.1\r\nHost: www.baidu.com\r\nUser-Agent: curl/7.74.0\r\nAccept: */*\r\nProxy-Connection: Keep-Alive\r\n\r\n");
+    let _result = request.parse(b"GET //:///// HTTP/1.1\r\nHost: \r\n\r\n");
     println!("result = {:?}", request);
     println!("is_partial = {}", request.is_partial());
     println!("body len = {}", request.get_body_len());
     println!("host len = {:?}", request.get_host());
     println!("host len = {:?}", request.get_connect_url());
+    println!("http data = {}", String::from_utf8_lossy(&request.httpdata().unwrap()));
+    assert_eq!(String::from_utf8_lossy(&request.httpdata().unwrap()).as_bytes(), b"GET //:///// HTTP/1.1\r\nHost: \r\n\r\n");
+    let x = &request.headers()["Host"];
+    if x == "foo" {
+        println!("111");
+    }
+    if "foo" == x {
+        println!("111");
+    }
 }
 
 fn main() {

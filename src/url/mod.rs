@@ -113,18 +113,16 @@ impl Url {
             
             // 存在用户名, 解析用户名
             if b == b':' {
-                //未存在协议头, 允许path与query
-                if scheme == Scheme::None || is_first_slash {
-                    return Err(WebError::from(UrlError::UrlInvalid));
+                //未存在协议头, 允许path与query, 忽略掉冒号
+                if !is_first_slash {
+                    // 匹配域名, 如果在存在期间检测到@则把当前当作用户结尾
+                    if domain.is_none() {
+                        domain = Some(buffer.clone_slice());
+                    } else {
+                        return Err(WebError::from(UrlError::UrlInvalid));
+                    }
+                    buffer.mark_bump();
                 }
-
-                // 匹配域名, 如果在存在期间检测到@则把当前当作用户结尾
-                if domain.is_none() {
-                    domain = Some(buffer.clone_slice());
-                } else {
-                    return Err(WebError::from(UrlError::UrlInvalid));
-                }
-                buffer.mark_bump();
             } else if b == b'@' {
                 //一开始的冒泡匹配域名,把域名结束当前username结束, 不存在用户密码, 不允许存在'@'
                 if domain.is_none() {
@@ -145,15 +143,16 @@ impl Url {
                     is_first_slash = true;
                 }
             } else if b == b'?' {
-                if domain.is_none() && has_domain {
-                    domain = Some(buffer.clone_slice());
+                if !is_first_slash {
+                    if domain.is_none() && has_domain {
+                        domain = Some(buffer.clone_slice());
+                    }
                 }
-                // 不允许存在多次的'?'
-                if path.is_some() {
-                    return Err(WebError::from(UrlError::UrlInvalid));
+                // 多个'?'忽略当作query
+                if path.is_none() {
+                    path = Some(buffer.clone_slice());
+                    buffer.mark_bump();
                 }
-                path = Some(buffer.clone_slice());
-                buffer.mark_bump();
             } else if !check_func(b) {
                 return Err(WebError::from(UrlError::UrlInvalid));
             }

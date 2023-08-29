@@ -25,18 +25,20 @@ impl Eq for HeaderName {
 
 impl Hash for HeaderName {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        match self {
+        let bytes = match self {
             HeaderName::Stand(stand) => {
-                (*stand).hash(state);
+                stand.as_bytes()
             },
             HeaderName::Value(val) => {
-                for &b in val.as_bytes() {
-                    if b >= b'A' && b <= b'Z' {
-                        state.write_u8(b + 32);
-                    } else {
-                        state.write_u8(b);
-                    }
-                }
+                val.as_bytes()
+            }
+        };
+
+        for &b in bytes {
+            if b >= b'A' && b <= b'Z' {
+                state.write_u8(b + 32);
+            } else {
+                state.write_u8(b);
             }
         }
     }
