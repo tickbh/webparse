@@ -300,8 +300,9 @@ impl Buf for BinaryMut {
 
 
 impl MarkBuf for BinaryMut {
-    fn mark_commit(&mut self) {
-        self.mark = self.cursor
+    fn mark_commit(&mut self) -> usize {
+        self.mark = self.cursor;
+        self.mark
     }
 
     fn mark_slice_skip(&mut self, skip: usize) -> &[u8] {

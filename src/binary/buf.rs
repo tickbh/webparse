@@ -45,7 +45,7 @@ pub trait MarkBuf: Buf {
     fn mark_slice_skip(&mut self, skip: usize) -> &[u8];
 
     /// 把当前值赋值给起始值
-    fn mark_commit(&mut self);
+    fn mark_commit(&mut self) -> usize;
 
     fn mark_slice(&mut self) -> &[u8] {
         self.mark_slice_skip(0)

@@ -277,8 +277,9 @@ impl MarkBuf for Binary {
         head
     }
     
-    fn mark_commit(&mut self) {
-        self.mark = self.cursor
+    fn mark_commit(&mut self) -> usize {
+        self.mark = self.cursor;
+        self.mark
     }
 }
 

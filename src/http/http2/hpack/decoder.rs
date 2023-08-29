@@ -4,7 +4,7 @@ use std::num::Wrapping;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-use crate::{WebResult, Buffer, HeaderName, HeaderValue, WebError, Http2Error, BinaryMut, Buf};
+use crate::{WebResult, Buffer, HeaderName, HeaderValue, WebError, Http2Error, BinaryMut, Buf, BufMut, MarkBuf};
 
 use super::huffman::{HuffmanDecoderError, HuffmanDecoder};
 use super::HeaderIndex;
@@ -101,13 +101,13 @@ impl Decoder {
         Decoder { index }
     }
 
-    pub fn decode(&mut self, buf: &mut BinaryMut) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
+    pub fn decode<B: Buf + MarkBuf>(&mut self, buf: &mut B) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
         let mut header_list = Vec::new();
         self.decode_with_cb(buf, |n, v| header_list.push((n.into_owned(), v.into_owned())))?;
         Ok(header_list)
     }
 
-    pub fn decode_with_cb<F>(&mut self, buf: &mut BinaryMut, mut cb: F) -> WebResult<()>
+    pub fn decode_with_cb<F, B: Buf + MarkBuf>(&mut self, buf: &mut B, mut cb: F) -> WebResult<()>
     where F: FnMut(Cow<HeaderName>, Cow<HeaderValue>) {
         while buf.has_remaining() {
             let initial_octet = buf.peek().unwrap();

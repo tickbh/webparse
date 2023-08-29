@@ -1,7 +1,7 @@
 
 use std::{collections::HashMap, io::Write, borrow::Cow, sync::{Arc, RwLock}, rc::Rc, cell::RefCell};
 
-use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize, Scheme, BinaryMut, Buf, buffer};
+use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize, Scheme, BinaryMut, Buf, buffer, BufMut, MarkBuf};
 use super::{Method, HeaderMap, Version, http2::{self, encoder::Encoder, Decoder, HeaderIndex}};
 
 #[derive(Debug)]
@@ -417,7 +417,7 @@ impl<T> Request<T>
         Ok(())
     }
 
-    pub fn parse_http2(&mut self, buffer: &mut BinaryMut) -> WebResult<usize> {
+    pub fn parse_http2<B:Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut decoder = self.get_decoder();
         let headers = decoder.decode(buffer)?;
         for h in headers {
@@ -450,7 +450,7 @@ impl<T> Request<T>
             self.parts.url.merge(url);
         }
         self.parts.version = Version::Http2;
-        Ok(buffer.cursor())
+        Ok(buffer.mark_commit())
     }
     
     pub fn parse2(&mut self, buf:&[u8]) -> WebResult<usize> {
@@ -459,11 +459,11 @@ impl<T> Request<T>
         self.parse_http2(&mut buffer)
     }
 
-    pub fn parse_buffer(&mut self, buffer:&mut BinaryMut) -> WebResult<usize> {
+    pub fn parse_buffer<B:Buf + MarkBuf>(&mut self, buffer:&mut B) -> WebResult<usize> {
         Helper::skip_empty_lines(buffer)?;
         {
-            let first = &buffer.chunk()[..http2::HTTP2_MAGIC.len()];
-            if first == http2::HTTP2_MAGIC {
+            let chunks = buffer.chunk();
+            if chunks.len() >= http2::HTTP2_MAGIC.len() && &chunks[..http2::HTTP2_MAGIC.len()] == http2::HTTP2_MAGIC {
                 self.parts.version = Version::Http2;
                 buffer.advance(http2::HTTP2_MAGIC.len());
                 return self.parse_http2(buffer);
@@ -498,7 +498,7 @@ impl<T> Request<T>
                 url
             }
         };
-        Ok(buffer.cursor())
+        Ok(buffer.mark_commit())
     }
 
     pub fn parse(&mut self, buf:&[u8]) -> WebResult<usize> {
