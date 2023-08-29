@@ -3,7 +3,6 @@
 
 
 pub mod binary;
-mod buffer;
 pub mod http;
 mod error;
 pub mod url;

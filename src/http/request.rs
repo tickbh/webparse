@@ -11,8 +11,7 @@ use super::{
     http2::{self, encoder::Encoder, Decoder, HeaderIndex},
     HeaderMap, Method, Version,
 };
-use crate::{
-    buffer, BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, MarkBuf,
+use crate::{BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, MarkBuf,
     Scheme, Serialize, Url, WebError, WebResult,
 };
 
@@ -555,13 +554,13 @@ where
     pub fn httpdata(&self) -> WebResult<Vec<u8>> {
         let mut buffer = BinaryMut::new();
         self.serialize(&mut buffer)?;
-        return Ok(buffer.as_slice().to_vec());
+        return Ok(buffer.into_slice_all());
     }
 
     pub fn http2data(&mut self) -> WebResult<Vec<u8>> {
         let mut buffer = BinaryMut::new();
         self.serialize_mut(&mut buffer)?;
-        return Ok(buffer.as_slice().to_vec());
+        return Ok(buffer.into_slice_all());
     }
 
     fn get_index(&mut self) -> Arc<RwLock<HeaderIndex>> {

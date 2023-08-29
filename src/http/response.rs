@@ -553,7 +553,7 @@ impl<T: Serialize> Response<T> {
     pub fn httpdata(&self) -> WebResult<Vec<u8>> {
         let mut buffer = BinaryMut::new();
         self.serialize(&mut buffer)?;
-        return Ok(buffer.as_slice().to_vec());
+        return Ok(buffer.into_slice_all());
     }
 }
 

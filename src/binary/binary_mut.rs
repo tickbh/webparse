@@ -73,9 +73,22 @@ impl BinaryMut {
     }
 
     #[inline]
-    fn as_slice_all(&self) -> &[u8] {
+    pub fn as_slice_all(&self) -> &[u8] {
         unsafe {
             &(*self.ptr)[..]
+        }
+    }
+
+    #[inline]
+    pub fn into_slice_all(&self) -> Vec<u8> {
+        if (*self.counter).borrow().load(Ordering::SeqCst) == 1 {
+            (*self.counter).borrow().fetch_add(1, Ordering::Relaxed);
+            let vec = unsafe { Box::from_raw(self.ptr) };
+            *vec
+        } else {
+            unsafe {
+                (*self.ptr).clone()
+            }
         }
     }
 
@@ -200,16 +213,7 @@ impl BinaryMut {
     /// ```
     #[inline]
     pub fn freeze(self) -> Binary {
-        //仅有当前最后引用, 添加引用计数, 当前不在释放指针
-        if (*self.counter).borrow().load(Ordering::SeqCst) == 1 {
-            (*self.counter).borrow().fetch_add(1, Ordering::Relaxed);
-            let vec = unsafe { Box::from_raw(self.ptr) };
-            Binary::from(*vec)
-        } else {
-            unsafe {
-                Binary::from((*self.ptr).clone())
-            }
-        }
+        Binary::from(self.into_slice_all())
     }
 
     /// 扩展bytes到`BinaryMut`, 将会自动扩展容量空间
