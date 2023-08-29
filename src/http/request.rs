@@ -1,7 +1,7 @@
 
 use std::{collections::HashMap, io::Write, borrow::Cow, sync::Arc};
 
-use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize, Scheme, BinaryMut, Buf};
+use crate::{Buffer, WebResult, Url, Helper, WebError, HeaderName, HeaderValue, Extensions, Serialize, Scheme, BinaryMut, Buf, buffer};
 use super::{Method, HeaderMap, Version, http2::{self, encoder::Encoder, Decoder, HeaderIndex}};
 
 #[derive(Debug)]
@@ -378,6 +378,10 @@ impl<T> Request<T>
         Ok(())
     }
 
+    pub fn parse_http2(&mut self, buffer: &mut BinaryMut) -> WebResult<usize> {
+        Ok(buffer.cursor())
+    }
+
     pub fn parse_buffer(&mut self, buffer:&mut BinaryMut) -> WebResult<usize> {
         Helper::skip_empty_lines(buffer)?;
         {
@@ -385,7 +389,7 @@ impl<T> Request<T>
             if first == http2::HTTP2_MAGIC {
                 self.parts.version = Version::Http2;
                 buffer.advance(http2::HTTP2_MAGIC.len());
-                return Ok(http2::HTTP2_MAGIC.len());
+                return self.parse_http2(buffer);
             }
         }
 
@@ -405,7 +409,7 @@ impl<T> Request<T>
                 url
             }
             _ => {
-                let mut url = Url::parse(&self.parts.path)?;
+                let mut url = Url::try_from(self.parts.path.to_string())?;
                 if url.domain.is_none() {
                     match self.parts.header.get_host() {
                         Some(h) => {
@@ -652,3 +656,4 @@ mod tests {
         }
     }
 }
+
