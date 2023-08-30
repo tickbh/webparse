@@ -1,6 +1,8 @@
-use crate::{WebResult, Http2Error, MarkBuf, Buf, BufMut};
+use std::fmt::Debug;
 
-use super::{Kind, Payload, StreamIdentifier, Flag, encode_u24, read_u24};
+use crate::{Buf, BufMut, Http2Error, MarkBuf, WebResult};
+
+use super::{encode_u24, read_u24, Flag, Kind, Payload, StreamIdentifier};
 
 pub const FRAME_HEADER_BYTES: usize = 9;
 
@@ -12,19 +14,17 @@ pub struct FrameHeader {
     pub id: StreamIdentifier,
 }
 
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Frame<T: Buf+MarkBuf> {
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Frame<T: Buf + MarkBuf> {
     pub header: FrameHeader,
-    pub payload: Payload<T>
+    pub payload: Payload<T>,
 }
 
-
-impl<T:Buf+MarkBuf> Frame<T> {
+impl<T: Buf + MarkBuf> Frame<T> {
     pub fn parse(header: FrameHeader, buf: &mut T) -> WebResult<Frame<T>> {
         Ok(Frame {
             header: header,
-            payload: Payload::parse(header, buf)?
+            payload: Payload::parse(header, buf)?,
         })
     }
 
@@ -41,10 +41,9 @@ impl<T:Buf+MarkBuf> Frame<T> {
     }
 }
 
-
 impl FrameHeader {
     #[inline]
-    pub fn parse<T:Buf+MarkBuf>(buffer: &mut T) -> WebResult<FrameHeader> {
+    pub fn parse<T: Buf + MarkBuf>(buffer: &mut T) -> WebResult<FrameHeader> {
         if buffer.remaining() < FRAME_HEADER_BYTES {
             return Err(Http2Error::into(Http2Error::Short));
         }
@@ -55,8 +54,8 @@ impl FrameHeader {
         Ok(FrameHeader {
             length,
             kind,
-            flag: Flag::new(flag).map_err(|()| { Http2Error::into(Http2Error::BadFlag(flag)) })?,
-            id
+            flag: Flag::new(flag).map_err(|()| Http2Error::into(Http2Error::BadFlag(flag)))?,
+            id,
         })
     }
 
@@ -66,5 +65,14 @@ impl FrameHeader {
         buf.put_u8(self.kind.encode());
         buf.put_u8(self.flag.bits());
         self.id.encode(buf);
+    }
+}
+
+impl<T: Buf + MarkBuf> Debug for Frame<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Frame")
+            .field("header", &self.header)
+            // .field("payload", &self.payload)
+            .finish()
     }
 }

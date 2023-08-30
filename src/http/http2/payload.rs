@@ -210,7 +210,8 @@ impl<T: Buf+MarkBuf> Payload<T> {
             return Err(Http2Error::into(Http2Error::PayloadLengthTooShort));
         }
 
-        let mut buf = buffer.mark_clone_slice_range(..header.length as isize);
+        let buf = buffer.mark_clone_slice_range(..header.length as isize);
+        buffer.advance(header.length as usize);
 
         match header.kind {
             Kind::Data => Payload::parse_data(header, buf, settings),

@@ -1,5 +1,5 @@
 pub const HTTP2_MAGIC: &[u8] = b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
-
+use std::fmt::Debug;
 mod error;
 mod flag;
 mod frame;
@@ -94,11 +94,10 @@ impl Http2 {
     ) -> WebResult<()> {
         while buffer.has_remaining() {
             let frame_header = FrameHeader::parse(buffer)?;
-            buffer.advance(FRAME_HEADER_BYTES);
             let length = frame_header.length;
             {
                 let frame = Frame::parse(frame_header, buffer)?;
-                // println!("frame = {:?}", frame);
+                println!("frame = {:?}", frame);
             }
             // buffer.advance(length as usize);
         }

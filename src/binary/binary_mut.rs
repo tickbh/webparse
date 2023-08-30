@@ -363,7 +363,7 @@ impl MarkBuf for BinaryMut {
             std::ops::Bound::Excluded(x) => x - 1 - start,
             std::ops::Bound::Unbounded => self.remaining() as isize - start,
         };
-        debug_assert!(len > 0);
+        debug_assert!(len >= 0);
         let mut bin = self.clone();
         if self.remaining() == len as usize {
             bin.manual_len = usize::MAX;
