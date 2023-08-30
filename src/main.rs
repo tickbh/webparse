@@ -51,6 +51,14 @@ fn hex_debug_print(val: &[u8]) {
     println!();
 }
 
+
+fn debug_request_parse_full_http2() {
+    let http2: Vec<u8> = vec! [80, 82, 73, 32, 42, 32, 72, 84, 84, 80, 47, 50, 46, 48, 13, 10, 13, 10, 83, 77, 13, 10, 13, 10, 0, 0, 18, 4, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 100, 0, 4, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 4, 8, 0, 0, 0, 0, 0, 1, 255, 0, 1, 0, 0, 55, 1, 5, 0, 0, 0, 1, 131, 132, 134, 65, 143, 11, 226, 92, 46, 60, 184, 93, 125, 112, 178, 205, 199, 128, 240, 63, 122, 136, 37, 182, 80, 195, 171, 186, 210, 224, 83, 3, 42, 47, 42, 64, 136, 37, 168, 73, 233, 91, 169, 125, 127, 137, 37, 168, 73, 233, 91, 184, 232, 180, 191, 0, 0, 25, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 83, 69, 84, 84, 73, 78, 71, 83, 32, 101, 120, 112, 101, 99, 116, 101, 100];
+    let mut req = Request::new();
+    let size = req.parse(&http2).unwrap();
+    println!("req = {:?}", req);
+}
+
 fn debug_request_parse_http2() {
     let mut decode = Decoder::new();
     let http2 = vec![
@@ -58,41 +66,42 @@ fn debug_request_parse_http2() {
         0xf4, 0xff,
     ];
     let http2 = hexstr_to_vec("8286 8441 0f77 7777 2e65 7861 6d70 6c65 2e63 6f6d ");
+
     let mut buf = BinaryMut::from(http2);
 
     let result = decode.decode_with_cb(&mut buf, |n, v| {
         println!("n = {:?}, v = {:?}", n, v);
     });
-    println!("result = {:?}", result);
-    let http2 = vec![
-        0x82, 0x86, 0x84, 0xbe, 0x58, 0x08, 0x6e, 0x6f, 0x2d, 0x63, 0x61, 0x63, 0x68, 0x65,
-    ];
-    let http2 = hexstr_to_vec("8286 84be 5808 6e6f 2d63 6163 6865");
+    // println!("result = {:?}", result);
+    // let http2 = vec![
+    //     0x82, 0x86, 0x84, 0xbe, 0x58, 0x08, 0x6e, 0x6f, 0x2d, 0x63, 0x61, 0x63, 0x68, 0x65,
+    // ];
+    // let http2 = hexstr_to_vec("8286 84be 5808 6e6f 2d63 6163 6865");
 
-    let mut buf = BinaryMut::from(http2);
-    let result = decode.decode_with_cb(&mut buf, |n, v| {
-        println!("n = {:?}, v = {:?}", n, v);
-    });
-    println!("result = {:?}", result);
+    // let mut buf = BinaryMut::from(http2);
+    // let result = decode.decode_with_cb(&mut buf, |n, v| {
+    //     println!("n = {:?}, v = {:?}", n, v);
+    // });
+    // println!("result = {:?}", result);
 
-    {
-        //         8287 85bf 4088 25a8 49e9 5ba9 7d7f 8925 | ....@.%.I.[.}..%
-        //          a849 e95b b8e8 b4bf
-        let http2 = vec![
-            0x82, 0x87, 0x85, 0xbf, 0x40, 0x88, 0x25, 0xa8, 0x49, 0xe9, 0x5b, 0xa9, 0x7d, 0x7f,
-            0x89, 0x25, 0xa8, 0x49, 0xe9, 0x5b, 0xb8, 0xe8, 0xb4, 0xbf,
-        ];
-        let http2 = hexstr_to_vec(
-            "8287 85bf 400a 6375 7374 6f6d 2d6b 6579 0c63 7573 746f 6d2d 7661 6c75 65",
-        );
+    // {
+    //     //         8287 85bf 4088 25a8 49e9 5ba9 7d7f 8925 | ....@.%.I.[.}..%
+    //     //          a849 e95b b8e8 b4bf
+    //     let http2 = vec![
+    //         0x82, 0x87, 0x85, 0xbf, 0x40, 0x88, 0x25, 0xa8, 0x49, 0xe9, 0x5b, 0xa9, 0x7d, 0x7f,
+    //         0x89, 0x25, 0xa8, 0x49, 0xe9, 0x5b, 0xb8, 0xe8, 0xb4, 0xbf,
+    //     ];
+    //     let http2 = hexstr_to_vec(
+    //         "8287 85bf 400a 6375 7374 6f6d 2d6b 6579 0c63 7573 746f 6d2d 7661 6c75 65",
+    //     );
 
-        let mut buf = BinaryMut::from(http2);
+    //     let mut buf = BinaryMut::from(http2);
 
-        let result = decode.decode_with_cb(&mut buf, |n, v| {
-            println!("n = {:?}, v = {:?}", n, v);
-        });
-        println!("result = {:?}", result);
-    }
+    //     let result = decode.decode_with_cb(&mut buf, |n, v| {
+    //         println!("n = {:?}, v = {:?}", n, v);
+    //     });
+    //     println!("result = {:?}", result);
+    // }
 }
 
 fn debug_request_parse() {
@@ -122,7 +131,8 @@ fn debug_request_parse() {
 }
 
 fn main() {
-    debug_request_parse_http2();
+    debug_request_parse_full_http2();
+    // debug_request_parse_http2();
 
     //  let req = request::Builder::new()
     //      .method("POST")

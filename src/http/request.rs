@@ -8,7 +8,7 @@ use std::{
 };
 
 use super::{
-    http2::{self, encoder::Encoder, Decoder, HeaderIndex},
+    http2::{self, encoder::Encoder, Decoder, HeaderIndex, Http2},
     HeaderMap, Method, Version,
 };
 use crate::{BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, MarkBuf,
@@ -431,37 +431,39 @@ where
     }
 
     pub fn parse_http2<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
-        let mut decoder = self.get_decoder();
-        let headers = decoder.decode(buffer)?;
-        for h in headers {
-            if h.0.is_spec() {
-                let value: String = (&h.1).try_into()?;
-                match h.0.name() {
-                    ":authority" => {
-                        self.parts.url.domain = Some(value);
-                        self.headers_mut().insert_exact(h.0, h.1);
-                    }
-                    ":method" => {
-                        self.parts.method = Method::try_from(&*value)?;
-                    }
-                    ":path" => {
-                        self.parts.path = value;
-                    }
-                    ":scheme" => {
-                        self.parts.url.scheme = Scheme::try_from(&*value)?;
-                    }
-                    _ => {
-                        self.headers_mut().insert_exact(h.0, h.1);
-                    }
-                }
-            } else {
-                self.headers_mut().insert_exact(h.0, h.1);
-            }
-        }
-        if self.parts.path != "/".to_string() {
-            let url = Url::parse(self.parts.path.as_bytes().to_vec())?;
-            self.parts.url.merge(url);
-        }
+        
+        Http2::parse_buffer(self, buffer)?;
+        // let mut decoder = self.get_decoder();
+        // let headers = decoder.decode(buffer)?;
+        // for h in headers {
+        //     if h.0.is_spec() {
+        //         let value: String = (&h.1).try_into()?;
+        //         match h.0.name() {
+        //             ":authority" => {
+        //                 self.parts.url.domain = Some(value);
+        //                 self.headers_mut().insert_exact(h.0, h.1);
+        //             }
+        //             ":method" => {
+        //                 self.parts.method = Method::try_from(&*value)?;
+        //             }
+        //             ":path" => {
+        //                 self.parts.path = value;
+        //             }
+        //             ":scheme" => {
+        //                 self.parts.url.scheme = Scheme::try_from(&*value)?;
+        //             }
+        //             _ => {
+        //                 self.headers_mut().insert_exact(h.0, h.1);
+        //             }
+        //         }
+        //     } else {
+        //         self.headers_mut().insert_exact(h.0, h.1);
+        //     }
+        // }
+        // if self.parts.path != "/".to_string() {
+        //     let url = Url::parse(self.parts.path.as_bytes().to_vec())?;
+        //     self.parts.url.merge(url);
+        // }
         self.parts.version = Version::Http2;
         Ok(buffer.mark_commit())
     }

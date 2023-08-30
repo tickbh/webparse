@@ -13,8 +13,10 @@ pub use frame::Frame;
 pub use kind::Kind;
 pub use payload::Payload;
 
-use crate::{serialize, Request, WebResult, BinaryMut};
+use crate::{serialize, Request, WebResult, BinaryMut, Buf, MarkBuf, http::http2::frame::FRAME_HEADER_BYTES};
 pub use hpack::*;
+
+use self::frame::FrameHeader;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct StreamIdentifier(pub u32);
@@ -89,12 +91,24 @@ pub fn encode_u64(buf: &mut [u8], val: u64) -> usize {
 pub struct Http2;
 
 impl Http2 {
-    pub fn parse_buffer<T: serialize::Serialize>(
+    pub fn parse_buffer<T: serialize::Serialize, B: Buf + MarkBuf>(
         request: &mut Request<T>,
-        buffer: &mut BinaryMut,
+        buffer: &mut B,
     ) -> WebResult<()> {
+        while buffer.has_remaining() {
+            let frame_header = FrameHeader::parse(buffer.chunk())?;
+            buffer.advance(FRAME_HEADER_BYTES);
+            let length = frame_header.length;
+            {
+                let frame = Frame::parse(frame_header, buffer.chunk())?;
+                println!("frame = {:?}", frame);
+            }
+            buffer.advance(length as usize);
+        }
         Ok(())
     }
+
+
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

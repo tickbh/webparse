@@ -4,11 +4,12 @@ use std::num::Wrapping;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-use crate::{WebResult, HeaderName, HeaderValue, WebError, Http2Error, BinaryMut, Buf, BufMut, MarkBuf};
+use crate::{
+    BinaryMut, Buf, BufMut, HeaderName, HeaderValue, Http2Error, MarkBuf, WebError, WebResult,
+};
 
-use super::huffman::{HuffmanDecoderError, HuffmanDecoder};
+use super::huffman::{HuffmanDecoder, HuffmanDecoderError};
 use super::HeaderIndex;
-
 
 enum FieldRepresentation {
     Indexed,
@@ -39,13 +40,9 @@ impl FieldRepresentation {
     }
 }
 
-
 /// Represents all errors that can be encountered while decoding an
 /// integer.
-#[derive(PartialEq)]
-#[derive(Copy)]
-#[derive(Clone)]
-#[derive(Debug)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum IntegerDecodingError {
     /// 5.1. specifies that "excessively large integer decodings" MUST be
     /// considered an error (whether the size is the number of octets or
@@ -64,10 +61,7 @@ pub enum IntegerDecodingError {
 
 /// Represents all errors that can be encountered while decoding an octet
 /// string.
-#[derive(PartialEq)]
-#[derive(Copy)]
-#[derive(Clone)]
-#[derive(Debug)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum StringDecodingError {
     NotEnoughOctets,
     HuffmanDecoderError(HuffmanDecoderError),
@@ -75,10 +69,7 @@ pub enum StringDecodingError {
 
 /// Represents all errors that can be encountered while performing the decoding
 /// of an HPACK header set.
-#[derive(PartialEq)]
-#[derive(Copy)]
-#[derive(Clone)]
-#[derive(Debug)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum DecoderError {
     HeaderIndexOutOfBounds,
     IntegerDecodingError(IntegerDecodingError),
@@ -86,43 +77,52 @@ pub enum DecoderError {
     InvalidMaxDynamicSize,
 }
 
-
 pub struct Decoder {
     pub index: Arc<RwLock<HeaderIndex>>,
 }
 
 impl Decoder {
-
     pub fn new() -> Decoder {
-        Decoder { index: Arc::new(RwLock::new(HeaderIndex::new())) }
+        Decoder {
+            index: Arc::new(RwLock::new(HeaderIndex::new())),
+        }
     }
 
     pub fn new_index(index: Arc<RwLock<HeaderIndex>>) -> Decoder {
         Decoder { index }
     }
 
-    pub fn decode<B: Buf + MarkBuf>(&mut self, buf: &mut B) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
+    pub fn decode<B: Buf + MarkBuf>(
+        &mut self,
+        buf: &mut B,
+    ) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
         let mut header_list = Vec::new();
-        self.decode_with_cb(buf, |n, v| header_list.push((n.into_owned(), v.into_owned())))?;
+        self.decode_with_cb(buf, |n, v| {
+            println!("name = {:?}", n);
+            println!("value = {:?}", v);
+            header_list.push((n.into_owned(), v.into_owned()))
+        })?;
         Ok(header_list)
     }
 
     pub fn decode_with_cb<F, B: Buf + MarkBuf>(&mut self, buf: &mut B, mut cb: F) -> WebResult<()>
-    where F: FnMut(Cow<HeaderName>, Cow<HeaderValue>) {
+    where
+        F: FnMut(Cow<HeaderName>, Cow<HeaderValue>),
+    {
         while buf.has_remaining() {
             let initial_octet = buf.peek().unwrap();
+            println!("initial_octet === {}", initial_octet);
             let buffer_leftover = buf.chunk();
             let consumed = match FieldRepresentation::new(initial_octet) {
                 FieldRepresentation::Indexed => {
-                    let consumed =
-                        (self.decode_indexed(initial_octet, |name, value| {
-                            cb(Cow::Borrowed(name), Cow::Borrowed(value));
-                        }))?;
+                    let consumed = (self.decode_indexed(initial_octet, |name, value| {
+                        cb(Cow::Borrowed(name), Cow::Borrowed(value));
+                    }))?;
                     consumed
-                },
+                }
                 FieldRepresentation::LiteralWithIncrementalIndexing => {
                     let ((name, value), consumed) = {
-                        let ((name, value), consumed) = 
+                        let ((name, value), consumed) =
                             self.decode_literal(buffer_leftover, true)?;
                         cb(Cow::Borrowed(&name), Cow::Borrowed(&value));
 
@@ -139,27 +139,23 @@ impl Decoder {
                     // // Manually separating it out here works around it...
                     self.index.write().unwrap().add_header(name, value);
                     consumed
-                },
+                }
                 FieldRepresentation::LiteralWithoutIndexing => {
-                    // let ((name, value), consumed) =
-                    //     try!(self.decode_literal(buffer_leftover, false));
-                    // cb(name, value);
+                    let ((name, value), consumed) = (self.decode_literal(buffer_leftover, false))?;
+                    cb(Cow::Owned(name), Cow::Owned(value));
 
-                    // consumed
-                    0
-                },
+                    consumed
+                }
                 FieldRepresentation::LiteralNeverIndexed => {
                     // // Same as the previous one, except if we were also a proxy
                     // // we would need to make sure not to change the
                     // // representation received here. We don't care about this
                     // // for now.
-                    // let ((name, value), consumed) =
-                    //     try!(self.decode_literal(buffer_leftover, false));
-                    // cb(name, value);
+                    let ((name, value), consumed) = (self.decode_literal(buffer_leftover, false))?;
+                    cb(Cow::Owned(name), Cow::Owned(value));
 
-                    // consumed
-                    0
-                },
+                    consumed
+                }
                 FieldRepresentation::SizeUpdate => {
                     // Handle the dynamic table size update...
                     // self.update_max_dynamic_size(buffer_leftover)
@@ -172,8 +168,6 @@ impl Decoder {
         Ok(())
     }
 
-
-    
     /// Decodes an integer encoded with a given prefix size (in bits).
     /// Assumes that the buffer `buf` contains the integer to be decoded,
     /// with the first byte representing the octet that contains the
@@ -181,64 +175,67 @@ impl Decoder {
     ///
     /// Returns a tuple representing the decoded integer and the number
     /// of bytes from the buffer that were used.
-    fn decode_integer(buf: &[u8], prefix_size: u8)
-        -> WebResult<(usize, usize)> {
-            if prefix_size < 1 || prefix_size > 8 {
+    fn decode_integer(buf: &[u8], prefix_size: u8) -> WebResult<(usize, usize)> {
+        if prefix_size < 1 || prefix_size > 8 {
+            return Err(Http2Error::into(DecoderError::IntegerDecodingError(
+                IntegerDecodingError::InvalidPrefix,
+            )));
+        }
+        if buf.len() < 1 {
+            return Err(Http2Error::into(DecoderError::IntegerDecodingError(
+                IntegerDecodingError::NotEnoughOctets,
+            )));
+        }
+
+        // Make sure there's no overflow in the shift operation
+        let Wrapping(mask) = if prefix_size == 8 {
+            Wrapping(0xFF)
+        } else {
+            Wrapping(1u8 << prefix_size) - Wrapping(1)
+        };
+        let mut value = (buf[0] & mask) as usize;
+        if value < (mask as usize) {
+            // Value fits in the prefix bits.
+            return Ok((value, 1));
+        }
+
+        let mut total = 1;
+        let mut m = 0;
+        let octet_limit = 5;
+
+        for &b in buf[1..].iter() {
+            total += 1;
+            value += ((b & 127) as usize) * (1 << m);
+            m += 7;
+
+            if b & 128 != 128 {
+                // Most significant bit is not set => no more continuation bytes
+                return Ok((value, total));
+            }
+
+            if total == octet_limit {
+                // The spec tells us that we MUST treat situations where the
+                // encoded representation is too long (in octets) as an error.
                 return Err(Http2Error::into(DecoderError::IntegerDecodingError(
-                    IntegerDecodingError::InvalidPrefix)));
-            }
-            if buf.len() < 1 {
-                return Err(Http2Error::into(DecoderError::IntegerDecodingError(
-                        IntegerDecodingError::NotEnoughOctets)));
-            }
-
-            // Make sure there's no overflow in the shift operation
-            let Wrapping(mask) = if prefix_size == 8 {
-                Wrapping(0xFF)
-            } else {
-                Wrapping(1u8 << prefix_size) - Wrapping(1)
-            };
-            let mut value = (buf[0] & mask) as usize;
-            if value < (mask as usize) {
-                // Value fits in the prefix bits.
-                return Ok((value, 1));
-            }
-
-            let mut total = 1;
-            let mut m = 0;
-            let octet_limit = 5;
-
-            for &b in buf[1..].iter() {
-                total += 1;
-                value += ((b & 127) as usize) * (1 << m);
-                m += 7;
-
-                if b & 128 != 128 {
-                    // Most significant bit is not set => no more continuation bytes
-                    return Ok((value, total));
-                }
-
-                if total == octet_limit {
-                    // The spec tells us that we MUST treat situations where the
-                    // encoded representation is too long (in octets) as an error.
-                    return Err(Http2Error::into(DecoderError::IntegerDecodingError(
-                            IntegerDecodingError::TooManyOctets)))
+                    IntegerDecodingError::TooManyOctets,
+                )));
             }
         }
 
         // If we have reached here, it means the buffer has been exhausted without
         // hitting the termination condition.
         Err(Http2Error::into(DecoderError::IntegerDecodingError(
-            IntegerDecodingError::NotEnoughOctets)))
+            IntegerDecodingError::NotEnoughOctets,
+        )))
     }
 
     fn decode_string<'a>(buf: &'a [u8]) -> WebResult<(Cow<'a, [u8]>, usize)> {
         let (len, consumed) = Self::decode_integer(buf, 7)?;
         // debug!("decode_string: Consumed = {}, len = {}", consumed, len);
         if consumed + len > buf.len() {
-            return Err(Http2Error::into(
-                DecoderError::StringDecodingError(
-                    StringDecodingError::NotEnoughOctets)));
+            return Err(Http2Error::into(DecoderError::StringDecodingError(
+                StringDecodingError::NotEnoughOctets,
+            )));
         }
         let raw_string = &buf[consumed..consumed + len];
         if buf[0] & 128 == 128 {
@@ -249,7 +246,7 @@ impl Decoder {
             let decoded = match decoder.decode(raw_string) {
                 Err(e) => {
                     return Err(e);
-                },
+                }
                 Ok(res) => res,
             };
             Ok((Cow::Owned(decoded), consumed + len))
@@ -260,13 +257,12 @@ impl Decoder {
         }
     }
 
-    fn decode_literal(&self, buf: &[u8], index: bool)
-            -> WebResult<((HeaderName, HeaderValue), usize)> {
-        let prefix = if index {
-            6
-        } else {
-            4
-        };
+    fn decode_literal(
+        &self,
+        buf: &[u8],
+        index: bool,
+    ) -> WebResult<((HeaderName, HeaderValue), usize)> {
+        let prefix = if index { 6 } else { 4 };
         let (table_index, mut consumed) = Self::decode_integer(buf, prefix)?;
 
         // First read the name appropriately
@@ -294,20 +290,27 @@ impl Decoder {
         Ok(((name, HeaderValue::from_bytes(&value)), consumed))
     }
 
-
-    fn decode_indexed<F>(&self, index: u8, call: F) -> WebResult<usize> 
-    where F : FnOnce(&HeaderName, &HeaderValue){
+    fn decode_indexed<F>(&self, index: u8, call: F) -> WebResult<usize>
+    where
+        F: FnOnce(&HeaderName, &HeaderValue),
+    {
         let index = index & 0x7f;
         let header = self.index.read().unwrap();
-        let (name, value) = header.get_from_index(index as usize).ok_or(Http2Error::into(DecoderError::HeaderIndexOutOfBounds))?;
+        let (name, value) = header
+            .get_from_index(index as usize)
+            .ok_or(Http2Error::into(DecoderError::HeaderIndexOutOfBounds))?;
         call(name, value);
         Ok(1)
     }
 
     fn get_from_table<F>(&self, index: usize, call: F) -> WebResult<()>
-    where F : FnOnce(&HeaderName, &HeaderValue) {
+    where
+        F: FnOnce(&HeaderName, &HeaderValue),
+    {
         let header = self.index.read().unwrap();
-        let (name, value) = header.get_from_index(index as usize).ok_or(Http2Error::into(DecoderError::HeaderIndexOutOfBounds))?;
+        let (name, value) = header
+            .get_from_index(index as usize)
+            .ok_or(Http2Error::into(DecoderError::HeaderIndexOutOfBounds))?;
         call(name, value);
         Ok(())
     }
