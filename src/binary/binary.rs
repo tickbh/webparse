@@ -1,5 +1,22 @@
-use std::{sync::{Arc, atomic::{AtomicUsize, Ordering}}, slice, mem, io::Read, io::Result, rc::Rc, cell::RefCell, alloc::{dealloc, Layout}, marker::PhantomData, hash, vec::IntoIter, borrow::Borrow, cmp};
-use std::ops::Deref;
+use std::fmt::Debug;
+use std::ops::{Deref, RangeBounds};
+use std::{
+    alloc::{dealloc, Layout},
+    borrow::Borrow,
+    cell::RefCell,
+    cmp, hash,
+    io::Read,
+    io::Result,
+    marker::PhantomData,
+    mem,
+    rc::Rc,
+    slice,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    vec::IntoIter,
+};
 
 use crate::MarkBuf;
 
@@ -27,7 +44,6 @@ pub struct Vtable {
     pub to_vec: unsafe fn(bin: &Binary) -> Vec<u8>,
     pub drop: unsafe fn(bin: &mut Binary),
 }
-
 
 const STATIC_VTABLE: Vtable = Vtable {
     clone: static_clone,
@@ -63,7 +79,7 @@ unsafe fn shared_clone(bin: &Binary) -> Binary {
         cursor: bin.cursor,
         mark: bin.mark,
         len: bin.len,
-        vtable: bin.vtable
+        vtable: bin.vtable,
     }
 }
 
@@ -77,23 +93,25 @@ unsafe fn shared_drop(bin: &mut Binary) {
     if (*bin.counter).borrow_mut().fetch_sub(1, Ordering::Release) == 1 {
         println!("share drop value {:?}", bin.ptr);
         let ori = bin.ptr.sub(bin.cursor);
-        dealloc(ori as *mut u8, Layout::from_size_align(bin.cursor + bin.len, 1).unwrap());
+        dealloc(
+            ori as *mut u8,
+            Layout::from_size_align(bin.cursor + bin.len, 1).unwrap(),
+        );
     }
 }
 impl Binary {
-
     pub fn new() -> Binary {
         Binary::from_static(EMPTY_ARRAY)
     }
-    
+
     pub fn from_static(val: &'static [u8]) -> Binary {
-        Binary { 
-            ptr: val.as_ptr(), 
-            counter: Rc::new(RefCell::new(AtomicUsize::new(0))), 
+        Binary {
+            ptr: val.as_ptr(),
+            counter: Rc::new(RefCell::new(AtomicUsize::new(0))),
             cursor: 0,
             mark: 0,
-            len: val.len(), 
-            vtable: &STATIC_VTABLE
+            len: val.len(),
+            vtable: &STATIC_VTABLE,
         }
     }
 
@@ -106,7 +124,7 @@ impl Binary {
     /// let b = Binary::from(&b"hello"[..]);
     /// assert_eq!(b.len(), 5);
     /// ```
-    /// 
+    ///
     pub fn len(&self) -> usize {
         self.len
     }
@@ -128,9 +146,7 @@ impl Binary {
     }
 
     pub fn to_vec(&self) -> Vec<u8> {
-        unsafe {
-            (self.vtable.to_vec)(self)
-        }
+        unsafe { (self.vtable.to_vec)(self) }
     }
 
     /// 获取引用的数量
@@ -150,10 +166,17 @@ impl Binary {
     /// assert!(b.get_refs() == 1);
     /// ```
     pub fn get_refs(&self) -> usize {
-        println!("value = {}",  (*self.counter).borrow().load(std::sync::atomic::Ordering::SeqCst));
-        (*self.counter).borrow().load(std::sync::atomic::Ordering::SeqCst)
+        println!(
+            "value = {}",
+            (*self.counter)
+                .borrow()
+                .load(std::sync::atomic::Ordering::SeqCst)
+        );
+        (*self.counter)
+            .borrow()
+            .load(std::sync::atomic::Ordering::SeqCst)
     }
-    
+
     #[inline]
     fn as_slice_all(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.ptr.sub(self.cursor), self.len + self.cursor) }
@@ -168,7 +191,7 @@ impl Binary {
     pub fn clone_slice(&mut self) -> Binary {
         self.clone_slice_skip(0)
     }
-    
+
     #[inline]
     pub fn clone_slice_skip(&mut self, skip: usize) -> Binary {
         let mut new = self.clone();
@@ -182,13 +205,16 @@ impl Binary {
 
     #[inline]
     unsafe fn inc_start(&mut self, by: usize) {
+        if by == 0 {
+            return;
+        }
         // should already be asserted, but debug assert for tests
         debug_assert!(self.len >= by, "internal: inc_start out of bounds");
         self.len -= by;
         self.ptr = self.ptr.add(by);
         self.cursor += by;
     }
-    
+
     #[inline]
     unsafe fn sub_start(&mut self, by: usize) {
         // should already be asserted, but debug assert for tests
@@ -202,17 +228,13 @@ impl Binary {
 
 impl Clone for Binary {
     fn clone(&self) -> Self {
-        unsafe {
-            (self.vtable.clone)(self)
-        }
+        unsafe { (self.vtable.clone)(self) }
     }
 }
 
 impl Drop for Binary {
     fn drop(&mut self) {
-        unsafe {
-            (self.vtable.drop)(self)
-        }
+        unsafe { (self.vtable.drop)(self) }
     }
 }
 
@@ -231,7 +253,7 @@ impl From<&'static [u8]> for Binary {
 impl From<Box<[u8]>> for Binary {
     fn from(value: Box<[u8]>) -> Self {
         let len = value.len();
-        let ptr =  Box::into_raw(value) as *mut u8;
+        let ptr = Box::into_raw(value) as *mut u8;
         Binary {
             ptr,
             len,
@@ -248,7 +270,6 @@ impl From<Vec<u8>> for Binary {
         Binary::from(value.into_boxed_slice())
     }
 }
-
 
 impl Buf for Binary {
     fn remaining(&self) -> usize {
@@ -267,20 +288,61 @@ impl Buf for Binary {
 }
 
 impl MarkBuf for Binary {
-
     fn mark_slice_skip(&mut self, skip: usize) -> &[u8] {
         debug_assert!(self.cursor - skip >= self.mark);
         let cursor = self.cursor;
         let start = self.mark;
         self.mark_commit();
-        let head = &self.as_slice_all()[start .. (cursor - skip)];
+        let head = &self.as_slice_all()[start..(cursor - skip)];
         head
     }
-    
+
     fn mark_commit(&mut self) -> usize {
         self.mark = self.cursor;
         self.mark
     }
+
+    
+    fn mark_len(&mut self, len: usize) {
+        debug_assert!(self.len >= len);
+        self.len = len;
+    }
+
+    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized {
+        let start = match range.start_bound() {
+            std::ops::Bound::Included(x) => x + 0,
+            std::ops::Bound::Excluded(x) => x + 1,
+            std::ops::Bound::Unbounded => 0,
+        };
+        let len = match range.start_bound() {
+            std::ops::Bound::Included(x) => x - start,
+            std::ops::Bound::Excluded(x) => x - 1 - start,
+            std::ops::Bound::Unbounded => self.remaining() as isize - start,
+        };
+        debug_assert!(self.remaining() as isize >= start + len as isize);
+        let mut bin = self.clone();
+        if start > 0 {
+            unsafe { bin.inc_start(start as usize) };
+        } else {
+            unsafe { bin.sub_start(start as usize) }
+        }
+        bin.len = len as usize;
+        bin
+    }
+    // fn mark_clone_slice_range(&self, offset: isize, len: usize) -> Self
+    // where
+    //     Self: Sized,
+    // {
+    //     debug_assert!(self.remaining() as isize >= offset + len as isize);
+    //     let mut bin = self.clone();
+    //     if offset > 0 {
+    //         unsafe { bin.inc_start(offset as usize) };
+    //     } else {
+    //         unsafe { bin.sub_start(offset as usize) }
+    //     }
+    //     bin.len = len;
+    //     bin
+    // }
 }
 
 impl Read for Binary {
@@ -307,14 +369,24 @@ impl Iterator for Binary {
     }
 }
 
-
-
 impl Deref for Binary {
     type Target = [u8];
 
     #[inline]
     fn deref(&self) -> &[u8] {
         self.as_slice()
+    }
+}
+
+impl Debug for Binary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Binary")
+            .field("ptr", &self.ptr)
+            .field("counter", &self.counter)
+            .field("cursor", &self.cursor)
+            .field("mark", &self.mark)
+            .field("len", &self.len)
+            .finish()
     }
 }
 

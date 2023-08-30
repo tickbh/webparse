@@ -1,6 +1,21 @@
-use std::{sync::{atomic::{AtomicUsize, Ordering}, Arc}, cell::RefCell, rc::Rc, mem::MaybeUninit, ops::{Deref, DerefMut}, cmp, hash, borrow::{Borrow, BorrowMut}, fmt, vec::IntoIter, ptr, slice, io::{Read, Result, Write}};
+use std::{
+    borrow::{Borrow, BorrowMut},
+    cell::RefCell,
+    cmp, fmt, hash,
+    io::{Read, Result, Write},
+    mem::MaybeUninit,
+    ops::{Deref, DerefMut, RangeBounds},
+    ptr,
+    rc::Rc,
+    slice,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    vec::IntoIter,
+};
 
-use crate::{Buf, Binary, MarkBuf};
+use crate::{Binary, Buf, MarkBuf};
 
 use super::BufMut;
 
@@ -11,6 +26,8 @@ pub struct BinaryMut {
     counter: Rc<RefCell<AtomicUsize>>,
     // 游标值, 可以得出当前指向的位置
     cursor: usize,
+    // 手动设置长度, 分片时使用
+    manual_len: usize,
     // 标记值, 从上一次标记到现在的游标值, 可以得出偏移的对象
     mark: usize,
 }
@@ -46,6 +63,7 @@ impl BinaryMut {
         BinaryMut {
             ptr,
             cursor: 0,
+            manual_len: usize::MAX,
             mark: 0,
             counter: Rc::new(RefCell::new(AtomicUsize::new(1))),
         }
@@ -68,15 +86,20 @@ impl BinaryMut {
     /// assert!(b.get_refs() == 1);
     /// ```
     pub fn get_refs(&self) -> usize {
-        println!("value = {}",  (*self.counter).borrow().load(std::sync::atomic::Ordering::SeqCst));
-        (*self.counter).borrow().load(std::sync::atomic::Ordering::SeqCst)
+        println!(
+            "value = {}",
+            (*self.counter)
+                .borrow()
+                .load(std::sync::atomic::Ordering::SeqCst)
+        );
+        (*self.counter)
+            .borrow()
+            .load(std::sync::atomic::Ordering::SeqCst)
     }
 
     #[inline]
     pub fn as_slice_all(&self) -> &[u8] {
-        unsafe {
-            &(*self.ptr)[..]
-        }
+        unsafe { &(*self.ptr)[..] }
     }
 
     #[inline]
@@ -86,30 +109,39 @@ impl BinaryMut {
             let vec = unsafe { Box::from_raw(self.ptr) };
             *vec
         } else {
-            unsafe {
-                (*self.ptr).clone()
-            }
+            unsafe { (*self.ptr).clone() }
         }
     }
 
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
         unsafe {
-            &(*self.ptr)[self.cursor..]
+            let end = std::cmp::min(self.manual_len, (*self.ptr).len());
+            &(*self.ptr)[self.cursor..end]
         }
     }
 
     #[inline]
     fn as_slice_mut(&mut self) -> &mut [u8] {
-        unsafe { &mut (*self.ptr)[self.cursor..] }
+        unsafe {
+            let end = std::cmp::min(self.manual_len, (*self.ptr).len());
+            &mut (*self.ptr)[self.cursor..end]
+        }
     }
-
 
     #[inline]
     unsafe fn inc_start(&mut self, by: usize) {
         // should already be asserted, but debug assert for tests
         debug_assert!(self.remaining() >= by, "internal: inc_start out of bounds");
         self.cursor += by;
+    }
+
+    
+    #[inline]
+    unsafe fn sub_start(&mut self, by: usize) {
+        // should already be asserted, but debug assert for tests
+        debug_assert!(self.cursor >= by, "internal: sub_start out of bounds");
+        self.cursor -= by;
     }
 
     /// 判断对象的长度
@@ -125,9 +157,7 @@ impl BinaryMut {
     /// ```
     #[inline]
     pub fn len(&self) -> usize {
-        unsafe {
-            (*self.ptr).len() - self.cursor
-        }
+        unsafe { (*self.ptr).len() - self.cursor }
     }
 
     #[inline]
@@ -164,9 +194,7 @@ impl BinaryMut {
     /// ```
     #[inline]
     pub fn capacity(&self) -> usize {
-        unsafe {
-            (*self.ptr).capacity()
-        }
+        unsafe { (*self.ptr).capacity() }
     }
 
     pub fn reserve(&mut self, additional: usize) {
@@ -179,7 +207,6 @@ impl BinaryMut {
             (*self.ptr).reserve(additional)
         }
     }
-
 
     fn put<T: crate::Buf>(&mut self, mut src: T)
     where
@@ -247,7 +274,6 @@ impl BinaryMut {
             self.advance_mut(cnt);
         }
     }
-
 }
 
 impl From<Vec<u8>> for BinaryMut {
@@ -258,12 +284,15 @@ impl From<Vec<u8>> for BinaryMut {
 
 impl Clone for BinaryMut {
     fn clone(&self) -> Self {
-        (*self.counter).borrow().fetch_add(1, std::sync::atomic::Ordering::Acquire);
+        (*self.counter)
+            .borrow()
+            .fetch_add(1, std::sync::atomic::Ordering::Acquire);
         Self {
-            ptr: self.ptr.clone(), 
+            ptr: self.ptr.clone(),
             cursor: self.cursor.clone(),
+            manual_len: self.manual_len,
             mark: self.mark.clone(),
-            counter: self.counter.clone()
+            counter: self.counter.clone(),
         }
     }
 }
@@ -280,12 +309,9 @@ impl Drop for BinaryMut {
     }
 }
 
-
 impl Buf for BinaryMut {
     fn remaining(&self) -> usize {
-        unsafe {
-            (*self.ptr).len() - self.cursor
-        }
+        unsafe { std::cmp::min(self.manual_len, (*self.ptr).len()) - self.cursor }
     }
 
     fn chunk(&self) -> &[u8] {
@@ -297,11 +323,7 @@ impl Buf for BinaryMut {
             self.inc_start(n);
         }
     }
-
-
 }
-
-
 
 impl MarkBuf for BinaryMut {
     fn mark_commit(&mut self) -> usize {
@@ -314,8 +336,47 @@ impl MarkBuf for BinaryMut {
         let cursor = self.cursor;
         let start = self.mark;
         self.mark_commit();
-        let head = &self.as_slice_all()[start .. (cursor - skip)];
+        let head = &self.as_slice_all()[start..(cursor - skip)];
         head
+    }
+
+    fn mark_len(&mut self, len: usize) {
+        if len == usize::MAX {
+            self.manual_len = len;
+        } else {
+            unsafe {
+                debug_assert!((*self.ptr).len() >= len);
+            }
+            self.manual_len = len;
+        }
+    }
+
+    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized
+    {
+        let start = match range.start_bound() {
+            std::ops::Bound::Included(x) => x + 0,
+            std::ops::Bound::Excluded(x) => x + 1,
+            std::ops::Bound::Unbounded => 0,
+        };
+        let len = match range.start_bound() {
+            std::ops::Bound::Included(x) => x - start,
+            std::ops::Bound::Excluded(x) => x - 1 - start,
+            std::ops::Bound::Unbounded => self.remaining() as isize - start,
+        };
+        debug_assert!(len > 0);
+        let mut bin = self.clone();
+        if self.remaining() == len as usize {
+            bin.manual_len = usize::MAX;
+        } else {
+            debug_assert!(self.remaining() as isize >= start + len as isize);
+            if start > 0 {
+                unsafe { bin.inc_start(start as usize) };
+            } else {
+                unsafe { bin.sub_start(start as usize) }
+            }
+            bin.manual_len = self.cursor + len as usize;
+        }
+        bin
     }
 }
 
@@ -337,11 +398,7 @@ unsafe impl BufMut for BinaryMut {
             (*self.ptr).spare_capacity_mut()
         }
     }
-
-    
 }
-
-
 
 impl AsRef<[u8]> for BinaryMut {
     #[inline]
@@ -522,7 +579,6 @@ impl fmt::Write for BinaryMut {
 //     }
 // }
 
-
 impl Read for BinaryMut {
     #[inline(always)]
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
@@ -539,7 +595,6 @@ impl Read for BinaryMut {
     }
 }
 
-
 impl Write for BinaryMut {
     #[inline(always)]
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
@@ -551,7 +606,6 @@ impl Write for BinaryMut {
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {

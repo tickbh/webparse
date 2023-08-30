@@ -1,12 +1,20 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
+use std::ops::{Range, RangeBounds};
 use std::sync::{Arc, Mutex};
 
 use webparse::http::http2::{Decoder, HeaderIndex};
 use webparse::http::request;
 use webparse::{
     url, Binary, BinaryMut, Buf, HeaderName, HeaderValue, Helper, Request, Response, Serialize,
-    Url, Version,
+    Url, Version, MarkBuf,
 };
+
+#[derive(Debug)]
+pub enum Pay<T>
+where T:Buf + MarkBuf {
+    Data(T)
+}
 
 extern crate webparse;
 
@@ -131,6 +139,10 @@ fn debug_request_parse() {
 }
 
 fn main() {
+
+    let bin = Binary::new();
+    let p = Pay::Data(bin);
+    println!("bbb = {:?}", p);
     debug_request_parse_full_http2();
     // debug_request_parse_http2();
 

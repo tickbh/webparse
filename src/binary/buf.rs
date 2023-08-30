@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, ops::{Range, RangeBounds}};
 
 macro_rules! buf_get_impl {
     ($this:ident, $typ:tt::$conv:tt) => {{
@@ -46,6 +46,17 @@ pub trait MarkBuf: Buf {
 
     /// 把当前值赋值给起始值
     fn mark_commit(&mut self) -> usize;
+    
+    /// 更改数据大小
+    fn mark_len(&mut self, len: usize);
+    
+    /// 克隆当前的对象, 并限定范围
+    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized;
+    
+    /// 克隆当前的对象, 取当前余下的
+    fn mark_clone_slice(&self) -> Self where Self: Sized {
+        self.mark_clone_slice_range( 0isize .. )
+    }
 
     fn mark_slice(&mut self) -> &[u8] {
         self.mark_slice_skip(0)

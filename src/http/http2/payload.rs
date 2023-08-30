@@ -1,6 +1,6 @@
-use std::{fmt, mem, slice};
+use std::{fmt, mem};
 
-use crate::{Http2Error, WebError, WebResult};
+use crate::{Http2Error, WebError, WebResult, MarkBuf, Buf, BufMut};
 
 use super::{
     encode_u64, frame::FrameHeader, read_u64, ErrorCode, Flag, Kind, ParserSettings, SizeIncrement,
@@ -10,31 +10,32 @@ use super::{
 const PRIORITY_BYTES: u32 = 5;
 const PADDING_BYTES: u32 = 1;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Payload<'a> {
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Payload<T>
+where T: Buf + MarkBuf {
     Data {
-        data: &'a [u8],
+        data: T,
     },
     Headers {
         priority: Option<Priority>,
-        block: &'a [u8],
+        block: T,
     },
     Priority(Priority),
     Reset(ErrorCode),
-    Settings(&'a [Setting]),
+    Settings(Vec<Setting>),
     PushPromise {
         promised: StreamIdentifier,
-        block: &'a [u8],
+        block: T,
     },
     Ping(u64),
     GoAway {
         last: StreamIdentifier,
         error: ErrorCode,
-        data: &'a [u8],
+        data: T,
     },
     WindowUpdate(SizeIncrement),
-    Continuation(&'a [u8]),
-    Unregistered(&'a [u8]),
+    Continuation(T),
+    Unregistered(T),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -46,32 +47,34 @@ pub struct Priority {
 
 impl Priority {
     #[inline]
-    pub fn parse(present: bool, buf: &[u8]) -> WebResult<(&[u8], Option<Priority>)> {
+    pub fn parse<T: Buf+MarkBuf>(present: bool, mut buffer: T) -> WebResult<(T, Option<Priority>)> {
+        let first = buffer.peek().unwrap();
+        let id = StreamIdentifier::parse(&mut buffer);
+        let weight = buffer.get_u8();
         if present {
             Ok((
-                &buf[5..],
+                buffer.mark_clone_slice(),
                 Some(Priority {
                     // Most significant bit.
-                    exclusive: buf[0] & 0x7F != buf[0],
-                    dependency: StreamIdentifier::parse(buf),
-                    weight: buf[4],
+                    exclusive: first & 0x7F != first,
+                    dependency: id,
+                    weight,
                 }),
             ))
         } else {
-            Ok((buf, None))
+            Ok((buffer, None))
         }
     }
 
     #[inline]
-    pub fn encode(&self, buf: &mut [u8]) -> usize {
+    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
         let mut dependency = self.dependency;
         if self.exclusive {
             dependency.0 |= 1 << 31
         }
 
         dependency.encode(buf);
-        buf[PRIORITY_BYTES as usize - 1] = self.weight;
-
+        buf.put_u8(self.weight);
         PRIORITY_BYTES as usize
     }
 }
@@ -119,23 +122,29 @@ impl Setting {
     }
 
     #[inline]
-    fn to_bytes(settings: &[Setting]) -> &[u8] {
-        unsafe {
-            slice::from_raw_parts(
-                settings.as_ptr() as *const u8,
-                settings.len() * mem::size_of::<Setting>(),
-            )
+    fn encode<B: Buf+MarkBuf+BufMut>(settings: &[Setting], buf: &mut B) -> usize {
+        let mut size = 0;
+        for setting in settings {
+            buf.put_u16(setting.identifier);
+            buf.put_u32(setting.value);
+            size += 6;
         }
+        size
     }
 
     #[inline]
-    fn from_bytes(bytes: &[u8]) -> &[Setting] {
-        unsafe {
-            slice::from_raw_parts(
-                bytes.as_ptr() as *const Setting,
-                bytes.len() / mem::size_of::<Setting>(),
-            )
+    fn decode<T: Buf+MarkBuf>(bytes: &mut T) -> Vec<Setting> {
+        let len = bytes.remaining() / mem::size_of::<Setting>();
+        let mut result = vec![];
+        for _ in 0..len {
+            let identifier = bytes.get_u16();
+            let value = bytes.get_u32();
+            result.push(Setting {
+                identifier,
+                value
+            })
         }
+        result
     }
 }
 
@@ -156,7 +165,7 @@ pub enum SettingIdentifier {
     MaxHeaderListSize = 0x6,
 }
 
-impl<'a> Payload<'a> {
+impl<T: Buf+MarkBuf> Payload<T> {
     #[inline]
     pub fn kind(&self) -> Kind {
         use self::Payload::*;
@@ -177,13 +186,13 @@ impl<'a> Payload<'a> {
     }
 
     #[inline]
-    pub fn parse(header: FrameHeader, mut buf: &'a [u8]) -> WebResult<Payload<'a>> {
+    pub fn parse(header: FrameHeader, buffer: &mut T) -> WebResult<Payload<T>> {
         let settings = ParserSettings {
             padding: header.flag.contains(Flag::padded()),
             priority: header.flag.contains(Flag::priority()),
         };
 
-        if buf.len() < header.length as usize {
+        if buffer.remaining() < header.length as usize {
             return Err(Http2Error::into(Http2Error::Short));
         }
 
@@ -201,7 +210,7 @@ impl<'a> Payload<'a> {
             return Err(Http2Error::into(Http2Error::PayloadLengthTooShort));
         }
 
-        buf = &buf[..header.length as usize];
+        let mut buf = buffer.mark_clone_slice_range(..header.length as isize);
 
         match header.kind {
             Kind::Data => Payload::parse_data(header, buf, settings),
@@ -222,7 +231,7 @@ impl<'a> Payload<'a> {
     }
 
     #[inline]
-    pub fn encode(&self, buf: &mut [u8]) -> usize {
+    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
         match *self {
             Payload::Data { ref data } => encode_memory(data, buf),
             Payload::Headers {
@@ -230,23 +239,22 @@ impl<'a> Payload<'a> {
                 ref block,
             } => {
                 let priority_wrote = priority.map(|p| p.encode(buf)).unwrap_or(0);
-                let block_wrote = encode_memory(block, &mut buf[priority_wrote..]);
+                let block_wrote = encode_memory(block, buf);
                 priority_wrote + block_wrote
             }
             Payload::Reset(ref err) => err.encode(buf),
-            Payload::Settings(ref settings) => encode_memory(Setting::to_bytes(settings), buf),
-            Payload::Ping(data) => encode_u64(buf, data),
+            Payload::Settings(ref settings) => Setting::encode(&settings, buf),
+            Payload::Ping(data) => {
+                buf.put_u64(data);
+                8
+            },
             Payload::GoAway {
                 ref data,
                 ref last,
                 ref error,
             } => {
                 let last_wrote = last.encode(buf);
-                let buf = &mut buf[last_wrote..];
-
                 let error_wrote = error.encode(buf);
-                let buf = &mut buf[error_wrote..];
-
                 encode_memory(data, buf) + last_wrote + error_wrote
             }
             Payload::WindowUpdate(ref increment) => increment.encode(buf),
@@ -255,7 +263,7 @@ impl<'a> Payload<'a> {
                 ref block,
             } => {
                 promised.encode(buf);
-                encode_memory(block, &mut buf[4..]) + 4
+                encode_memory(block, buf) + 4
             }
             Payload::Priority(ref priority) => priority.encode(buf),
             Payload::Continuation(ref block) => encode_memory(block, buf),
@@ -269,23 +277,23 @@ impl<'a> Payload<'a> {
         use self::Payload::*;
 
         match *self {
-            Data { ref data } => data.len(),
+            Data { ref data } => data.remaining(),
             Headers {
                 ref priority,
                 ref block,
             } => {
                 let priority_len = if priority.is_some() { 5 } else { 0 };
-                priority_len + block.len()
+                priority_len + block.remaining()
             }
             Reset(_) => 4,
             Settings(ref settings) => settings.len() * mem::size_of::<Setting>(),
             Ping(_) => 8,
-            GoAway { ref data, .. } => 4 + 4 + data.len(),
+            GoAway { ref data, .. } => 4 + 4 + data.remaining(),
             WindowUpdate(_) => 4,
-            PushPromise { ref block, .. } => 4 + block.len(),
+            PushPromise { ref block, .. } => 4 + block.remaining(),
             Priority(_) => 5,
-            Continuation(ref block) => block.len(),
-            Unregistered(ref block) => block.len(),
+            Continuation(ref block) => block.remaining(),
+            Unregistered(ref block) => block.remaining(),
         }
     }
 
@@ -306,21 +314,22 @@ impl<'a> Payload<'a> {
     #[inline]
     fn parse_data(
         header: FrameHeader,
-        buf: &'a [u8],
+        mut buf: T,
         settings: ParserSettings,
-    ) -> WebResult<Payload<'a>> {
+    ) -> WebResult<Payload<T>> {
+        trim_padding(settings, header, &mut buf)?;
         Ok(Payload::Data {
-            data: trim_padding(settings, header, buf)?,
+            data: buf,
         })
     }
 
     #[inline]
     fn parse_headers(
         header: FrameHeader,
-        mut buf: &'a [u8],
+        mut buf: T,
         settings: ParserSettings,
-    ) -> WebResult<Payload<'a>> {
-        buf = trim_padding(settings, header, buf)?;
+    ) -> WebResult<Payload<T>> {
+        trim_padding(settings, header, &mut buf)?;
         let (buf, priority) = Priority::parse(settings.priority, buf)?;
         Ok(Payload::Headers {
             priority: priority,
@@ -329,99 +338,95 @@ impl<'a> Payload<'a> {
     }
 
     #[inline]
-    fn parse_reset(header: FrameHeader, buf: &'a [u8]) -> WebResult<Payload<'a>> {
+    fn parse_reset(header: FrameHeader, mut buf: T) -> WebResult<Payload<T>> {
         if header.length < 4 {
             return Err(Http2Error::into(Http2Error::PayloadLengthTooShort));
         }
 
-        Ok(Payload::Reset(ErrorCode::parse(buf)))
+        Ok(Payload::Reset(ErrorCode::parse(&mut buf)))
     }
 
     #[inline]
-    fn parse_settings(header: FrameHeader, buf: &'a [u8]) -> WebResult<Payload<'a>> {
+    fn parse_settings(header: FrameHeader, mut buf: T) -> WebResult<Payload<T>> {
         if header.length % mem::size_of::<Setting>() as u32 != 0 {
             return Err(Http2Error::into(Http2Error::PartialSettingLength));
         }
 
-        Ok(Payload::Settings(Setting::from_bytes(
-            &buf[..header.length as usize],
-        )))
+        Ok(Payload::Settings(Setting::decode(&mut buf)))
     }
 
     #[inline]
-    fn parse_ping(header: FrameHeader, buf: &'a [u8]) -> WebResult<Payload<'a>> {
+    fn parse_ping(header: FrameHeader, mut buf: T) -> WebResult<Payload<T>> {
         if header.length != 8 {
             return Err(Http2Error::into(Http2Error::InvalidPayloadLength));
         }
 
-        let data = read_u64(buf);
+        let data = read_u64(&mut buf);
         Ok(Payload::Ping(data))
     }
 
     #[inline]
-    fn parse_goaway(header: FrameHeader, buf: &'a [u8]) -> WebResult<Payload<'a>> {
+    fn parse_goaway(header: FrameHeader, mut buf: T) -> WebResult<Payload<T>> {
         if header.length < 8 {
             return Err(Http2Error::into(Http2Error::PayloadLengthTooShort));
         }
 
-        let last = StreamIdentifier::parse(buf);
-        let error = ErrorCode::parse(&buf[4..]);
-        let rest = &buf[8..];
+        let last = StreamIdentifier::parse(&mut buf);
+        let error = ErrorCode::parse(&mut buf);
 
         Ok(Payload::GoAway {
-            last: last,
-            error: error,
-            data: rest,
+            last,
+            error,
+            data: buf.mark_clone_slice(),
         })
     }
 
     #[inline]
-    fn parse_window_update(header: FrameHeader, buf: &'a [u8]) -> WebResult<Payload<'a>> {
+    fn parse_window_update(header: FrameHeader, mut buf: T) -> WebResult<Payload<T>> {
         if header.length != 4 {
             return Err(Http2Error::into(Http2Error::InvalidPayloadLength));
         }
 
-        Ok(Payload::WindowUpdate(SizeIncrement::parse(buf)))
+        Ok(Payload::WindowUpdate(SizeIncrement::parse(&mut buf)))
     }
 
     #[inline]
     fn parse_push_promise(
         header: FrameHeader,
-        mut buf: &'a [u8],
+        mut buf: T,
         settings: ParserSettings,
-    ) -> WebResult<Payload<'a>> {
-        buf = trim_padding(settings, header, buf)?;
+    ) -> WebResult<Payload<T>> {
+        trim_padding(settings, header, &mut buf)?;
 
-        if buf.len() < 4 {
+        if buf.remaining() < 4 {
             return Err(Http2Error::into(Http2Error::PayloadLengthTooShort));
         }
 
-        let promised = StreamIdentifier::parse(buf);
-        let block = &buf[4..];
+        let promised = StreamIdentifier::parse(&mut buf);
+        let block = buf.mark_clone_slice();
 
         Ok(Payload::PushPromise {
-            promised: promised,
-            block: block,
+            promised,
+            block,
         })
     }
 }
 
 #[inline]
-fn encode_memory(src: &[u8], mut dst: &mut [u8]) -> usize {
-    use std::io::Write;
-    dst.write(src).unwrap()
+fn encode_memory<T: Buf + MarkBuf, B: Buf + BufMut + MarkBuf>(src: &T, mut dst: &mut B) -> usize {
+    dst.put_slice(src.chunk())
 }
 
 #[inline]
-fn trim_padding(settings: ParserSettings, header: FrameHeader, buf: &[u8]) -> WebResult<&[u8]> {
-    if settings.padding {
-        let pad_length = buf[0];
+fn trim_padding<T: Buf + MarkBuf>(settings: ParserSettings, header: FrameHeader, buf: &mut T) -> WebResult<()> {
+    if settings.padding && buf.has_remaining() {
+        let pad_length = buf.peek().unwrap();
         if pad_length as u32 > header.length {
-            Err(Http2Error::into(Http2Error::TooMuchPadding(pad_length)))
+            return Err(Http2Error::into(Http2Error::TooMuchPadding(pad_length)))
         } else {
-            Ok(&buf[1..header.length as usize - pad_length as usize])
+            buf.advance(1);
+            buf.mark_len(header.length as usize - pad_length as usize - 1);
         }
-    } else {
-        Ok(buf)
     }
+    Ok(())
 }

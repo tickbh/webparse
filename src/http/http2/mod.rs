@@ -13,7 +13,7 @@ pub use frame::Frame;
 pub use kind::Kind;
 pub use payload::Payload;
 
-use crate::{serialize, Request, WebResult, BinaryMut, Buf, MarkBuf, http::http2::frame::FRAME_HEADER_BYTES};
+use crate::{serialize, Request, WebResult, BinaryMut, Buf, MarkBuf, http::http2::frame::FRAME_HEADER_BYTES, BufMut};
 pub use hpack::*;
 
 use self::frame::FrameHeader;
@@ -22,54 +22,51 @@ use self::frame::FrameHeader;
 pub struct StreamIdentifier(pub u32);
 
 impl StreamIdentifier {
-    pub fn parse(buf: &[u8]) -> StreamIdentifier {
-        if buf.len() < 4 {
+    pub fn parse<T: Buf+MarkBuf>(buf: &mut T) -> StreamIdentifier {
+        if buf.remaining() < 4 {
             return StreamIdentifier(0);
         }
         StreamIdentifier(read_u31(buf))
     }
 
-    pub fn encode(&self, buf: &mut [u8]) -> usize {
-        encode_u32(buf, self.0)
+    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
+        buf.put_u32(self.0);
+        4
     }
 }
 
 #[inline(always)]
-pub fn read_u64(buf: &[u8]) -> u64 {
-    if buf.len() < 8 {
+pub fn read_u64<T:Buf+MarkBuf>(buf: &mut T) -> u64 {
+    if buf.remaining() < 8 {
         return 0;
     }
-    (buf[0] as u64 & 0x7F) << 56
-        | (buf[1] as u64) << 48
-        | (buf[2] as u64) << 40
-        | (buf[3] as u64) << 32
-        | (buf[5] as u64 & 0x7F) << 24
-        | (buf[6] as u64) << 16
-        | (buf[7] as u64) << 8
-        | buf[8] as u64
+    buf.get_u64()
 }
 
+pub const MASK_U31: u32 = (1u32 << 31) - 1;
 #[inline(always)]
-pub fn read_u31(buf: &[u8]) -> u32 {
-    if buf.len() < 4 {
+pub fn read_u31<T: Buf+MarkBuf>(buf: &mut T) -> u32 {
+    if buf.remaining() < 4 {
         return 0;
     }
-    (buf[0] as u32 & 0x7F) << 24 | (buf[1] as u32) << 16 | (buf[2] as u32) << 8 | buf[3] as u32
+    let val = buf.get_u32();
+    val & MASK_U31
+    // (buf[0] as u32 & 0x7F) << 24 | (buf[1] as u32) << 16 | (buf[2] as u32) << 8 | buf[3] as u32
 }
 
 #[inline(always)]
-pub fn read_u24(buf: &[u8]) -> u32 {
-    if buf.len() < 3 {
+pub fn read_u24<T: Buf + MarkBuf>(buf: &mut T) -> u32 {
+    if buf.remaining() < 3 {
         return 0;
     }
-    (buf[1] as u32) << 16 | (buf[2] as u32) << 8 | buf[3] as u32
+    (buf.get_u8() as u32) << 16 | (buf.get_u8() as u32) << 8 | buf.get_u8() as u32
 }
 
 #[inline(always)]
-pub fn encode_u24(buf: &mut [u8], val: u32) -> usize {
-    buf[0] = (val >> 16) as u8;
-    buf[1] = (val >> 8) as u8;
-    buf[2] = val as u8;
+pub fn encode_u24<B: Buf + BufMut + MarkBuf>(buf: &mut B, val: u32) -> usize {
+    buf.put_u8((val >> 16) as u8);
+    buf.put_u8((val >> 8) as u8);
+    buf.put_u8((val >> 0) as u8);
     3
 }
 
@@ -96,14 +93,14 @@ impl Http2 {
         buffer: &mut B,
     ) -> WebResult<()> {
         while buffer.has_remaining() {
-            let frame_header = FrameHeader::parse(buffer.chunk())?;
+            let frame_header = FrameHeader::parse(buffer)?;
             buffer.advance(FRAME_HEADER_BYTES);
             let length = frame_header.length;
             {
-                let frame = Frame::parse(frame_header, buffer.chunk())?;
-                println!("frame = {:?}", frame);
+                let frame = Frame::parse(frame_header, buffer)?;
+                // println!("frame = {:?}", frame);
             }
-            buffer.advance(length as usize);
+            // buffer.advance(length as usize);
         }
         Ok(())
     }
@@ -115,12 +112,14 @@ impl Http2 {
 pub struct ErrorCode(pub u32);
 
 impl ErrorCode {
-    pub fn parse(buf: &[u8]) -> ErrorCode {
+    pub fn parse<T: Buf + MarkBuf>(buf: &mut T) -> ErrorCode {
+        buf.advance(4);
         ErrorCode(0)
     }
 
-    pub fn encode(&self, buf: &mut [u8]) -> usize {
-        encode_u32(buf, self.0)
+    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
+        buf.put_u32(self.0);
+        4
     }
 }
 
@@ -128,12 +127,14 @@ impl ErrorCode {
 pub struct SizeIncrement(pub u32);
 
 impl SizeIncrement {
-    pub fn parse(buf: &[u8]) -> SizeIncrement {
+    pub fn parse<T: Buf+MarkBuf>(buf: &mut T) -> SizeIncrement {
+        buf.advance(4);
         SizeIncrement(0)
     }
 
-    pub fn encode(&self, buf: &mut [u8]) -> usize {
-        encode_u32(buf, self.0)
+    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
+        buf.put_u32(self.0);
+        4
     }
 }
 
