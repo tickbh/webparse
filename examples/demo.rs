@@ -7,13 +7,24 @@ use webparse::http::http2::{Decoder, HeaderIndex};
 use webparse::http::request;
 use webparse::{
     url, Binary, BinaryMut, Buf, HeaderName, HeaderValue, Helper, Request, Response, Serialize,
-    Url, Version, MarkBuf,
+    Url, Version, MarkBuf, BufMut,
 };
 
 #[derive(Debug)]
 pub enum Pay<T>
 where T:Buf + MarkBuf {
     Data(T)
+}
+
+
+pub trait Test {
+    fn serialize1<B: Buf + BufMut>(&self, buf: &mut B);
+}
+
+impl Test for &'static str {
+    fn serialize1<B: Buf + BufMut>(&self, buf: &mut B) {
+        buf.put_slice(self.as_bytes());
+    }
 }
 
 extern crate webparse;
@@ -139,6 +150,9 @@ fn debug_request_parse() {
 }
 
 fn main() {
+
+    let mut binmut = BinaryMut::new();
+    "aaa".serialize1(&mut binmut);
 
     let bin = Binary::new();
     let p = Pay::Data(bin);
@@ -285,9 +299,9 @@ fn main() {
     println!("========={:?}", xx);
     let xx111 = Arc::get_mut(&mut index);
     println!("========={:?}", xx111);
-    rrr.extensions_mut().insert(index);
-    let new = rrr.extensions_mut().get_mut::<Arc<HeaderIndex>>();
-    println!("========={:?}", new);
+    // rrr.extensions_mut().insert(index);
+    // let new = rrr.extensions_mut().get_mut::<Arc<HeaderIndex>>();
+    // println!("========={:?}", new);
 
     // if true {
     //     return;

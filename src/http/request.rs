@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock}, cell::RefCell,
 };
 
 use super::{
@@ -29,7 +29,7 @@ pub struct Parts {
     pub version: Version,
     pub url: Url,
     pub path: String,
-    pub extensions: Extensions,
+    pub extensions: RefCell<Extensions>,
 }
 
 #[derive(Debug)]
@@ -77,10 +77,10 @@ impl Builder {
             head.url = req.url().clone();
         });
 
-        match req.extensions().get::<Arc<RwLock<HeaderIndex>>>() {
+        match req.parts.extensions.borrow().get::<Arc<RwLock<HeaderIndex>>>() {
             Some(index) => {
                 let _ = build.inner.as_mut().map(|head| {
-                    head.extensions.insert(index.clone());
+                    head.extensions.borrow_mut().insert(index.clone());
                 });
             }
             _ => (),
@@ -552,24 +552,24 @@ where
     /// assert!(request.extensions().get::<i32>().is_none());
     /// ```
     #[inline]
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &RefCell<Extensions> {
         &self.parts.extensions
     }
 
-    /// Returns a mutable reference to the associated extensions.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use webparse::*;
-    /// let mut request: Request<()> = Request::default();
-    /// request.extensions_mut().insert("hello");
-    /// assert_eq!(request.extensions().get(), Some(&"hello"));
-    /// ```
-    #[inline]
-    pub fn extensions_mut(&mut self) -> &mut Extensions {
-        &mut self.parts.extensions
-    }
+    // /// Returns a mutable reference to the associated extensions.
+    // ///
+    // /// # Examples
+    // ///
+    // /// ```
+    // /// # use webparse::*;
+    // /// let mut request: Request<()> = Request::default();
+    // /// request.extensions_mut().insert("hello");
+    // /// assert_eq!(request.extensions().get(), Some(&"hello"));
+    // /// ```
+    // #[inline]
+    // pub fn extensions_mut(&mut self) -> &mut Extensions {
+    //     &mut self.parts.extensions.borrow_mut()
+    // }
 
     pub fn httpdata(&self) -> WebResult<Vec<u8>> {
         let mut buffer = BinaryMut::new();
@@ -584,14 +584,13 @@ where
     }
 
     fn get_index(&mut self) -> Arc<RwLock<HeaderIndex>> {
-        match self.extensions().get::<Arc<RwLock<HeaderIndex>>>() {
-            Some(index) => index.clone(),
-            None => {
-                let index = Arc::new(RwLock::new(HeaderIndex::new()));
-                self.extensions_mut().insert(index.clone());
-                index
-            }
+        if let Some(index) = self.parts.extensions.borrow().get::<Arc<RwLock<HeaderIndex>>>() {
+            return index.clone();
         }
+
+        let index = Arc::new(RwLock::new(HeaderIndex::new()));
+        self.parts.extensions.borrow_mut().insert(index.clone());
+        index
     }
 
     pub fn get_decoder(&mut self) -> Decoder {
@@ -647,7 +646,7 @@ impl Default for Parts {
             version: Version::Http11,
             url: Url::new(),
             path: String::new(),
-            extensions: Extensions::new(),
+            extensions: RefCell::new(Extensions::new()) ,
         }
     }
 }
@@ -660,12 +659,12 @@ impl Clone for Parts {
             version: self.version.clone(),
             url: self.url.clone(),
             path: self.path.clone(),
-            extensions: Extensions::new(),
+            extensions: RefCell::new(Extensions::new()),
         };
 
-        match self.extensions.get::<Arc<RwLock<HeaderIndex>>>() {
+        match self.extensions.borrow().get::<Arc<RwLock<HeaderIndex>>>() {
             Some(index) => {
-                value.extensions.insert(index.clone());
+                value.extensions.borrow_mut().insert(index.clone());
             }
             _ => (),
         }

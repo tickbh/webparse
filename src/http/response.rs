@@ -1,4 +1,4 @@
-use std::{any::Any, borrow::Cow, io::Write, sync::{Arc, RwLock}};
+use std::{any::Any, borrow::Cow, io::Write, sync::{Arc, RwLock}, cell::RefCell};
 
 use crate::{
     Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, BinaryMut,
@@ -21,7 +21,7 @@ pub struct Parts {
     pub status: StatusCode,
     pub header: HeaderMap,
     pub version: Version,
-    pub extensions: Extensions,
+    pub extensions: RefCell<Extensions>,
 }
 
 pub struct Builder {
@@ -188,7 +188,7 @@ impl Builder {
         T: Any + Send + Sync + 'static,
     {
         self.and_then(move |mut head| {
-            head.extensions.insert(extension);
+            head.extensions.borrow_mut().insert(extension);
             Ok(head)
         })
     }
@@ -206,27 +206,27 @@ impl Builder {
     /// assert_eq!(extensions.get::<&'static str>(), Some(&"My Extension"));
     /// assert_eq!(extensions.get::<u32>(), Some(&5u32));
     /// ```
-    pub fn extensions_ref(&self) -> Option<&Extensions> {
+    pub fn extensions_ref(&self) -> Option<&RefCell<Extensions>> {
         self.inner.as_ref().ok().map(|h| &h.extensions)
     }
 
-    /// Get a mutable reference to the extensions for this response builder.
-    ///
-    /// If the builder has an error, this returns `None`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use webparse::Response;
-    /// let mut res = Response::builder().extension("My Extension");
-    /// let mut extensions = res.extensions_mut().unwrap();
-    /// assert_eq!(extensions.get::<&'static str>(), Some(&"My Extension"));
-    /// extensions.insert(5u32);
-    /// assert_eq!(extensions.get::<u32>(), Some(&5u32));
-    /// ```
-    pub fn extensions_mut(&mut self) -> Option<&mut Extensions> {
-        self.inner.as_mut().ok().map(|h| &mut h.extensions)
-    }
+    // /// Get a mutable reference to the extensions for this response builder.
+    // ///
+    // /// If the builder has an error, this returns `None`.
+    // ///
+    // /// # Example
+    // ///
+    // /// ```
+    // /// # use webparse::Response;
+    // /// let mut res = Response::builder().extension("My Extension");
+    // /// let mut extensions = res.extensions_mut().unwrap();
+    // /// assert_eq!(extensions.get::<&'static str>(), Some(&"My Extension"));
+    // /// extensions.insert(5u32);
+    // /// assert_eq!(extensions.get::<u32>(), Some(&5u32));
+    // /// ```
+    // pub fn extensions_mut(&mut self) -> Option<&mut Extensions> {
+    //     self.inner.as_mut().ok().map(|h| &mut h.extensions)
+    // }
 
     /// "Consumes" this builder, using the provided `body` to return a
     /// constructed `Response`.
@@ -446,25 +446,25 @@ impl<T: Serialize> Response<T> {
     /// assert!(response.extensions().get::<i32>().is_none());
     /// ```
     #[inline]
-    pub fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &RefCell<Extensions> {
         &self.parts.extensions
     }
 
-    /// Returns a mutable reference to the associated extensions.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use webparse::*;
-    /// # use webparse::header::*;
-    /// let mut response: Response<()> = Response::default();
-    /// response.extensions_mut().insert("hello");
-    /// assert_eq!(response.extensions().get(), Some(&"hello"));
-    /// ```
-    #[inline]
-    pub fn extensions_mut(&mut self) -> &mut Extensions {
-        &mut self.parts.extensions
-    }
+    // /// Returns a mutable reference to the associated extensions.
+    // ///
+    // /// # Examples
+    // ///
+    // /// ```
+    // /// # use webparse::*;
+    // /// # use webparse::header::*;
+    // /// let mut response: Response<()> = Response::default();
+    // /// response.extensions_mut().insert("hello");
+    // /// assert_eq!(response.extensions().get(), Some(&"hello"));
+    // /// ```
+    // #[inline]
+    // pub fn extensions_mut(&mut self) -> &mut Extensions {
+    //     &mut self.parts.extensions
+    // }
 
     /// Returns a reference to the associated HTTP body.
     ///
@@ -557,17 +557,14 @@ impl<T: Serialize> Response<T> {
         return Ok(buffer.into_slice_all());
     }
 
-
-
     fn get_index(&mut self) -> Arc<RwLock<HeaderIndex>> {
-        match self.extensions().get::<Arc<RwLock<HeaderIndex>>>() {
-            Some(index) => index.clone(),
-            None => {
-                let index = Arc::new(RwLock::new(HeaderIndex::new()));
-                self.extensions_mut().insert(index.clone());
-                index
-            }
+        if let Some(index) = self.parts.extensions.borrow().get::<Arc<RwLock<HeaderIndex>>>() {
+            return index.clone();
         }
+
+        let index = Arc::new(RwLock::new(HeaderIndex::new()));
+        self.parts.extensions.borrow_mut().insert(index.clone());
+        index
     }
     
     pub fn get_decoder(&mut self) -> Decoder {
@@ -596,7 +593,7 @@ impl Default for Parts {
             status: StatusCode::OK,
             header: HeaderMap::new(),
             version: Version::Http11,
-            extensions: Extensions::new(),
+            extensions: RefCell::new(Extensions::new()),
         }
     }
 }
