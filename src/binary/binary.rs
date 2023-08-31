@@ -39,6 +39,14 @@ pub struct Binary {
     vtable: &'static Vtable,
 }
 
+unsafe impl Sync for Binary {
+    
+}
+
+unsafe impl Send for Binary {
+    
+}
+
 pub struct Vtable {
     pub clone: unsafe fn(bin: &Binary) -> Binary,
     pub to_vec: unsafe fn(bin: &Binary) -> Vec<u8>,

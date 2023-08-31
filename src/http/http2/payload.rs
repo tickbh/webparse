@@ -75,7 +75,7 @@ impl Serialize for Priority {
             dependency.0 |= 1 << 31
         }
 
-        dependency.serialize(buffer);
+        dependency.serialize(buffer)?;
         buffer.put_u8(self.weight);
         Ok(PRIORITY_BYTES as usize)
     }

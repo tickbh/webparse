@@ -23,7 +23,7 @@ pub struct Frame<T: Buf + MarkBuf> {
 impl<T: Buf + MarkBuf> Frame<T> {
     pub fn parse(header: FrameHeader, buf: &mut T) -> WebResult<Frame<T>> {
         Ok(Frame {
-            header: header,
+            header,
             payload: Payload::parse(header, buf)?,
         })
     }

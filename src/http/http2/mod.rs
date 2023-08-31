@@ -13,7 +13,7 @@ pub use frame::Frame;
 pub use kind::Kind;
 pub use payload::Payload;
 
-use crate::{serialize, BinaryMut, Buf, BufMut, MarkBuf, Request, WebResult, Method, Response, WebError, Serialize};
+use crate::{serialize, BinaryMut, Buf, BufMut, MarkBuf, Request, WebResult, Method, Response, WebError, Serialize, http::http2::payload::Setting, Binary};
 pub use hpack::*;
 
 use self::frame::FrameHeader;
@@ -116,6 +116,22 @@ impl Http2 {
                     
                 }
                 Payload::Settings(s) => {
+                    // let mut res = vec![];
+                    // res.push(Setting {
+                    //     identifier: 0, value: 0
+                    // });
+                    // 添加响应Setting指令
+                    let frame = Frame {
+                        header: FrameHeader { length: 0, kind: Kind::Settings, flag: Flag::ack(), id: StreamIdentifier(0) },
+                        payload: Payload::Settings::<Binary>(vec![]),
+                    };
+                    if let Some(vec) = request.extensions().borrow_mut().get_mut::<Vec<Frame<Binary>>>() {
+                        vec.push(frame);
+                    } else {
+                        let vec = vec![frame];
+                        request.extensions().borrow_mut().insert(vec);
+                    }
+
                     
                 }
                 Payload::WindowUpdate(s) => {
@@ -211,13 +227,18 @@ pub struct SizeIncrement(pub u32);
 
 impl SizeIncrement {
     pub fn parse<T: Buf + MarkBuf>(buf: &mut T) -> SizeIncrement {
-        buf.advance(4);
-        SizeIncrement(0)
+        SizeIncrement(buf.get_u32())
     }
 
     pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
         buf.put_u32(self.0);
         4
+    }
+}
+
+impl Serialize for SizeIncrement {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        Ok(buffer.put_u32(self.0))
     }
 }
 
