@@ -21,7 +21,7 @@ use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::{convert::TryFrom, io::Write};
 
-use crate::{HttpError, Serialize, WebError, WebResult, BinaryMut};
+use crate::{HttpError, Serialize, WebError, WebResult, BinaryMut, HeaderName, HeaderValue};
 
 /// An HTTP status code (`status-code` in RFC 7230 et al.).
 ///
@@ -195,6 +195,12 @@ impl StatusCode {
     #[inline]
     pub fn is_server_error(&self) -> bool {
         600 > self.0.get() && self.0.get() >= 500
+    }
+
+    // http2 协议快速转成头参数
+    #[inline]
+    pub fn build_header(&self) -> (HeaderName, HeaderValue) {
+        (HeaderName::from_static(":status"), HeaderValue::from_bytes(self.as_str().as_bytes()))
     }
 }
 

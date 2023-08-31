@@ -1,5 +1,5 @@
 pub const HTTP2_MAGIC: &[u8] = b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
-use std::fmt::Debug;
+use std::{fmt::Debug, borrow::Cow};
 mod error;
 mod flag;
 mod frame;
@@ -13,7 +13,7 @@ pub use frame::Frame;
 pub use kind::Kind;
 pub use payload::Payload;
 
-use crate::{serialize, BinaryMut, Buf, BufMut, MarkBuf, Request, WebResult, Method};
+use crate::{serialize, BinaryMut, Buf, BufMut, MarkBuf, Request, WebResult, Method, Response, WebError, Serialize};
 pub use hpack::*;
 
 use self::frame::FrameHeader;
@@ -28,10 +28,11 @@ impl StreamIdentifier {
         }
         StreamIdentifier(read_u31(buf))
     }
+}
 
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
-        buf.put_u32(self.0);
-        4
+impl Serialize for StreamIdentifier {
+    fn serial_bytes<'a>(&'a self) -> WebResult<std::borrow::Cow<'a, [u8]>> {
+        Ok(Cow::Borrowed(&self.0.to_be_bytes()))
     }
 }
 
@@ -123,6 +124,64 @@ impl Http2 {
                 }
             }
             
+        }
+        Ok(())
+    }
+
+    pub fn build_body_frame<T: serialize::Serialize>(res: &mut Response<T>) -> WebResult<Option<Frame<BinaryMut>>> {
+        let mut buf = BinaryMut::new();
+        res.body().serialize(&mut buf)?;
+        if buf.remaining() == 0 {
+            return Ok(None)
+        }
+        let header = FrameHeader {
+            length: buf.remaining() as u32,
+            kind: Kind::Data,
+            flag: Flag::end_stream(),
+            id: StreamIdentifier(4),
+        };
+        let payload = Payload::Data { data: buf };
+        let frame = Frame {
+            header,
+            payload,
+        };
+        Ok(Some(frame))
+    }
+
+    
+    pub fn build_header_frame<T: serialize::Serialize>(res: &mut Response<T>) -> WebResult<Frame<BinaryMut>> {
+        let mut buf = BinaryMut::new();
+        let mut enocder = res.get_encoder();
+        let status = res.status().build_header();
+        enocder.encode_header_into((&status.0, &status.1), &mut buf).map_err(WebError::from)?;
+        enocder.encode_into(res.headers().iter(), &mut buf)?;
+        let header = FrameHeader {
+            length: buf.remaining() as u32,
+            kind: Kind::Headers,
+            flag: Flag::end_headers(),
+            id: StreamIdentifier(2),
+        };
+        let payload = Payload::Headers { priority: None, block: buf };
+        let frame = Frame {
+            header,
+            payload,
+        };
+        Ok(frame)
+    }
+
+    pub fn build_response_frame<T: serialize::Serialize>(res: &mut Response<T>) -> WebResult<Vec<Frame<BinaryMut>>>  {
+        let mut result = vec![];
+        result.push(Self::build_header_frame(res)?);
+        if let Some(frame) = Self::build_body_frame(res)? {
+            result.push(frame);
+        }
+        Ok(result)
+    }
+
+    pub fn serialize<T: serialize::Serialize>(res: &mut Response<T>, buffer: &mut BinaryMut) -> WebResult<()> {
+        let vecs = Self::build_response_frame(res)?;
+        for vec in vecs {
+            vec.serialize(buffer);
         }
         Ok(())
     }

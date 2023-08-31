@@ -1,6 +1,6 @@
 
 use std::{io, num::Wrapping, sync::{Arc, RwLock}, rc::Rc, cell::RefCell};
-use crate::{HeaderName, HeaderValue, Serialize};
+use crate::{HeaderName, HeaderValue, Serialize, BufMut, MarkBuf, Buf, BinaryMut};
 use super::HeaderIndex;
 
 pub struct Encoder {
@@ -20,26 +20,25 @@ impl Encoder {
         Encoder { index }
     }
 
-    pub fn encode<'b, I>(&mut self, headers: I) -> Vec<u8>
+    pub fn encode<'b, I>(&mut self, headers: I) -> BinaryMut
             where I: Iterator<Item=(&'b HeaderName, &'b HeaderValue)> {
-        let mut encoded: Vec<u8> = Vec::new();
+        let mut encoded = BinaryMut::new();
         self.encode_into(headers, &mut encoded).unwrap();
         encoded
     }
 
-    pub fn encode_into<'b, I, W>(&mut self, headers: I, writer: &mut W) -> io::Result<()>
-            where I: Iterator<Item=(&'b HeaderName, &'b HeaderValue)>,
-                  W: io::Write {
+    pub fn encode_into<'b, I, B: BufMut + Buf + MarkBuf>(&mut self, headers: I, writer: &mut B) -> io::Result<()>
+            where I: Iterator<Item=(&'b HeaderName, &'b HeaderValue)> {
         for header in headers {
             self.encode_header_into(header, writer)?;
         }
         Ok(())
     }
 
-    pub fn encode_header_into<W: io::Write>(
+    pub fn encode_header_into<B: BufMut + Buf + MarkBuf>(
             &mut self,
             header: (&HeaderName, &HeaderValue),
-            writer: &mut W)
+            writer: &mut B)
             -> io::Result<()> {
         println!("header = {:?}", header);
         let value = {
@@ -61,11 +60,11 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_literal<W: io::Write>(
+    fn encode_literal<B: BufMut + Buf + MarkBuf>(
         &mut self,
         header: (&HeaderName, &HeaderValue),
         should_index: bool,
-        buf: &mut W)
+        buf: &mut B)
         -> io::Result<()> {
         let mask = if should_index {
             0x40
@@ -73,27 +72,27 @@ impl Encoder {
             0x0
         };
 
-        buf.write_all(&[mask])?;
+        buf.put_slice(&[mask]);
         self.encode_string_literal(&header.0.serial_bytes().unwrap(), buf)?;
         self.encode_string_literal(&header.1.serial_bytes().unwrap(), buf)?;
         Ok(())
     }
 
-    fn encode_string_literal<W: io::Write>(
+    fn encode_string_literal<B: BufMut + Buf + MarkBuf>(
         &mut self,
         octet_str: &[u8],
-        buf: &mut W)
+        buf: &mut B)
         -> io::Result<()> {
         Self::encode_integer_into(octet_str.len(), 7, 0, buf)?;
-        buf.write_all(octet_str)?;
+        buf.put_slice(octet_str);
         Ok(())
     }
 
-    fn encode_indexed_name<W: io::Write>(
+    fn encode_indexed_name<B: BufMut + Buf + MarkBuf>(
         &mut self,
         header: (usize, &HeaderValue),
         should_index: bool,
-        buf: &mut W)
+        buf: &mut B)
         -> io::Result<()> {
         let (mask, prefix) = if should_index {
             (0x40, 6)
@@ -107,16 +106,16 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_indexed<W: io::Write>(&self, index: usize, buf: &mut W) -> io::Result<()> {
+    fn encode_indexed<B: BufMut + Buf + MarkBuf>(&self, index: usize, buf: &mut B) -> io::Result<()> {
         Self::encode_integer_into(index, 7, 0x80, buf)?;
         Ok(())
     }
 
-    pub fn encode_integer_into<W: io::Write>(
+    pub fn encode_integer_into<B: BufMut + Buf + MarkBuf>(
         mut value: usize,
         prefix_size: u8,
         leading_bits: u8,
-        writer: &mut W)
+        writer: &mut B)
         -> io::Result<()> {
         let Wrapping(mask) = if prefix_size >= 8 {
             Wrapping(0xFF)
@@ -126,17 +125,17 @@ impl Encoder {
         let leading_bits = leading_bits & (!mask);
         let mask = mask as usize;
         if value < mask {
-            writer.write_all(&[leading_bits | value as u8])?;
+            writer.put_slice(&[leading_bits | value as u8]);
             return Ok(());
         }
 
-        writer.write_all(&[leading_bits | mask as u8])?;
+        writer.put_slice(&[leading_bits | mask as u8]);
         value -= mask;
         while value >= 128 {
-            writer.write_all(&[((value % 128) + 128) as u8])?;
+            writer.put_slice(&[((value % 128) + 128) as u8]);
             value = value / 128;
         }
-        writer.write_all(&[value as u8])?;
+        writer.put_slice(&[value as u8]);
         Ok(())
     }
 

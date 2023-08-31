@@ -1,10 +1,10 @@
-use std::{any::Any, borrow::Cow, io::Write};
+use std::{any::Any, borrow::Cow, io::Write, sync::{Arc, RwLock}};
 
 use crate::{
     Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, BinaryMut,
 };
 
-use super::StatusCode;
+use super::{StatusCode, http2::{Decoder, encoder::Encoder, HeaderIndex}};
 
 #[derive(Debug)]
 pub struct Response<T>
@@ -297,6 +297,7 @@ impl Response<()> {
     pub fn builder() -> Builder {
         Builder::new()
     }
+
 }
 
 impl<T: Serialize> Response<T> {
@@ -555,6 +556,28 @@ impl<T: Serialize> Response<T> {
         self.serialize(&mut buffer)?;
         return Ok(buffer.into_slice_all());
     }
+
+
+
+    fn get_index(&mut self) -> Arc<RwLock<HeaderIndex>> {
+        match self.extensions().get::<Arc<RwLock<HeaderIndex>>>() {
+            Some(index) => index.clone(),
+            None => {
+                let index = Arc::new(RwLock::new(HeaderIndex::new()));
+                self.extensions_mut().insert(index.clone());
+                index
+            }
+        }
+    }
+    
+    pub fn get_decoder(&mut self) -> Decoder {
+        Decoder::new_index(self.get_index())
+    }
+
+    pub fn get_encoder(&mut self) -> Encoder {
+        Encoder::new_index(self.get_index())
+    }
+    
 }
 
 impl<T: Default + Serialize> Default for Response<T> {
