@@ -1,6 +1,6 @@
 use std::{fmt::Display, borrow::Cow};
 
-use crate::{byte_map, Helper, WebResult, WebError, Serialize, BinaryMut, Buf, MarkBuf};
+use crate::{byte_map, Helper, WebResult, WebError, Serialize, BinaryMut, Buf, MarkBuf, BufMut};
 
 
 
@@ -60,30 +60,32 @@ impl Scheme {
         let scheme = Helper::parse_scheme(buffer)?;
         Scheme::try_from(scheme)
     }
+
+    pub fn as_str(&self) -> Cow<&str> {
+        match self {
+            Scheme::Http => Cow::Owned("http"),
+            Scheme::Https => Cow::Owned("https"),
+            Scheme::Ws => Cow::Owned("ws"),
+            Scheme::Wss => Cow::Owned("wss"),
+            Scheme::Ftp => Cow::Owned("ftp"),
+            Scheme::Extension(s) => Cow::Borrowed(&s.as_str()),
+            Scheme::None => Cow::Owned(""),
+        }
+    }
 }
 
 
 impl Display for Scheme {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Scheme::Http => f.write_str("http"),
-            Scheme::Https => f.write_str("https"),
-            Scheme::Ws => f.write_str("ws"),
-            Scheme::Wss => f.write_str("wss"),
-            Scheme::Ftp => f.write_str("ftp"),
-            Scheme::Extension(s) => f.write_str(s.as_str()),
-            Scheme::None => f.write_str(""),
-        }
+        f.write_str(&self.as_str())
     }
 }
 
 impl Serialize for Scheme {
-    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Scheme::None => Err(WebError::Serialize("scheme")),
-            Scheme::Http => Ok(Cow::Borrowed("http".as_bytes())),
-            Scheme::Https => Ok(Cow::Borrowed("https".as_bytes())),
-            _ => Ok(Cow::Owned(format!("{}", self).into_bytes()))
+            _ => Ok(buffer.put_slice(self.as_str().as_bytes()))
         }
     }
 }

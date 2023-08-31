@@ -73,8 +73,8 @@ impl Encoder {
         };
 
         buf.put_slice(&[mask]);
-        self.encode_string_literal(&header.0.serial_bytes().unwrap(), buf)?;
-        self.encode_string_literal(&header.1.serial_bytes().unwrap(), buf)?;
+        self.encode_string_literal(&header.0.as_bytes(), buf)?;
+        self.encode_string_literal(&header.1.as_bytes(), buf)?;
         Ok(())
     }
 
@@ -102,7 +102,7 @@ impl Encoder {
 
         Self::encode_integer_into(header.0, prefix, mask, buf)?;
         // So far, we rely on just one strategy for encoding string literals.
-        self.encode_string_literal(&header.1.serial_bytes().unwrap(), buf)?;
+        self.encode_string_literal(&header.1.as_bytes(), buf)?;
         Ok(())
     }
 

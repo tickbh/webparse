@@ -1,6 +1,6 @@
 use std::{fmt::Display, io::Write, borrow::Cow};
 
-use crate::{Serialize, WebError, WebResult};
+use crate::{Serialize, WebError, WebResult, Buf, BufMut, MarkBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Method {
@@ -72,33 +72,37 @@ impl Method {
             _ => false,
         }
     }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            Method::Options => "OPTIONS",
+            Method::Get => "GET",
+            Method::Post => "POST",
+            Method::Put => "PUT",
+            Method::Delete => "DELETE",
+            Method::Head => "HEAD",
+            Method::Trace => "TRACE",
+            Method::Connect => "CONNECT",
+            Method::Patch => "PATCH",
+            Method::Pri => "PRI",
+            Method::None => "None",
+            Method::Extension(s) => &s.as_str(),
+        }
+    }
 }
 
 impl Display for Method {
     
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Method::Options => f.write_str("OPTIONS"),
-            Method::Get => f.write_str("GET"),
-            Method::Post => f.write_str("POST"),
-            Method::Put => f.write_str("PUT"),
-            Method::Delete => f.write_str("DELETE"),
-            Method::Head => f.write_str("HEAD"),
-            Method::Trace => f.write_str("TRACE"),
-            Method::Connect => f.write_str("CONNECT"),
-            Method::Patch => f.write_str("PATCH"),
-            Method::Pri => f.write_str("PRI"),
-            Method::None => f.write_str("None"),
-            Method::Extension(s) => f.write_str(s.as_str()),
-        }
+        f.write_str(&self.as_str())
     }
 }
 
 impl Serialize for Method {
-    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Method::None => Err(WebError::Serialize("method")),
-            _ => Ok(Cow::Owned(format!("{}", self).into_bytes())),
+            _ => Ok(buffer.put_slice(self.as_str().as_bytes())),
         }
     }
 }

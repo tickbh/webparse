@@ -1,7 +1,7 @@
 use std::hash::Hash;
 use std::{borrow::Cow, fmt, io::Write};
 
-use crate::{Helper, Serialize, WebError, WebResult};
+use crate::{Helper, Serialize, WebError, WebResult, Buf, BufMut, MarkBuf};
 
 #[derive(Clone, Debug)]
 pub enum HeaderValue {
@@ -26,6 +26,13 @@ impl HeaderValue {
         match self {
             Self::Stand(s) => s.as_bytes().len(),
             Self::Value(s) => s.len(),
+        }
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        match self {
+            Self::Stand(s) => &s.as_bytes(),
+            Self::Value(s) => &s,
         }
     }
 }
@@ -149,10 +156,10 @@ impl PartialEq<HeaderValue> for str {
 }
 
 impl Serialize for HeaderValue {
-    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         match self {
-            Self::Stand(name) => Ok(Cow::Borrowed(name.as_bytes())),
-            Self::Value(vec) => Ok(Cow::Borrowed(&**vec)),
+            Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
+            Self::Value(vec) => Ok(buffer.put_slice(&**vec)),
         }
     }
 }

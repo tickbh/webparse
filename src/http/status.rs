@@ -21,7 +21,7 @@ use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::{convert::TryFrom, io::Write};
 
-use crate::{HttpError, Serialize, WebError, WebResult, BinaryMut, HeaderName, HeaderValue};
+use crate::{HttpError, Serialize, WebError, WebResult, BinaryMut, HeaderName, HeaderValue, Buf, BufMut, MarkBuf};
 
 /// An HTTP status code (`status-code` in RFC 7230 et al.).
 ///
@@ -520,24 +520,13 @@ status_codes! {
 }
 
 impl Serialize for StatusCode {
-    fn serialize(&self, buffer: &mut BinaryMut) -> WebResult<()> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         match self.canonical_reason() {
             Some(s) => {
-                buffer
-                    .write(format!("{} {}\r\n", self.as_str(), s).as_bytes())
-                    .map_err(WebError::from)?;
+                Ok(buffer
+                    .put_slice(format!("{} {}\r\n", self.as_str(), s).as_bytes()))
             }
             _ => return Err(WebError::from(HttpError::InvalidStatusCode)),
-        }
-        Ok(())
-    }
-
-    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
-        match self.canonical_reason() {
-            Some(s) => Ok(Cow::Owned(
-                format!("{} {}\r\n", self.as_str(), s).into_bytes(),
-            )),
-            _ => Err(WebError::from(HttpError::InvalidStatusCode)),
         }
     }
 }

@@ -1,7 +1,7 @@
 use std::{any::Any, borrow::Cow, io::Write, sync::{Arc, RwLock}, cell::RefCell};
 
 use crate::{
-    Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, BinaryMut,
+    Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, BinaryMut, Buf, BufMut, MarkBuf,
 };
 
 use super::{StatusCode, http2::{Decoder, encoder::Encoder, HeaderIndex, Http2}};
@@ -602,20 +602,18 @@ impl<T> Serialize for Response<T>
 where
     T: Serialize,
 {
-    fn serialize(&self, buffer: &mut BinaryMut) -> WebResult<()> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        let mut size = 0;
         if self.parts.version == Version::Http2 {
             
         } else {
-            self.parts.version.serialize(buffer)?;
-            buffer.write(" ".as_bytes()).map_err(WebError::from)?;
-            self.parts.status.serialize(buffer)?;
-            self.parts.header.serialize(buffer)?;
-            self.body.serialize(buffer)?;
+            size += self.parts.version.serialize(buffer)?;
+            size += buffer.put_slice(" ".as_bytes());
+            size += self.parts.status.serialize(buffer)?;
+            size += self.parts.header.serialize(buffer)?;
+            size += self.body.serialize(buffer)?;
         }
-        Ok(())
+        Ok(size)
     }
 
-    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
-        Err(WebError::Serialize("request can't serial bytes"))
-    }
 }

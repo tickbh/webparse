@@ -579,11 +579,11 @@ where
 
     pub fn http2data(&mut self) -> WebResult<Vec<u8>> {
         let mut buffer = BinaryMut::new();
-        self.serialize_mut(&mut buffer)?;
+        self.serialize(&mut buffer)?;
         return Ok(buffer.into_slice_all());
     }
 
-    fn get_index(&mut self) -> Arc<RwLock<HeaderIndex>> {
+    fn get_index(&self) -> Arc<RwLock<HeaderIndex>> {
         if let Some(index) = self.parts.extensions.borrow().get::<Arc<RwLock<HeaderIndex>>>() {
             return index.clone();
         }
@@ -593,11 +593,11 @@ where
         index
     }
 
-    pub fn get_decoder(&mut self) -> Decoder {
+    pub fn get_decoder(&self) -> Decoder {
         Decoder::new_index(self.get_index())
     }
 
-    pub fn get_encoder(&mut self) -> Encoder {
+    pub fn get_encoder(&self) -> Encoder {
         Encoder::new_index(self.get_index())
     }
 }
@@ -676,7 +676,8 @@ impl<T> Serialize for Request<T>
 where
     T: Serialize,
 {
-    fn serialize(&self, buffer: &mut BinaryMut) -> WebResult<()> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        let mut size = 0;
         match self.parts.version {
             Version::Http11 => {
                 self.parts.method.serialize(buffer)?;
@@ -687,30 +688,21 @@ where
                 buffer.put_slice("\r\n".as_bytes());
                 self.parts.header.serialize(buffer)?;
                 self.body.serialize(buffer)?;
-                Ok(())
+                Ok(size)
             }
-            Version::Http2 => Err(WebError::Extension(
-                "http2 will may change dynamic header so so support",
-            )),
-            _ => Err(WebError::Extension("un support")),
-        }
-    }
-
-    fn serialize_mut(&mut self, buffer: &mut BinaryMut) -> WebResult<()> {
-        match self.parts.version {
             Version::Http2 => {
                 let mut encode = self.get_encoder();
                 encode.encode_header_into(
                     (
                         &HeaderName::from_static(":method"),
-                        &HeaderValue::from_cow(self.parts.method.serial_bytes()?),
+                        &HeaderValue::from_bytes(self.parts.method.as_str().as_bytes()),
                     ),
                     buffer,
                 )?;
                 encode.encode_header_into(
                     (
                         &HeaderName::from_static(":path"),
-                        &HeaderValue::from_cow(self.parts.path.serial_bytes()?),
+                        &HeaderValue::from_bytes(self.parts.path.as_bytes()),
                     ),
                     buffer,
                 )?;
@@ -718,21 +710,17 @@ where
                     encode.encode_header_into(
                         (
                             &HeaderName::from_static(":scheme"),
-                            &HeaderValue::from_cow(self.parts.url.scheme.serial_bytes()?),
+                            &HeaderValue::from_bytes(self.parts.url.scheme.as_str().as_bytes()),
                         ),
                         buffer,
                     )?;
                 }
                 encode.encode_into(self.parts.header.iter(), buffer)?;
                 self.body.serialize(buffer)?;
-                Ok(())
-            }
-            _ => self.serialize(buffer),
+                Ok(size)
+            },
+            _ => Err(WebError::Extension("un support")),
         }
-    }
-
-    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
-        Err(WebError::Serialize("request can't serial bytes"))
     }
 }
 

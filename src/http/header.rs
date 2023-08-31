@@ -7,7 +7,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::{helper, BinaryMut, HeaderName, HeaderValue, Helper, Serialize, WebError, WebResult};
+use crate::{helper, BinaryMut, HeaderName, HeaderValue, Helper, Serialize, WebError, WebResult, Buf, BufMut, MarkBuf};
 
 #[derive(Debug)]
 pub struct HeaderMap {
@@ -140,18 +140,16 @@ impl Clone for HeaderMap {
 }
 
 impl Serialize for HeaderMap {
-    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
-        Err(WebError::Serialize("header map can't call header map"))
-    }
 
-    fn serialize(&self, buffer: &mut BinaryMut) -> WebResult<()> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        let mut size = 0;
         for value in self.iter() {
-            value.0.serialize(buffer)?;
-            buffer.write(": ".as_bytes()).map_err(WebError::from)?;
-            value.1.serialize(buffer)?;
-            buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;
+            size += value.0.serialize(buffer)?;
+            size += buffer.put_slice(": ".as_bytes());
+            size += value.1.serialize(buffer)?;
+            size += buffer.put_slice("\r\n".as_bytes());
         }
-        buffer.write("\r\n".as_bytes()).map_err(WebError::from)?;
-        Ok(())
+        size += buffer.put_slice("\r\n".as_bytes());
+        Ok(size)
     }
 }

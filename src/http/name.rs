@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt, hash::Hash, io::Write};
 
-use crate::{Serialize, WebError, WebResult};
+use crate::{Serialize, WebError, WebResult, Buf, BufMut, MarkBuf};
 
 #[derive(Clone)]
 pub enum HeaderName {
@@ -64,10 +64,10 @@ impl TryFrom<String> for HeaderName {
 }
 
 impl Serialize for HeaderName {
-    fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         match self {
-            Self::Stand(name) => Ok(Cow::Borrowed(name.as_bytes())),
-            Self::Value(name) => Ok(Cow::Borrowed(name.as_bytes())),
+            Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
+            Self::Value(name) => Ok(buffer.put_slice(name.as_bytes())),
         }
     }
 }
@@ -96,6 +96,13 @@ impl HeaderName {
         match self {
             Self::Stand(s) => s,
             Self::Value(s) => s,
+        }
+    }
+    
+    pub fn as_bytes(&self) -> &[u8] {
+        match self {
+            Self::Stand(s) => &s.as_bytes(),
+            Self::Value(s) => &s.as_bytes(),
         }
     }
 }
