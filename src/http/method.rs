@@ -62,6 +62,18 @@ impl Method {
     pub const SPRI: &'static str = "PRI";
 }
 
+impl Method {
+    pub fn is_nobody(&self) -> bool {
+        match self {
+            Method::Get => true,
+            Method::Head => true,
+            Method::Options => true,
+            Method::Connect => true,
+            _ => false,
+        }
+    }
+}
+
 impl Display for Method {
     
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

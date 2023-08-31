@@ -13,7 +13,7 @@ pub use frame::Frame;
 pub use kind::Kind;
 pub use payload::Payload;
 
-use crate::{serialize, Request, WebResult, BinaryMut, Buf, MarkBuf, http::http2::frame::FRAME_HEADER_BYTES, BufMut};
+use crate::{serialize, BinaryMut, Buf, BufMut, MarkBuf, Request, WebResult, Method};
 pub use hpack::*;
 
 use self::frame::FrameHeader;
@@ -22,7 +22,7 @@ use self::frame::FrameHeader;
 pub struct StreamIdentifier(pub u32);
 
 impl StreamIdentifier {
-    pub fn parse<T: Buf+MarkBuf>(buf: &mut T) -> StreamIdentifier {
+    pub fn parse<T: Buf + MarkBuf>(buf: &mut T) -> StreamIdentifier {
         if buf.remaining() < 4 {
             return StreamIdentifier(0);
         }
@@ -36,7 +36,7 @@ impl StreamIdentifier {
 }
 
 #[inline(always)]
-pub fn read_u64<T:Buf+MarkBuf>(buf: &mut T) -> u64 {
+pub fn read_u64<T: Buf + MarkBuf>(buf: &mut T) -> u64 {
     if buf.remaining() < 8 {
         return 0;
     }
@@ -45,7 +45,7 @@ pub fn read_u64<T:Buf+MarkBuf>(buf: &mut T) -> u64 {
 
 pub const MASK_U31: u32 = (1u32 << 31) - 1;
 #[inline(always)]
-pub fn read_u31<T: Buf+MarkBuf>(buf: &mut T) -> u32 {
+pub fn read_u31<T: Buf + MarkBuf>(buf: &mut T) -> u32 {
     if buf.remaining() < 4 {
         return 0;
     }
@@ -94,17 +94,38 @@ impl Http2 {
     ) -> WebResult<()> {
         while buffer.has_remaining() {
             let frame_header = FrameHeader::parse(buffer)?;
-            let length = frame_header.length;
-            {
-                let frame = Frame::parse(frame_header, buffer)?;
-                println!("frame = {:?}", frame);
+            let frame = Frame::parse(frame_header, buffer)?;
+            println!("frame = {:?}", frame);
+            match frame.payload {
+                Payload::Data { data } => {
+                    
+                }
+                Payload::Headers { priority, mut block } => {
+                    request.parse_http2_header(&mut block)?;
+                    if request.method().is_nobody() {
+                        return Ok(());
+                    }
+                }
+                Payload::Priority(priority) => {
+
+                }
+                Payload::Reset(err) => {
+                    
+                }
+                Payload::Settings(s) => {
+                    
+                }
+                Payload::WindowUpdate(s) => {
+                    
+                }
+                _ => {
+
+                }
             }
-            // buffer.advance(length as usize);
+            
         }
         Ok(())
     }
-
-
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -126,7 +147,7 @@ impl ErrorCode {
 pub struct SizeIncrement(pub u32);
 
 impl SizeIncrement {
-    pub fn parse<T: Buf+MarkBuf>(buf: &mut T) -> SizeIncrement {
+    pub fn parse<T: Buf + MarkBuf>(buf: &mut T) -> SizeIncrement {
         buf.advance(4);
         SizeIncrement(0)
     }

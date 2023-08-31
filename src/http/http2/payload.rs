@@ -48,10 +48,10 @@ pub struct Priority {
 impl Priority {
     #[inline]
     pub fn parse<T: Buf+MarkBuf>(present: bool, mut buffer: T) -> WebResult<(T, Option<Priority>)> {
-        let first = buffer.peek().unwrap();
-        let id = StreamIdentifier::parse(&mut buffer);
-        let weight = buffer.get_u8();
-        if present {
+        if present {        
+            let first = buffer.peek().unwrap();
+            let id = StreamIdentifier::parse(&mut buffer);
+            let weight = buffer.get_u8();
             Ok((
                 buffer.mark_clone_slice(),
                 Some(Priority {

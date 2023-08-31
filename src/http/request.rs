@@ -1,9 +1,5 @@
 use std::{
     borrow::Cow,
-    cell::RefCell,
-    collections::HashMap,
-    io::Write,
-    rc::Rc,
     sync::{Arc, RwLock},
 };
 
@@ -11,8 +7,9 @@ use super::{
     http2::{self, encoder::Encoder, Decoder, HeaderIndex, Http2},
     HeaderMap, Method, Version,
 };
-use crate::{BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, MarkBuf,
-    Scheme, Serialize, Url, WebError, WebResult,
+use crate::{
+    BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, MarkBuf, Scheme,
+    Serialize, Url, WebError, WebResult,
 };
 
 #[derive(Debug)]
@@ -359,8 +356,24 @@ impl Request<()> {
         }
     }
 
+    pub fn new_by_parts(parts: Parts) -> Request<()> {
+        Request {
+            body: (),
+            partial: false,
+            parts,
+        }
+    }
+
     pub fn builder() -> Builder {
         Builder::default()
+    }
+
+    pub fn is_http2(&self) -> bool {
+        self.parts.version == Version::Http2
+    }
+
+    pub fn parts(&self) -> &Parts {
+        &self.parts
     }
 }
 
@@ -430,40 +443,45 @@ where
         Ok(())
     }
 
+    
+    pub fn parse_http2_header<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+        let mut decoder = self.get_decoder();
+        let headers = decoder.decode(buffer)?;
+        for h in headers {
+            if h.0.is_spec() {
+                let value: String = (&h.1).try_into()?;
+                match h.0.name() {
+                    ":authority" => {
+                        self.parts.url.domain = Some(value);
+                        self.headers_mut().insert_exact(h.0, h.1);
+                    }
+                    ":method" => {
+                        self.parts.method = Method::try_from(&*value)?;
+                    }
+                    ":path" => {
+                        self.parts.path = value;
+                    }
+                    ":scheme" => {
+                        self.parts.url.scheme = Scheme::try_from(&*value)?;
+                    }
+                    _ => {
+                        self.headers_mut().insert_exact(h.0, h.1);
+                    }
+                }
+            } else {
+                self.headers_mut().insert_exact(h.0, h.1);
+            }
+        }
+        if self.parts.path != "/".to_string() {
+            let url = Url::parse(self.parts.path.as_bytes().to_vec())?;
+            self.parts.url.merge(url);
+        }
+        Ok(buffer.mark_commit())
+    }
+
     pub fn parse_http2<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
-        
         Http2::parse_buffer(self, buffer)?;
-        // let mut decoder = self.get_decoder();
-        // let headers = decoder.decode(buffer)?;
-        // for h in headers {
-        //     if h.0.is_spec() {
-        //         let value: String = (&h.1).try_into()?;
-        //         match h.0.name() {
-        //             ":authority" => {
-        //                 self.parts.url.domain = Some(value);
-        //                 self.headers_mut().insert_exact(h.0, h.1);
-        //             }
-        //             ":method" => {
-        //                 self.parts.method = Method::try_from(&*value)?;
-        //             }
-        //             ":path" => {
-        //                 self.parts.path = value;
-        //             }
-        //             ":scheme" => {
-        //                 self.parts.url.scheme = Scheme::try_from(&*value)?;
-        //             }
-        //             _ => {
-        //                 self.headers_mut().insert_exact(h.0, h.1);
-        //             }
-        //         }
-        //     } else {
-        //         self.headers_mut().insert_exact(h.0, h.1);
-        //     }
-        // }
-        // if self.parts.path != "/".to_string() {
-        //     let url = Url::parse(self.parts.path.as_bytes().to_vec())?;
-        //     self.parts.url.merge(url);
-        // }
+        
         self.parts.version = Version::Http2;
         Ok(buffer.mark_commit())
     }
@@ -631,6 +649,27 @@ impl Default for Parts {
             path: String::new(),
             extensions: Extensions::new(),
         }
+    }
+}
+
+impl Clone for Parts {
+    fn clone(&self) -> Self {
+        let mut value = Self {
+            method: self.method.clone(),
+            header: self.header.clone(),
+            version: self.version.clone(),
+            url: self.url.clone(),
+            path: self.path.clone(),
+            extensions: Extensions::new(),
+        };
+
+        match self.extensions.get::<Arc<RwLock<HeaderIndex>>>() {
+            Some(index) => {
+                value.extensions.insert(index.clone());
+            }
+            _ => (),
+        }
+        value
     }
 }
 

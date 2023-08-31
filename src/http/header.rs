@@ -7,7 +7,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::{helper, HeaderName, HeaderValue, Helper, Serialize, WebError, WebResult, BinaryMut};
+use crate::{helper, BinaryMut, HeaderName, HeaderValue, Helper, Serialize, WebError, WebResult};
 
 #[derive(Debug)]
 pub struct HeaderMap {
@@ -128,6 +128,14 @@ impl IntoIterator for HeaderMap {
 
     fn into_iter(self) -> Self::IntoIter {
         self.headers.into_iter()
+    }
+}
+
+impl Clone for HeaderMap {
+    fn clone(&self) -> Self {
+        Self {
+            headers: self.headers.clone(),
+        }
     }
 }
 

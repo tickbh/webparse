@@ -583,11 +583,15 @@ where
     T: Serialize,
 {
     fn serialize(&self, buffer: &mut BinaryMut) -> WebResult<()> {
-        self.parts.version.serialize(buffer)?;
-        buffer.write(" ".as_bytes()).map_err(WebError::from)?;
-        self.parts.status.serialize(buffer)?;
-        self.parts.header.serialize(buffer)?;
-        self.body.serialize(buffer)?;
+        if self.parts.version == Version::Http2 {
+            
+        } else {
+            self.parts.version.serialize(buffer)?;
+            buffer.write(" ".as_bytes()).map_err(WebError::from)?;
+            self.parts.status.serialize(buffer)?;
+            self.parts.header.serialize(buffer)?;
+            self.body.serialize(buffer)?;
+        }
         Ok(())
     }
 
