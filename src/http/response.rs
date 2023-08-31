@@ -4,7 +4,7 @@ use crate::{
     Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, BinaryMut,
 };
 
-use super::{StatusCode, http2::{Decoder, encoder::Encoder, HeaderIndex}};
+use super::{StatusCode, http2::{Decoder, encoder::Encoder, HeaderIndex, Http2}};
 
 #[derive(Debug)]
 pub struct Response<T>

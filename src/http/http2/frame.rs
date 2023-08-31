@@ -31,8 +31,7 @@ impl<T: Buf + MarkBuf> Frame<T> {
     /// Encodes this Frame into a buffer.
     pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
         self.header.encode(buf);
-        // self.payload.encode(&mut buf[FRAME_HEADER_BYTES..]) + FRAME_HEADER_BYTES
-        0
+        self.payload.encode(buf) + FRAME_HEADER_BYTES
     }
 
     /// How many bytes this Frame will use in a buffer when encoding.
