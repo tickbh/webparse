@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{Buf, BufMut, Http2Error, MarkBuf, WebResult};
+use crate::{Buf, BufMut, Http2Error, MarkBuf, WebResult, Serialize};
 
 use super::{encode_u24, read_u24, Flag, Kind, Payload, StreamIdentifier};
 
@@ -28,15 +28,19 @@ impl<T: Buf + MarkBuf> Frame<T> {
         })
     }
 
-    /// Encodes this Frame into a buffer.
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
-        self.header.encode(buf);
-        self.payload.encode(buf) + FRAME_HEADER_BYTES
-    }
-
     /// How many bytes this Frame will use in a buffer when encoding.
     pub fn encoded_len(&self) -> usize {
         FRAME_HEADER_BYTES + self.payload.encoded_len()
+    }
+}
+
+
+impl<T: Buf + MarkBuf> Serialize for Frame<T> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        let mut size = 0;
+        size += self.header.serialize(buffer)?;
+        size += self.payload.serialize(buffer)?;
+        Ok(size)
     }
 }
 
@@ -58,12 +62,17 @@ impl FrameHeader {
         })
     }
 
-    #[inline]
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) {
-        encode_u24(buf, self.length);
-        buf.put_u8(self.kind.encode());
-        buf.put_u8(self.flag.bits());
-        self.id.encode(buf);
+}
+
+
+impl Serialize for FrameHeader {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        let mut size = 0;
+        size += encode_u24(buffer, self.length);
+        size += buffer.put_u8(self.kind.encode());
+        size += buffer.put_u8(self.flag.bits());
+        size += self.id.serialize(buffer)?;
+        Ok(size)
     }
 }
 

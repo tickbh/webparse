@@ -1,6 +1,6 @@
 use std::{fmt, mem};
 
-use crate::{Http2Error, WebError, WebResult, MarkBuf, Buf, BufMut};
+use crate::{Http2Error, WebError, WebResult, MarkBuf, Buf, BufMut, Serialize};
 
 use super::{
     encode_u64, frame::FrameHeader, read_u64, ErrorCode, Flag, Kind, ParserSettings, SizeIncrement,
@@ -66,16 +66,18 @@ impl Priority {
         }
     }
 
-    #[inline]
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
+}
+
+impl Serialize for Priority {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut dependency = self.dependency;
         if self.exclusive {
             dependency.0 |= 1 << 31
         }
 
-        dependency.encode(buf);
-        buf.put_u8(self.weight);
-        PRIORITY_BYTES as usize
+        dependency.serialize(buffer);
+        buffer.put_u8(self.weight);
+        Ok(PRIORITY_BYTES as usize)
     }
 }
 
@@ -232,47 +234,6 @@ impl<T: Buf+MarkBuf> Payload<T> {
     }
 
     #[inline]
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
-        match *self {
-            Payload::Data { ref data } => encode_memory(data, buf),
-            Payload::Headers {
-                ref priority,
-                ref block,
-            } => {
-                let priority_wrote = priority.map(|p| p.encode(buf)).unwrap_or(0);
-                let block_wrote = encode_memory(block, buf);
-                priority_wrote + block_wrote
-            }
-            Payload::Reset(ref err) => err.encode(buf),
-            Payload::Settings(ref settings) => Setting::encode(&settings, buf),
-            Payload::Ping(data) => {
-                buf.put_u64(data);
-                8
-            },
-            Payload::GoAway {
-                ref data,
-                ref last,
-                ref error,
-            } => {
-                let last_wrote = last.encode(buf);
-                let error_wrote = error.encode(buf);
-                encode_memory(data, buf) + last_wrote + error_wrote
-            }
-            Payload::WindowUpdate(ref increment) => increment.encode(buf),
-            Payload::PushPromise {
-                ref promised,
-                ref block,
-            } => {
-                promised.encode(buf);
-                encode_memory(block, buf) + 4
-            }
-            Payload::Priority(ref priority) => priority.encode(buf),
-            Payload::Continuation(ref block) => encode_memory(block, buf),
-            Payload::Unregistered(ref block) => encode_memory(block, buf),
-        }
-    }
-
-    #[inline]
     /// How many bytes this Payload would be encoded.
     pub fn encoded_len(&self) -> usize {
         use self::Payload::*;
@@ -410,6 +371,54 @@ impl<T: Buf+MarkBuf> Payload<T> {
             promised,
             block,
         })
+    }
+}
+
+
+impl<T: Buf+MarkBuf> Serialize for Payload<T> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        let size = match *self {
+            Payload::Data { ref data } => encode_memory(data, buffer),
+            Payload::Headers {
+                ref priority,
+                ref block,
+            } => {
+                let priority_wrote = if let Some(p) = priority {
+                    p.serialize(buffer)?
+                } else {
+                    0
+                };
+                let block_wrote = encode_memory(block, buffer);
+                priority_wrote + block_wrote
+            }
+            Payload::Reset(ref err) => err.serialize(buffer)?,
+            Payload::Settings(ref settings) => Setting::encode(&settings, buffer),
+            Payload::Ping(data) => {
+                buffer.put_u64(data);
+                8
+            },
+            Payload::GoAway {
+                ref data,
+                ref last,
+                ref error,
+            } => {
+                let last_wrote = last.serialize(buffer)?;
+                let error_wrote = error.serialize(buffer)?;
+                encode_memory(data, buffer) + last_wrote + error_wrote
+            }
+            Payload::WindowUpdate(ref increment) => increment.encode(buffer),
+            Payload::PushPromise {
+                ref promised,
+                ref block,
+            } => {
+                promised.serialize(buffer)?;
+                encode_memory(block, buffer) + 4
+            }
+            Payload::Priority(ref priority) => priority.serialize(buffer)?,
+            Payload::Continuation(ref block) => encode_memory(block, buffer),
+            Payload::Unregistered(ref block) => encode_memory(block, buffer),
+        };
+        Ok(size)
     }
 }
 

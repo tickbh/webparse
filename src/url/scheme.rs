@@ -61,15 +61,15 @@ impl Scheme {
         Scheme::try_from(scheme)
     }
 
-    pub fn as_str(&self) -> Cow<&str> {
+    pub fn as_str(&self) -> &str {
         match self {
-            Scheme::Http => Cow::Owned("http"),
-            Scheme::Https => Cow::Owned("https"),
-            Scheme::Ws => Cow::Owned("ws"),
-            Scheme::Wss => Cow::Owned("wss"),
-            Scheme::Ftp => Cow::Owned("ftp"),
-            Scheme::Extension(s) => Cow::Borrowed(&s.as_str()),
-            Scheme::None => Cow::Owned(""),
+            Scheme::Http => "http",
+            Scheme::Https => "https",
+            Scheme::Ws => "ws",
+            Scheme::Wss => "wss",
+            Scheme::Ftp => "ftp",
+            Scheme::Extension(s) => &s.as_str(),
+            Scheme::None => "",
         }
     }
 }

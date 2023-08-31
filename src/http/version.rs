@@ -28,13 +28,13 @@ impl Version {
     pub const SHTTP3: &'static str = "HTTP/3";
 
     
-    pub fn as_str(&self) -> Cow<&str> {
+    pub fn as_str(&self) -> &str {
         match self {
-            Version::Http10 => Cow::Owned("HTTP/1.0"),
-            Version::Http11 => Cow::Owned("HTTP/1.1"),
-            Version::Http2 => Cow::Owned("HTTP/2"),
-            Version::Http3 => Cow::Owned("HTTP/3"),
-            Version::None => Cow::Owned("None"),
+            Version::Http10 => "HTTP/1.0",
+            Version::Http11 => "HTTP/1.1",
+            Version::Http2 => "HTTP/2",
+            Version::Http3 => "HTTP/3",
+            Version::None => "None",
         }
     }
 }

@@ -29,17 +29,14 @@ impl StreamIdentifier {
         StreamIdentifier(read_u31(buf))
     }
     
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
-        buf.put_u32(self.0);
-        4
-    }
 }
 
-// impl Serialize for StreamIdentifier {
-//     fn serial_bytes<'a>(&'a self) -> WebResult<std::borrow::Cow<'a, [u8]>> {
-//         Ok(Cow::Owned(self.0.to_be_bytes().to_vec()))
-//     }
-// }
+impl Serialize for StreamIdentifier {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        buffer.put_u32(self.0);
+        Ok(4)
+    }
+}
 
 #[inline(always)]
 pub fn read_u64<T: Buf + MarkBuf>(buf: &mut T) -> u64 {
@@ -186,7 +183,7 @@ impl Http2 {
     pub fn serialize<T: serialize::Serialize>(res: &mut Response<T>, buffer: &mut BinaryMut) -> WebResult<()> {
         let vecs = Self::build_response_frame(res)?;
         for vec in vecs {
-            vec.encode(buffer);
+            vec.serialize(buffer);
         }
         Ok(())
     }
@@ -200,10 +197,12 @@ impl ErrorCode {
         buf.advance(4);
         ErrorCode(0)
     }
+}
 
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
-        buf.put_u32(self.0);
-        4
+impl Serialize for ErrorCode {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        buffer.put_u32(self.0);
+        Ok(4)
     }
 }
 
