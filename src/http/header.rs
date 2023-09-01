@@ -84,6 +84,10 @@ impl HeaderMap {
     pub fn len(&self) -> usize {
         self.headers.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.headers.len() == 0
+    }
 }
 
 impl Index<&'static str> for HeaderMap {
