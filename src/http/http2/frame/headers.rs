@@ -3,9 +3,9 @@
 use std::fmt;
 use std::io::Cursor;
 
-use crate::{HeaderMap, Method, Scheme, http::{StatusCode, header}, HeaderValue, Binary, BinaryMut, Http2Error, WebResult, Buf, MarkBuf};
+use crate::{HeaderMap, Method, Scheme, http::{StatusCode, header, http2::{Decoder, encoder::Encoder}}, HeaderValue, Binary, BinaryMut, Http2Error, WebResult, Buf, MarkBuf, Url};
 
-use super::{StreamIdentifier, StreamDependency, FrameHeader, Flag};
+use super::{StreamIdentifier, StreamDependency, FrameHeader, Flag, Kind, frame::Frame1};
 
 // type EncodeBuf<'a> = bytes::buf::Limit<&'a mut BinaryMut>;
 /// Header frame
@@ -198,8 +198,8 @@ impl Headers {
         &mut self,
         src: &mut BinaryMut,
         max_header_list_size: usize,
-        decoder: &mut hpack::Decoder,
-    ) -> Result<(), Error> {
+        decoder: &mut Decoder,
+    ) -> WebResult<()> {
         self.header_block.load(src, max_header_list_size, decoder)
     }
 
@@ -251,8 +251,8 @@ impl Headers {
 
     pub fn encode(
         self,
-        encoder: &mut hpack::Encoder,
-        dst: &mut EncodeBuf<'_>,
+        encoder: &mut Encoder,
+        dst: &mut BinaryMut,
     ) -> Option<Continuation> {
         // At this point, the `is_end_headers` flag should always be set
         debug_assert!(self.flags.is_end_headers());
@@ -265,14 +265,14 @@ impl Headers {
             .encode(&head, dst, |_| {})
     }
 
-    fn head(&self) -> Head {
-        Head::new(Kind::Headers, self.flags.into(), self.stream_id)
+    fn head(&self) -> FrameHeader {
+        FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id)
     }
 }
 
-impl<T> From<Headers> for Frame<T> {
+impl<T> From<Headers> for Frame1<T> {
     fn from(src: Headers) -> Self {
-        Frame::Headers(src)
+        Frame1::Headers(src)
     }
 }
 
@@ -443,16 +443,16 @@ impl PushPromise {
         &mut self,
         src: &mut BinaryMut,
         max_header_list_size: usize,
-        decoder: &mut hpack::Decoder,
-    ) -> Result<(), Error> {
+        decoder: &mut Decoder,
+    ) -> WebResult<()> {
         self.header_block.load(src, max_header_list_size, decoder)
     }
 
-    pub fn stream_id(&self) -> StreamId {
+    pub fn stream_id(&self) -> StreamIdentifier {
         self.stream_id
     }
 
-    pub fn promised_id(&self) -> StreamId {
+    pub fn promised_id(&self) -> StreamIdentifier {
         self.promised_id
     }
 
@@ -470,8 +470,8 @@ impl PushPromise {
 
     pub fn encode(
         self,
-        encoder: &mut hpack::Encoder,
-        dst: &mut EncodeBuf<'_>,
+        encoder: &mut Encoder,
+        dst: &mut BinaryMut,
     ) -> Option<Continuation> {
         // At this point, the `is_end_headers` flag should always be set
         debug_assert!(self.flags.is_end_headers());
@@ -486,8 +486,8 @@ impl PushPromise {
             })
     }
 
-    fn head(&self) -> Head {
-        Head::new(Kind::PushPromise, self.flags.into(), self.stream_id)
+    fn head(&self) -> FrameHeader {
+        FrameHeader::new(Kind::PushPromise, self.flags, self.stream_id)
     }
 
     /// Consume `self`, returning the parts of the frame
@@ -496,9 +496,9 @@ impl PushPromise {
     }
 }
 
-impl<T> From<PushPromise> for Frame<T> {
+impl<T> From<PushPromise> for Frame1<T> {
     fn from(src: PushPromise) -> Self {
-        Frame::PushPromise(src)
+        Frame1::PushPromise(src)
     }
 }
 
@@ -516,11 +516,11 @@ impl fmt::Debug for PushPromise {
 // ===== impl Continuation =====
 
 impl Continuation {
-    fn head(&self) -> Head {
-        Head::new(Kind::Continuation, END_HEADERS, self.stream_id)
+    fn head(&self) -> FrameHeader {
+        FrameHeader::new(Kind::Continuation, Flag::end_headers(), self.stream_id)
     }
 
-    pub fn encode(self, dst: &mut EncodeBuf<'_>) -> Option<Continuation> {
+    pub fn encode(self, dst: &mut BinaryMut) -> Option<Continuation> {
         // Get the CONTINUATION frame head
         let head = self.head();
 
@@ -531,7 +531,7 @@ impl Continuation {
 // ===== impl Pseudo =====
 
 impl Pseudo {
-    pub fn request(method: Method, uri: Uri, protocol: Option<Protocol>) -> Self {
+    pub fn request(method: Method, uri: Url, protocol: Option<Scheme>) -> Self {
         let parts = uri::Parts::from(uri);
 
         let mut path = parts
