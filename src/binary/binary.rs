@@ -232,6 +232,10 @@ impl Binary {
         self.cursor -= by;
         self.mark = std::cmp::min(self.mark, self.cursor);
     }
+
+    pub fn copy_from_slice(data: &[u8]) -> Self {
+        data.to_vec().into()
+    }
 }
 
 impl Clone for Binary {

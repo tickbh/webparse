@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-use crate::{Buf, BufMut, Http2Error, MarkBuf, WebResult, Serialize};
+use crate::{Buf, BufMut, Http2Error, MarkBuf, WebResult, Serialize, Binary};
 
-use super::{encode_u24, read_u24, Flag, Kind, Payload, StreamIdentifier};
+use super::{encode_u24, read_u24, Flag, Kind, Payload, StreamIdentifier, Data, Headers, Priority, Settings, GoAway, Ping, WindowUpdate, Reset};
 
 pub const FRAME_HEADER_BYTES: usize = 9;
 
@@ -18,6 +18,18 @@ pub struct FrameHeader {
 pub struct Frame<T: Buf + MarkBuf> {
     pub header: FrameHeader,
     pub payload: Payload<T>,
+}
+
+pub enum Frame1<T = Binary> {
+    Data(Data<T>),
+    Headers(Headers),
+    Priority(Priority),
+    // PushPromise(PushPromise),
+    Settings(Settings),
+    Ping(Ping),
+    GoAway(GoAway),
+    WindowUpdate(WindowUpdate),
+    Reset(Reset),
 }
 
 impl<T: Buf + MarkBuf> Frame<T> {
@@ -80,8 +92,8 @@ impl FrameHeader {
         &self.kind
     }
 
-    pub fn stream_id(&self) -> &StreamIdentifier {
-        &self.id
+    pub fn stream_id(&self) -> StreamIdentifier {
+        self.id
     }
 
     pub fn flag(&self) -> Flag {

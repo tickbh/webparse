@@ -3,7 +3,7 @@ use std::{fmt, mem};
 use crate::{Http2Error, WebError, WebResult, MarkBuf, Buf, BufMut, Serialize};
 
 use super::{
-    encode_u64, frame::FrameHeader, read_u64, ErrorCode, Flag, Kind, ParserSettings, SizeIncrement,
+    frame::FrameHeader, read_u64, ErrorCode, Flag, Kind, ParserSettings, SizeIncrement,
     StreamIdentifier, Settings,
 };
 

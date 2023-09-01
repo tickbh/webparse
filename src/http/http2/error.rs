@@ -37,10 +37,16 @@ pub enum Http2Error {
     /// The payload length specified by the frame header was not the
     /// value necessary for the specific frame type.
     InvalidPayloadLength,
-    // 无效的streamId, 比如setting只能以0的id来传送
+    /// 无效的streamId, 比如setting只能以0的id来传送
     InvalidStreamId,
-    // 无效的设置值, 比如enable_push只能取0和1
+    /// 无效的设置值, 比如enable_push只能取0和1
     InvalidSettingValue,
+    /// 无效的frame大小 
+    BadFrameSize,
+    /// 无效的窗口大小文件
+    InvalidWindowUpdateValue,
+    /// 无效的依赖StreamId
+    InvalidDependencyId,
 }
 
 

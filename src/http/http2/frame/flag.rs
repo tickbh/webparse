@@ -10,6 +10,9 @@ bitflags! {
 }
 
 impl Flag {
+    pub fn zero() -> Flag {
+        Flag::default()
+    }
     pub fn new(data: u8) -> Result<Flag, ()> {
         match Flag::from_bits(data) {
             Some(v) => Ok(v),
@@ -50,6 +53,18 @@ impl Flag {
     }
     pub fn is_priority(&self) -> bool {
         self.contains(Flag::PRIORITY)
+    }
+    pub fn set_padded(&mut self) {
+        self.set(Flag::PADDED, true)
+    }
+    pub fn unset_padded(&mut self) {
+        self.set(Flag::PADDED, false)
+    }
+    pub fn set_end_stream(&mut self) {
+        self.set(Flag::END_STREAM, true)
+    }
+    pub fn unset_end_stream(&mut self) {
+        self.set(Flag::END_STREAM, false)
     }
 }
 

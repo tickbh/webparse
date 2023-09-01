@@ -1,7 +1,9 @@
 use std::{
     borrow::{Borrow, BorrowMut},
     cell::RefCell,
-    cmp, fmt, hash,
+    cmp,
+    fmt::{self, Debug},
+    hash,
     io::{Read, Result, Write},
     mem::MaybeUninit,
     ops::{Deref, DerefMut, RangeBounds},
@@ -136,7 +138,6 @@ impl BinaryMut {
         self.cursor += by;
     }
 
-    
     #[inline]
     unsafe fn sub_start(&mut self, by: usize) {
         // should already be asserted, but debug assert for tests
@@ -351,7 +352,9 @@ impl MarkBuf for BinaryMut {
         }
     }
 
-    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized
+    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self
+    where
+        Self: Sized,
     {
         let start = match range.start_bound() {
             std::ops::Bound::Included(x) => x + 0,
@@ -607,7 +610,17 @@ impl Write for BinaryMut {
     }
 }
 
-#[cfg(test)]
-mod tests {
-
+impl Debug for BinaryMut {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BinaryMut")
+            .field("ptr", &self.ptr)
+            .field("counter", &self.counter)
+            .field("cursor", &self.cursor)
+            .field("manual_len", &self.manual_len)
+            .field("mark", &self.mark)
+            .finish()
+    }
 }
+
+#[cfg(test)]
+mod tests {}
