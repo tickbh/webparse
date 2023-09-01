@@ -1,15 +1,12 @@
 
 
 use std::fmt;
-use std::io::Cursor;
 use crate::{Request, Serialize, BufMut};
 
 use crate::{HeaderMap, Method, Scheme, http::{StatusCode, header, http2::{Decoder, encoder::Encoder}}, HeaderValue, Binary, BinaryMut, Http2Error, WebResult, Buf, MarkBuf, Url};
 
 use super::{StreamIdentifier, StreamDependency, FrameHeader, Flag, Kind, frame::Frame1};
 
-// type EncodeBuf<'a> = bytes::buf::Limit<&'a mut BinaryMut>;
-/// Header frame
 ///
 /// This could be either a request or a response.
 #[derive(Eq, PartialEq)]
@@ -55,7 +52,7 @@ pub struct Continuation {
 
 // TODO: These fields shouldn't be `pub`
 #[derive(Debug, Default, Eq, PartialEq)]
-pub struct Pseudo {
+pub struct Parts {
     // Request
     pub method: Option<Method>,
     pub scheme: Option<String>,
@@ -69,8 +66,8 @@ pub struct Pseudo {
 
 #[derive(Debug)]
 pub struct Iter {
-    /// Pseudo headers
-    pseudo: Option<Pseudo>,
+    /// parts headers
+    parts: Option<Parts>,
 
     /// Header fields
     fields: header::IntoIter<HeaderValue>,
@@ -78,15 +75,14 @@ pub struct Iter {
 
 #[derive(Debug, PartialEq, Eq)]
 struct HeaderBlock {
-    /// The decoded header fields
+    /// 解析的头列表
     fields: HeaderMap,
 
-    /// Set to true if decoding went over the max header list size.
+    /// 超出头列表的限制则为true
     is_over_size: bool,
 
-    /// Pseudo headers, these are broken out as they must be sent as part of the
-    /// headers frame.
-    pseudo: Pseudo,
+    /// 保存部分的头文件信息, 如Method等做完转换的
+    parts: Parts,
 }
 
 #[derive(Debug)]
@@ -94,24 +90,16 @@ struct EncodingHeaderBlock {
     hpack: Binary,
 }
 
-const END_STREAM: u8 = 0x1;
-const END_HEADERS: u8 = 0x4;
-const PADDED: u8 = 0x8;
-const PRIORITY: u8 = 0x20;
-const ALL: u8 = END_STREAM | END_HEADERS | PADDED | PRIORITY;
-
-// ===== impl Headers =====
-
 impl Headers {
     /// Create a new HEADERS frame
-    pub fn new(stream_id: StreamIdentifier, pseudo: Pseudo, fields: HeaderMap) -> Self {
+    pub fn new(stream_id: StreamIdentifier, parts: Parts, fields: HeaderMap) -> Self {
         Headers {
             stream_id,
             stream_dep: None,
             header_block: HeaderBlock {
                 fields,
                 is_over_size: false,
-                pseudo,
+                parts,
             },
             flags: Flag::default(),
         }
@@ -127,7 +115,7 @@ impl Headers {
             header_block: HeaderBlock {
                 fields,
                 is_over_size: false,
-                pseudo: Pseudo::default(),
+                parts: Parts::default(),
             },
             flags,
         }
@@ -184,7 +172,7 @@ impl Headers {
             header_block: HeaderBlock {
                 fields: HeaderMap::new(),
                 is_over_size: false,
-                pseudo: Pseudo::default(),
+                parts: Parts::default(),
             },
             flags,
         };
@@ -225,18 +213,18 @@ impl Headers {
         self.header_block.is_over_size
     }
 
-    pub fn into_parts(self) -> (Pseudo, HeaderMap) {
-        (self.header_block.pseudo, self.header_block.fields)
+    pub fn into_parts(self) -> (Parts, HeaderMap) {
+        (self.header_block.parts, self.header_block.fields)
     }
 
     #[cfg(feature = "unstable")]
-    pub fn pseudo_mut(&mut self) -> &mut Pseudo {
-        &mut self.header_block.pseudo
+    pub fn parts_mut(&mut self) -> &mut Parts {
+        &mut self.header_block.parts
     }
 
     /// Whether it has status 1xx
     pub(crate) fn is_informational(&self) -> bool {
-        self.header_block.pseudo.is_informational()
+        self.header_block.parts.is_informational()
     }
 
     pub fn fields(&self) -> &HeaderMap {
@@ -281,7 +269,7 @@ impl fmt::Debug for Headers {
             .field("stream_id", &self.stream_id)
             .field("flags", &self.flags);
 
-        if let Some(ref protocol) = self.header_block.pseudo.protocol {
+        if let Some(ref protocol) = self.header_block.parts.protocol {
             builder.field("protocol", protocol);
         }
 
@@ -289,7 +277,7 @@ impl fmt::Debug for Headers {
             builder.field("stream_dep", dep);
         }
 
-        // `fields` and `pseudo` purposefully not included
+        // `fields` and `parts` purposefully not included
         builder.finish()
     }
 }
@@ -331,7 +319,7 @@ impl PushPromise {
     pub fn new(
         stream_id: StreamIdentifier,
         promised_id: StreamIdentifier,
-        pseudo: Pseudo,
+        parts: Parts,
         fields: HeaderMap,
     ) -> Self {
         PushPromise {
@@ -339,7 +327,7 @@ impl PushPromise {
             header_block: HeaderBlock {
                 fields,
                 is_over_size: false,
-                pseudo,
+                parts,
             },
             promised_id,
             stream_id,
@@ -355,7 +343,7 @@ impl PushPromise {
         if req.get_body_len() == 0 {
             return Err(Http2Error::PayloadLengthTooShort.into());
         }
-        // "The server MUST include a method in the :method pseudo-header field
+        // "The server MUST include a method in the :method parts-header field
         // that is safe and cacheable"
         if !Self::safe_and_cacheable(req.method()) {
             // return Err(NotSafeAndCacheable);
@@ -421,7 +409,7 @@ impl PushPromise {
             header_block: HeaderBlock {
                 fields: HeaderMap::new(),
                 is_over_size: false,
-                pseudo: Pseudo::default(),
+                parts: Parts::default(),
             },
             promised_id,
             stream_id: head.stream_id(),
@@ -481,8 +469,8 @@ impl PushPromise {
     }
 
     /// Consume `self`, returning the parts of the frame
-    pub fn into_parts(self) -> (Pseudo, HeaderMap) {
-        (self.header_block.pseudo, self.header_block.fields)
+    pub fn into_parts(self) -> (Parts, HeaderMap) {
+        (self.header_block.parts, self.header_block.fields)
     }
 }
 
@@ -498,7 +486,7 @@ impl fmt::Debug for PushPromise {
             .field("stream_id", &self.stream_id)
             .field("promised_id", &self.promised_id)
             .field("flags", &self.flags)
-            // `fields` and `pseudo` purposefully not included
+            // `fields` and `parts` purposefully not included
             .finish()
     }
 }
@@ -518,15 +506,15 @@ impl Continuation {
     }
 }
 
-// ===== impl Pseudo =====
+// ===== impl parts =====
 
-impl Pseudo {
+impl Parts {
     pub fn request(method: Method, uri: Url, protocol: Option<Scheme>) -> Self {
         
 
         let mut path = uri.path;
 
-        let mut pseudo = Pseudo {
+        let mut parts = Parts {
             method: Some(method),
             scheme: None,
             authority: None,
@@ -535,24 +523,24 @@ impl Pseudo {
             status: None,
         };
 
-        // If the URI includes a scheme component, add it to the pseudo headers
+        // If the URI includes a scheme component, add it to the parts headers
         //
         // TODO: Scheme must be set...
         if uri.scheme != Scheme::None {
-            pseudo.set_scheme(uri.scheme);
+            parts.set_scheme(uri.scheme);
         }
 
-        // If the URI includes an authority component, add it to the pseudo
+        // If the URI includes an authority component, add it to the parts
         // headers
         if let Some(authority) = uri.domain {
-            pseudo.set_authority(authority);
+            parts.set_authority(authority);
         }
 
-        pseudo
+        parts
     }
 
     pub fn response(status: StatusCode) -> Self {
-        Pseudo {
+        Parts {
             method: None,
             scheme: None,
             authority: None,
@@ -647,33 +635,33 @@ impl EncodingHeaderBlock {
 //     fn next(&mut self) -> Option<Self::Item> {
 //         use crate::hpack::Header::*;
 
-//         if let Some(ref mut pseudo) = self.pseudo {
-//             if let Some(method) = pseudo.method.take() {
+//         if let Some(ref mut parts) = self.parts {
+//             if let Some(method) = parts.method.take() {
 //                 return Some(Method(method));
 //             }
 
-//             if let Some(scheme) = pseudo.scheme.take() {
+//             if let Some(scheme) = parts.scheme.take() {
 //                 return Some(Scheme(scheme));
 //             }
 
-//             if let Some(authority) = pseudo.authority.take() {
+//             if let Some(authority) = parts.authority.take() {
 //                 return Some(Authority(authority));
 //             }
 
-//             if let Some(path) = pseudo.path.take() {
+//             if let Some(path) = parts.path.take() {
 //                 return Some(Path(path));
 //             }
 
-//             if let Some(protocol) = pseudo.protocol.take() {
+//             if let Some(protocol) = parts.protocol.take() {
 //                 return Some(Protocol(protocol));
 //             }
 
-//             if let Some(status) = pseudo.status.take() {
+//             if let Some(status) = parts.status.take() {
 //                 return Some(Status(status));
 //             }
 //         }
 
-//         self.pseudo = None;
+//         self.parts = None;
 
 //         self.fields
 //             .next()
@@ -696,20 +684,20 @@ impl HeaderBlock {
         let mut malformed = false;
         let mut headers_size = self.calculate_header_list_size();
 
-        macro_rules! set_pseudo {
+        macro_rules! set_parts {
             ($field:ident, $val:expr) => {{
                 if reg {
-                    log::trace!("load_hpack; header malformed -- pseudo not at head of block");
+                    log::trace!("load_hpack; header malformed -- parts not at head of block");
                     malformed = true;
-                } else if self.pseudo.$field.is_some() {
-                    log::trace!("load_hpack; header malformed -- repeated pseudo");
+                } else if self.parts.$field.is_some() {
+                    log::trace!("load_hpack; header malformed -- repeated parts");
                     malformed = true;
                 } else {
                     let __val = $val;
                     headers_size +=
                         decoded_header_size(stringify!($field).len() + 1, __val.as_str().len());
                     if headers_size < max_header_list_size {
-                        self.pseudo.$field = Some(__val);
+                        self.parts.$field = Some(__val);
                     } else if !self.is_over_size {
                         log::trace!("load_hpack; header list size over max");
                         self.is_over_size = true;
@@ -758,12 +746,12 @@ impl HeaderBlock {
         //                 }
         //             }
         //         }
-        //         Authority(v) => set_pseudo!(authority, v),
-        //         Method(v) => set_pseudo!(method, v),
-        //         Scheme(v) => set_pseudo!(scheme, v),
-        //         Path(v) => set_pseudo!(path, v),
-        //         Protocol(v) => set_pseudo!(protocol, v),
-        //         Status(v) => set_pseudo!(status, v),
+        //         Authority(v) => set_parts!(authority, v),
+        //         Method(v) => set_parts!(method, v),
+        //         Scheme(v) => set_parts!(scheme, v),
+        //         Path(v) => set_parts!(path, v),
+        //         Protocol(v) => set_parts!(protocol, v),
+        //         Status(v) => set_parts!(status, v),
         //     }
         // });
 
@@ -783,7 +771,7 @@ impl HeaderBlock {
     fn into_encoding(self, encoder: &mut Encoder) -> EncodingHeaderBlock {
         let mut hpack = BinaryMut::new();
         let headers = Iter {
-            pseudo: Some(self.pseudo),
+            parts: Some(self.parts),
             fields: self.fields.into_iter(),
         };
 
@@ -802,9 +790,9 @@ impl HeaderBlock {
     /// > including the length of the name and value in octets plus an
     /// > overhead of 32 octets for each header field.
     fn calculate_header_list_size(&self) -> usize {
-        macro_rules! pseudo_size {
+        macro_rules! parts_size {
             ($name:ident) => {{
-                self.pseudo
+                self.parts
                     .$name
                     .as_ref()
                     .map(|m| decoded_header_size(stringify!($name).len() + 1, m.as_str().len()))
@@ -812,11 +800,11 @@ impl HeaderBlock {
             }};
         }
 
-        pseudo_size!(method)
-            + pseudo_size!(scheme)
-            + pseudo_size!(status)
-            + pseudo_size!(authority)
-            + pseudo_size!(path)
+        parts_size!(method)
+            + parts_size!(scheme)
+            + parts_size!(status)
+            + parts_size!(authority)
+            + parts_size!(path)
             + self
                 .fields
                 .iter()
