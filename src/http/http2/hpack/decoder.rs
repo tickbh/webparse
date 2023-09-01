@@ -99,7 +99,7 @@ impl Decoder {
         let mut header_list = Vec::new();
         self.decode_with_cb(buf, |n, v| {
             println!("name = {:?}", n);
-            println!("value = {:?}", v);
+            println!("value = {}", v);
             header_list.push((n.into_owned(), v.into_owned()))
         })?;
         Ok(header_list)

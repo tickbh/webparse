@@ -32,19 +32,33 @@ impl<T: Buf + MarkBuf> Frame<T> {
     pub fn encoded_len(&self) -> usize {
         FRAME_HEADER_BYTES + self.payload.encoded_len()
     }
+
+    pub fn no_serialize_header(&self) -> bool {
+        if self.header.kind == Kind::Settings {
+            true 
+        } else {
+            false
+        }
+    }
 }
 
 
 impl<T: Buf + MarkBuf> Serialize for Frame<T> {
     fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
-        size += self.header.serialize(buffer)?;
+        if !self.no_serialize_header() {
+            size += self.header.serialize(buffer)?;
+        }
         size += self.payload.serialize(buffer)?;
         Ok(size)
     }
 }
 
 impl FrameHeader {
+
+    pub fn new(kind: Kind, flag: Flag, id: StreamIdentifier) -> FrameHeader {
+        FrameHeader { length: 0, kind, flag, id }
+    }
     #[inline]
     pub fn parse<T: Buf + MarkBuf>(buffer: &mut T) -> WebResult<FrameHeader> {
         if buffer.remaining() < FRAME_HEADER_BYTES {
@@ -60,6 +74,18 @@ impl FrameHeader {
             flag: Flag::new(flag).map_err(|()| Http2Error::into(Http2Error::BadFlag(flag)))?,
             id,
         })
+    }
+
+    pub fn kind(&self) -> &Kind {
+        &self.kind
+    }
+
+    pub fn stream_id(&self) -> &StreamIdentifier {
+        &self.id
+    }
+
+    pub fn flag(&self) -> Flag {
+        self.flag
     }
 
 }

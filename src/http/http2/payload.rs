@@ -4,7 +4,7 @@ use crate::{Http2Error, WebError, WebResult, MarkBuf, Buf, BufMut, Serialize};
 
 use super::{
     encode_u64, frame::FrameHeader, read_u64, ErrorCode, Flag, Kind, ParserSettings, SizeIncrement,
-    StreamIdentifier,
+    StreamIdentifier, Settings,
 };
 
 const PRIORITY_BYTES: u32 = 5;
@@ -22,7 +22,7 @@ where T: Buf + MarkBuf {
     },
     Priority(Priority),
     Reset(ErrorCode),
-    Settings(Vec<Setting>),
+    Settings(Settings),
     PushPromise {
         promised: StreamIdentifier,
         block: T,
@@ -81,74 +81,6 @@ impl Serialize for Priority {
     }
 }
 
-// Settings are (u16, u32) in memory.
-#[repr(packed)]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Setting {
-    identifier: u16,
-    value: u32,
-}
-
-impl fmt::Debug for Setting {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.identifier(), f)
-    }
-}
-
-impl Setting {
-    #[inline]
-    pub fn new(identifier: SettingIdentifier, value: u32) -> Setting {
-        Setting {
-            identifier: identifier as u16,
-            value: value,
-        }
-    }
-
-    #[inline]
-    pub fn identifier(&self) -> Option<SettingIdentifier> {
-        match self.identifier {
-            0x1 => Some(SettingIdentifier::HeaderTableSize),
-            0x2 => Some(SettingIdentifier::EnablePush),
-            0x3 => Some(SettingIdentifier::MaxConcurrentStreams),
-            0x4 => Some(SettingIdentifier::InitialWindowSize),
-            0x5 => Some(SettingIdentifier::MaxFrameSize),
-            0x6 => Some(SettingIdentifier::MaxHeaderListSize),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    pub fn value(&self) -> u32 {
-        self.value
-    }
-
-    #[inline]
-    fn encode<B: Buf+MarkBuf+BufMut>(settings: &[Setting], buf: &mut B) -> usize {
-        let mut size = 0;
-        for setting in settings {
-            buf.put_u16(setting.identifier);
-            buf.put_u32(setting.value);
-            size += 6;
-        }
-        size
-    }
-
-    #[inline]
-    fn decode<T: Buf+MarkBuf>(bytes: &mut T) -> Vec<Setting> {
-        let len = bytes.remaining() / mem::size_of::<Setting>();
-        let mut result = vec![];
-        for _ in 0..len {
-            let identifier = bytes.get_u16();
-            let value = bytes.get_u32();
-            result.push(Setting {
-                identifier,
-                value
-            })
-        }
-        result
-    }
-}
 
 #[repr(u16)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -248,7 +180,7 @@ impl<T: Buf+MarkBuf> Payload<T> {
                 priority_len + block.remaining()
             }
             Reset(_) => 4,
-            Settings(ref settings) => settings.len() * mem::size_of::<Setting>(),
+            Settings(ref settings) => settings.payload_len(),
             Ping(_) => 8,
             GoAway { ref data, .. } => 4 + 4 + data.remaining(),
             WindowUpdate(_) => 4,
@@ -310,11 +242,8 @@ impl<T: Buf+MarkBuf> Payload<T> {
 
     #[inline]
     fn parse_settings(header: FrameHeader, mut buf: T) -> WebResult<Payload<T>> {
-        if header.length % mem::size_of::<Setting>() as u32 != 0 {
-            return Err(Http2Error::into(Http2Error::PartialSettingLength));
-        }
-
-        Ok(Payload::Settings(Setting::decode(&mut buf)))
+        let s = Settings::decode(header, &mut buf)?;
+        Ok(Payload::Settings(s))
     }
 
     #[inline]
@@ -392,7 +321,9 @@ impl<T: Buf+MarkBuf> Serialize for Payload<T> {
                 priority_wrote + block_wrote
             }
             Payload::Reset(ref err) => err.serialize(buffer)?,
-            Payload::Settings(ref settings) => Setting::encode(&settings, buffer),
+            Payload::Settings(ref settings) => {
+                settings.encode(buffer)
+            },
             Payload::Ping(data) => {
                 buffer.put_u64(data);
                 8

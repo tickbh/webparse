@@ -36,7 +36,11 @@ pub enum Http2Error {
 
     /// The payload length specified by the frame header was not the
     /// value necessary for the specific frame type.
-    InvalidPayloadLength
+    InvalidPayloadLength,
+    // 无效的streamId, 比如setting只能以0的id来传送
+    InvalidStreamId,
+    // 无效的设置值, 比如enable_push只能取0和1
+    InvalidSettingValue,
 }
 
 
@@ -70,5 +74,11 @@ impl From<DecoderError> for Http2Error {
 impl From<HuffmanDecoderError> for Http2Error {
     fn from(e: HuffmanDecoderError) -> Self {
         Http2Error::Huffman(e)
+    }
+}
+
+impl Into<WebError> for Http2Error {
+    fn into(self) -> WebError {
+        WebError::Http2(self)
     }
 }

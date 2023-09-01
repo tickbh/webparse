@@ -1,19 +1,24 @@
 pub const HTTP2_MAGIC: &[u8] = b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
-use std::{fmt::Debug, borrow::Cow};
+use std::{borrow::Cow, fmt::Debug};
 mod error;
 mod flag;
 mod frame;
 mod hpack;
 mod kind;
 mod payload;
+mod settings;
 
 pub use error::Http2Error;
 pub use flag::Flag;
 pub use frame::Frame;
 pub use kind::Kind;
 pub use payload::Payload;
+pub use settings::Settings;
 
-use crate::{serialize, BinaryMut, Buf, BufMut, MarkBuf, Request, WebResult, Method, Response, WebError, Serialize, http::http2::payload::Setting, Binary};
+use crate::{
+    serialize, Binary, BinaryMut, Buf, BufMut, MarkBuf, Method, Request, Response, Serialize,
+    WebError, WebResult,
+};
 pub use hpack::*;
 
 use self::frame::FrameHeader;
@@ -28,11 +33,18 @@ impl StreamIdentifier {
         }
         StreamIdentifier(read_u31(buf))
     }
-    
+
+    pub fn zero() -> StreamIdentifier {
+        StreamIdentifier(0)
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
 }
 
 impl Serialize for StreamIdentifier {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         buffer.put_u32(self.0);
         Ok(4)
     }
@@ -100,94 +112,100 @@ impl Http2 {
             let frame = Frame::parse(frame_header, buffer)?;
             println!("frame = {:?}", frame);
             match frame.payload {
-                Payload::Data { data } => {
-                    
-                }
-                Payload::Headers { priority, mut block } => {
+                Payload::Data { data } => {}
+                Payload::Headers {
+                    priority,
+                    mut block,
+                } => {
                     request.parse_http2_header(&mut block)?;
                     if request.method().is_nobody() {
                         return Ok(());
                     }
                 }
-                Payload::Priority(priority) => {
-
-                }
-                Payload::Reset(err) => {
-                    
-                }
+                Payload::Priority(priority) => {}
+                Payload::Reset(err) => {}
                 Payload::Settings(s) => {
-                    // let mut res = vec![];
-                    // res.push(Setting {
-                    //     identifier: 0, value: 0
-                    // });
-                    // 添加响应Setting指令
                     let frame = Frame {
-                        header: FrameHeader { length: 0, kind: Kind::Settings, flag: Flag::ack(), id: StreamIdentifier(0) },
-                        payload: Payload::Settings::<Binary>(vec![]),
+                        header: FrameHeader {
+                            length: 0,
+                            kind: Kind::Settings,
+                            flag: Flag::ack(),
+                            id: StreamIdentifier(0),
+                        },
+                        payload: Payload::Settings::<Binary>(Settings::default()),
                     };
-                    if let Some(vec) = request.extensions().borrow_mut().get_mut::<Vec<Frame<Binary>>>() {
-                        vec.push(frame);
+                    let has = {
+                        request
+                            .extensions()
+                            .borrow()
+                            .get::<Vec<Frame<Binary>>>()
+                            .is_some()
+                    };
+                    if has {
+                        request
+                            .extensions()
+                            .borrow_mut()
+                            .get_mut::<Vec<Frame<Binary>>>()
+                            .unwrap()
+                            .push(frame);
                     } else {
                         let vec = vec![frame];
                         request.extensions().borrow_mut().insert(vec);
                     }
-
-                    
                 }
-                Payload::WindowUpdate(s) => {
-                    
-                }
-                _ => {
-
-                }
+                Payload::WindowUpdate(s) => {}
+                _ => {}
             }
-            
         }
         Ok(())
     }
 
-    pub fn build_body_frame<T: serialize::Serialize>(res: &mut Response<T>) -> WebResult<Option<Frame<BinaryMut>>> {
+    pub fn build_body_frame<T: serialize::Serialize>(
+        res: &mut Response<T>,
+    ) -> WebResult<Option<Frame<BinaryMut>>> {
         let mut buf = BinaryMut::new();
         res.body().serialize(&mut buf)?;
         if buf.remaining() == 0 {
-            return Ok(None)
+            return Ok(None);
         }
         let header = FrameHeader {
             length: buf.remaining() as u32,
             kind: Kind::Data,
             flag: Flag::end_stream(),
-            id: StreamIdentifier(4),
+            id: StreamIdentifier(1),
         };
         let payload = Payload::Data { data: buf };
-        let frame = Frame {
-            header,
-            payload,
-        };
+        let frame = Frame { header, payload };
         Ok(Some(frame))
     }
 
-    
-    pub fn build_header_frame<T: serialize::Serialize>(res: &mut Response<T>) -> WebResult<Frame<BinaryMut>> {
+    pub fn build_header_frame<T: serialize::Serialize>(
+        res: &mut Response<T>,
+    ) -> WebResult<Frame<BinaryMut>> {
         let mut buf = BinaryMut::new();
         let mut enocder = res.get_encoder();
         let status = res.status().build_header();
-        enocder.encode_header_into((&status.0, &status.1), &mut buf).map_err(WebError::from)?;
+        enocder
+            .encode_header_into((&status.0, &status.1), &mut buf)
+            .map_err(WebError::from)?;
         enocder.encode_into(res.headers().iter(), &mut buf)?;
         let header = FrameHeader {
             length: buf.remaining() as u32,
             kind: Kind::Headers,
-            flag: Flag::end_headers(),
-            id: StreamIdentifier(2),
+            flag: Flag::end_headers() | Flag::end_stream(),
+            id: StreamIdentifier(1),
         };
-        let payload = Payload::Headers { priority: None, block: buf };
-        let frame = Frame {
-            header,
-            payload,
+        let payload = Payload::Headers {
+            priority: None,
+            block: buf,
         };
+        let frame = Frame { header, payload };
         Ok(frame)
     }
 
-    pub fn build_response_frame<T: serialize::Serialize>(res: &mut Response<T>) -> WebResult<Vec<Frame<BinaryMut>>>  {
+    pub fn build_response_frame<T: serialize::Serialize>(
+        res: &mut Response<T>,
+    ) -> WebResult<Vec<Frame<BinaryMut>>> {
         let mut result = vec![];
         result.push(Self::build_header_frame(res)?);
         if let Some(frame) = Self::build_body_frame(res)? {
@@ -196,7 +214,10 @@ impl Http2 {
         Ok(result)
     }
 
-    pub fn serialize<T: serialize::Serialize>(res: &mut Response<T>, buffer: &mut BinaryMut) -> WebResult<()> {
+    pub fn serialize<T: serialize::Serialize>(
+        res: &mut Response<T>,
+        buffer: &mut BinaryMut,
+    ) -> WebResult<()> {
         let vecs = Self::build_response_frame(res)?;
         for vec in vecs {
             vec.serialize(buffer);
@@ -216,7 +237,7 @@ impl ErrorCode {
 }
 
 impl Serialize for ErrorCode {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         buffer.put_u32(self.0);
         Ok(4)
     }
@@ -237,7 +258,7 @@ impl SizeIncrement {
 }
 
 impl Serialize for SizeIncrement {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         Ok(buffer.put_u32(self.0))
     }
 }
