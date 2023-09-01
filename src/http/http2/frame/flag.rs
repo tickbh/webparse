@@ -42,23 +42,29 @@ impl Flag {
     pub fn is_end_headers(&self) -> bool {
         self.contains(Flag::END_HEADERS)
     }
+    pub fn set_end_headers(&mut self) {
+        self.set(Flag::END_HEADERS, true)
+    }
+    pub fn unset_end_headers(&mut self) {
+        self.set(Flag::END_HEADERS, false)
+    }
     pub fn padded() -> Flag {
         Flag::PADDED
     }
     pub fn is_padded(&self) -> bool {
         self.contains(Flag::PADDED)
     }
-    pub fn priority() -> Flag {
-        Flag::PRIORITY
-    }
-    pub fn is_priority(&self) -> bool {
-        self.contains(Flag::PRIORITY)
-    }
     pub fn set_padded(&mut self) {
         self.set(Flag::PADDED, true)
     }
     pub fn unset_padded(&mut self) {
         self.set(Flag::PADDED, false)
+    }
+    pub fn priority() -> Flag {
+        Flag::PRIORITY
+    }
+    pub fn is_priority(&self) -> bool {
+        self.contains(Flag::PRIORITY)
     }
     pub fn set_end_stream(&mut self) {
         self.set(Flag::END_STREAM, true)

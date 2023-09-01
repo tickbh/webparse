@@ -47,6 +47,8 @@ pub enum Http2Error {
     InvalidWindowUpdateValue,
     /// 无效的依赖StreamId
     InvalidDependencyId,
+    /// 无效的报文信息
+    MalformedMessage,
 }
 
 

@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::{Buf, BufMut, Http2Error, MarkBuf, WebResult, Serialize, Binary};
 
-use super::{encode_u24, read_u24, Flag, Kind, Payload, StreamIdentifier, Data, Headers, Priority, Settings, GoAway, Ping, WindowUpdate, Reset};
+use super::{encode_u24, read_u24, Flag, Kind, Payload, StreamIdentifier, Data, Headers, Priority, Settings, GoAway, Ping, WindowUpdate, Reset, headers::PushPromise};
 
 pub const FRAME_HEADER_BYTES: usize = 9;
 
@@ -24,7 +24,7 @@ pub enum Frame1<T = Binary> {
     Data(Data<T>),
     Headers(Headers),
     Priority(Priority),
-    // PushPromise(PushPromise),
+    PushPromise(PushPromise),
     Settings(Settings),
     Ping(Ping),
     GoAway(GoAway),

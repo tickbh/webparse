@@ -9,7 +9,7 @@ use std::{
 
 use crate::{helper, BinaryMut, HeaderName, HeaderValue, Helper, Serialize, WebError, WebResult, Buf, BufMut, MarkBuf};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct HeaderMap {
     headers: HashMap<HeaderName, HeaderValue>,
 }

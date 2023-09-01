@@ -1,6 +1,6 @@
-use crate::{frame::*, WebResult, Http2Error};
+use crate::{WebResult, Http2Error, http::http2::Http2, Buf};
 
-use super::{StreamIdentifier, FrameHeader};
+use super::{StreamIdentifier, FrameHeader, frame::Frame1};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Priority {
@@ -23,7 +23,7 @@ pub struct StreamDependency {
 }
 
 impl Priority {
-    pub fn load(head: FrameHeader, payload: &[u8]) -> WebResult<Self> {
+    pub fn load<B: Buf>(head: FrameHeader, payload: &mut B) -> WebResult<Self> {
         let dependency = StreamDependency::load(payload)?;
 
         if dependency.dependency_id() == head.stream_id() {
@@ -37,9 +37,9 @@ impl Priority {
     }
 }
 
-impl<B> From<Priority> for Frame<B> {
+impl<B> From<Priority> for Frame1<B> {
     fn from(src: Priority) -> Self {
-        Frame::Priority(src)
+        Frame1::Priority(src)
     }
 }
 
@@ -54,18 +54,18 @@ impl StreamDependency {
         }
     }
 
-    pub fn load(src: &[u8]) -> Result<Self, Error> {
-        if src.len() != 5 {
-            return Err(Error::InvalidPayloadLength);
+    pub fn load<B: Buf>(src: &mut B) -> WebResult<Self> {
+        if src.remaining() != 5 {
+            return Err(Http2Error::InvalidPayloadLength.into());
         }
 
         // Parse the stream ID and exclusive flag
-        let (dependency_id, is_exclusive) = StreamIdentifier::parse(&src[..4]);
+        let dependency_id = StreamIdentifier::parse(src);
 
         // Read the weight
-        let weight = src[4];
-
-        Ok(StreamDependency::new(dependency_id, weight, is_exclusive))
+        let weight = src.get_u8();
+        // todo!!
+        Ok(StreamDependency::new(dependency_id, weight, false))
     }
 
     pub fn dependency_id(&self) -> StreamIdentifier {
