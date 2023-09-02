@@ -77,6 +77,7 @@ pub enum DecoderError {
     InvalidMaxDynamicSize,
 }
 
+#[derive(Debug)]
 pub struct Decoder {
     pub index: Arc<RwLock<HeaderIndex>>,
 }

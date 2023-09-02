@@ -14,7 +14,7 @@ mod reset;
 mod window_update;
 
 pub use priority::{Priority, StreamDependency};
-pub use headers::Headers;
+pub use headers::{Headers, PushPromise, Continuation};
 pub use data::Data;
 pub use flag::Flag;
 pub use frame::Frame;

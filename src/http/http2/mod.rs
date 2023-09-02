@@ -2,7 +2,7 @@ pub const HTTP2_MAGIC: &[u8] = b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
 
 use std::{borrow::Cow, fmt::Debug};
 mod error;
-mod frame;
+pub mod frame;
 mod hpack;
 
 pub use error::Http2Error;
