@@ -1,6 +1,6 @@
 use crate::{http::http2::frame::Kind, Http2Error, WebResult, Buf, Serialize, BufMut, MarkBuf};
 
-use super::{StreamIdentifier, FrameHeader, frame::Frame1, Flag};
+use super::{StreamIdentifier, FrameHeader, frame::Frame, Flag};
 
 
 
@@ -29,7 +29,7 @@ impl WindowUpdate {
     }
 
     /// Builds a `WindowUpdate` frame from a raw frame.
-    pub fn load<B: Buf>(head: FrameHeader, payload: &mut B) -> WebResult<WindowUpdate> {
+    pub fn parse<B: Buf>(head: FrameHeader, payload: &mut B) -> WebResult<WindowUpdate> {
         debug_assert_eq!(head.kind(), &Kind::WindowUpdate);
         if payload.remaining() != 4 {
             return Err(Http2Error::BadFrameSize.into());
@@ -68,8 +68,8 @@ impl Serialize for WindowUpdate {
     }
 }
 
-impl<B> From<WindowUpdate> for Frame1<B> {
+impl<B> From<WindowUpdate> for Frame<B> {
     fn from(src: WindowUpdate) -> Self {
-        Frame1::WindowUpdate(src)
+        Frame::WindowUpdate(src)
     }
 }

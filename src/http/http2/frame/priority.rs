@@ -1,6 +1,6 @@
 use crate::{WebResult, Http2Error, http::http2::Http2, Buf};
 
-use super::{StreamIdentifier, FrameHeader, frame::Frame1};
+use super::{StreamIdentifier, FrameHeader, frame::Frame};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Priority {
@@ -23,7 +23,7 @@ pub struct StreamDependency {
 }
 
 impl Priority {
-    pub fn load<B: Buf>(head: FrameHeader, payload: &mut B) -> WebResult<Self> {
+    pub fn parse<B: Buf>(head: FrameHeader, payload: &mut B) -> WebResult<Self> {
         let dependency = StreamDependency::load(payload)?;
 
         if dependency.dependency_id() == head.stream_id() {
@@ -37,9 +37,9 @@ impl Priority {
     }
 }
 
-impl<B> From<Priority> for Frame1<B> {
+impl<B> From<Priority> for Frame<B> {
     fn from(src: Priority) -> Self {
-        Frame1::Priority(src)
+        Frame::Priority(src)
     }
 }
 

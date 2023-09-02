@@ -1,6 +1,6 @@
 use crate::{WebResult, Http2Error, Buf, Serialize, BufMut, MarkBuf};
 
-use super::{StreamIdentifier, Reason, FrameHeader, frame::Frame1, Kind, Flag};
+use super::{StreamIdentifier, Reason, FrameHeader, frame::Frame, Kind, Flag};
 
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -25,7 +25,7 @@ impl Reset {
         self.error_code
     }
 
-    pub fn load<B: Buf>(head: FrameHeader, payload: &mut B) -> WebResult<Reset> {
+    pub fn parse<B: Buf>(head: FrameHeader, payload: &mut B) -> WebResult<Reset> {
         if payload.remaining() != 4 {
             return Err(Http2Error::InvalidPayloadLength.into());
         }
@@ -55,8 +55,8 @@ impl Serialize for Reset {
     }
 }
 
-impl<B> From<Reset> for Frame1<B> {
+impl<B> From<Reset> for Frame<B> {
     fn from(src: Reset) -> Self {
-        Frame1::Reset(src)
+        Frame::Reset(src)
     }
 }

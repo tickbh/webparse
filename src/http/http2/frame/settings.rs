@@ -32,52 +32,6 @@ pub const MAX_INITIAL_WINDOW_SIZE: usize = (1 << 31) - 1;
 /// MAX_FRAME_SIZE upper bound
 pub const MAX_MAX_FRAME_SIZE: u32 = (1 << 24) - 1;
 
-// impl Settings {
-
-//     #[inline]
-//     pub fn identifier(&self) -> Option<SettingIdentifier> {
-//         match self.identifier {
-//             0x1 => Some(SettingIdentifier::HeaderTableSize),
-//             0x2 => Some(SettingIdentifier::EnablePush),
-//             0x3 => Some(SettingIdentifier::MaxConcurrentStreams),
-//             0x4 => Some(SettingIdentifier::InitialWindowSize),
-//             0x5 => Some(SettingIdentifier::MaxFrameSize),
-//             0x6 => Some(SettingIdentifier::MaxHeaderListSize),
-//             _ => None,
-//         }
-//     }
-
-//     #[inline]
-//     pub fn value(&self) -> u32 {
-//         self.value
-//     }
-
-//     #[inline]
-//     fn encode<B: Buf+MarkBuf+BufMut>(settings: &[Setting], buf: &mut B) -> usize {
-//         let mut size = 0;
-//         for setting in settings {
-//             buf.put_u16(setting.identifier);
-//             buf.put_u32(setting.value);
-//             size += 6;
-//         }
-//         size
-//     }
-
-//     #[inline]
-//     fn decode<T: Buf+MarkBuf>(bytes: &mut T) -> Vec<Setting> {
-//         let len = bytes.remaining() / mem::size_of::<Setting>();
-//         let mut result = vec![];
-//         for _ in 0..len {
-//             let identifier = bytes.get_u16();
-//             let value = bytes.get_u32();
-//             result.push(Setting {
-//                 identifier,
-//                 value
-//             })
-//         }
-//         result
-//     }
-// }
 
 #[derive(Debug)]
 pub enum Setting {
@@ -112,7 +66,7 @@ impl Setting {
         }
     }
 
-    fn load<T: Buf+MarkBuf>(bytes: &mut T) -> Option<Setting> {
+    fn parse<T: Buf+MarkBuf>(bytes: &mut T) -> Option<Setting> {
         let id: u16 = bytes.get_u16();
         let val: u32 = bytes.get_u32();
 
@@ -212,7 +166,7 @@ impl Settings {
     }
     */
 
-    pub fn decode<T: Buf+MarkBuf>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
+    pub fn parse<T: Buf+MarkBuf>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
         use self::Setting::*;
 
         debug_assert_eq!(head.kind(), &Kind::Settings);
@@ -244,7 +198,7 @@ impl Settings {
 
         let len = payload.remaining() / 6;
         for _ in 0..len {
-            match Setting::load(payload) {
+            match Setting::parse(payload) {
                 Some(HeaderTableSize(val)) => {
                     settings.header_table_size = Some(val);
                 }

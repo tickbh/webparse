@@ -42,7 +42,7 @@ impl GoAway {
         &self.debug_data
     }
 
-    pub fn load<B: Buf>(payload: &mut B) -> WebResult<GoAway> {
+    pub fn parse<B: Buf>(payload: &mut B) -> WebResult<GoAway> {
         if payload.remaining() < 8 {
             return Err(Http2Error::BadFrameSize.into());
         }
@@ -79,9 +79,9 @@ impl Serialize for GoAway {
     }
 }
 
-impl<B> From<GoAway> for frame::Frame1<B> {
+impl<B> From<GoAway> for frame::Frame<B> {
     fn from(src: GoAway) -> Self {
-        frame::Frame1::GoAway(src)
+        frame::Frame::GoAway(src)
     }
 }
 

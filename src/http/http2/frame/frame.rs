@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-use crate::{Buf, BufMut, Http2Error, MarkBuf, WebResult, Serialize, Binary};
+use crate::{Buf, BufMut, Http2Error, MarkBuf, WebResult, Serialize, Binary, http::http2::Decoder, HeaderMap};
 
-use super::{encode_u24, read_u24, Flag, Kind, Payload, StreamIdentifier, Data, Headers, Priority, Settings, GoAway, Ping, WindowUpdate, Reset, headers::PushPromise};
+use super::{encode_u24, read_u24, Flag, Kind, StreamIdentifier, Data, Headers, Priority, Settings, GoAway, Ping, WindowUpdate, Reset, headers::{PushPromise, Continuation}};
 
 pub const FRAME_HEADER_BYTES: usize = 9;
 
@@ -14,13 +14,7 @@ pub struct FrameHeader {
     pub id: StreamIdentifier,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Frame<T: Buf + MarkBuf> {
-    pub header: FrameHeader,
-    pub payload: Payload<T>,
-}
-
-pub enum Frame1<T = Binary> {
+pub enum Frame<T = Binary> {
     Data(Data<T>),
     Headers(Headers),
     Priority(Priority),
@@ -32,25 +26,80 @@ pub enum Frame1<T = Binary> {
     Reset(Reset),
 }
 
+impl Frame<Binary> {
+    #[inline]
+    pub fn trim_padding<B: Buf + MarkBuf>(header: &FrameHeader, buf: &mut B) -> WebResult<()> {
+        if header.flag.is_padded() && buf.has_remaining() {
+            let pad_length = buf.peek().unwrap();
+            if pad_length as u32 > header.length {
+                return Err(Http2Error::into(Http2Error::TooMuchPadding(pad_length)))
+            } else {
+                buf.advance(1);
+                buf.mark_len(header.length as usize - pad_length as usize - 1);
+            }
+        }
+        Ok(())
+    }
+}
+
 impl<T: Buf + MarkBuf> Frame<T> {
-    pub fn parse(header: FrameHeader, buf: &mut T) -> WebResult<Frame<T>> {
-        Ok(Frame {
-            header,
-            payload: Payload::parse(header, buf)?,
-        })
+
+    pub fn parse(header: FrameHeader, mut buf: T, decoder: &mut Decoder, 
+        max_header_list_size: usize) -> WebResult<Frame<T>> {
+        Frame::trim_padding(&header, &mut buf)?;
+        match header.kind() {
+            Kind::Data => {
+                Ok(Frame::Data(Data::new(header.stream_id(), buf)))
+            }
+            Kind::Headers => {
+                let mut header = Headers::new(header.stream_id(), HeaderMap::new());
+                header.parse(buf, decoder, max_header_list_size)?;
+                Ok(Frame::Headers(header))
+            }
+            Kind::Priority => {
+                Ok(Frame::Priority(Priority::parse(header, &mut buf)?))
+            }
+            Kind::Reset => {
+                Ok(Frame::Reset(Reset::parse(header, &mut buf)?))
+            }
+            Kind::Settings => {
+                Ok(Frame::Settings(Settings::parse(header, &mut buf)?))
+            }
+            Kind::PushPromise => {
+                Ok(Frame::PushPromise(PushPromise::parse(header, buf, decoder, max_header_list_size)?))
+            }
+            Kind::Ping => {
+                Ok(Frame::Ping(Ping::parse(header, &mut buf)?))
+            }
+            Kind::GoAway => {
+                Ok(Frame::GoAway(GoAway::parse(&mut buf)?))
+            }
+            Kind::WindowUpdate => {
+                Ok(Frame::WindowUpdate(WindowUpdate::parse(header, &mut buf)?))
+            }
+            Kind::Continuation => {
+                Err(crate::WebError::Extension(""))
+                // Ok(Frame::Continuation(Continuation::parse(header, &mut buf)?))
+            }
+            _ => {
+                Err(crate::WebError::Extension(""))
+            }
+        }
     }
 
     /// How many bytes this Frame will use in a buffer when encoding.
     pub fn encoded_len(&self) -> usize {
-        FRAME_HEADER_BYTES + self.payload.encoded_len()
+        0
+        // FRAME_HEADER_BYTES + self.payload.encoded_len()
     }
 
     pub fn no_serialize_header(&self) -> bool {
-        if self.header.kind == Kind::Settings {
-            true 
-        } else {
-            false
-        }
+        false
+        // if self.header.kind == Kind::Settings {
+        //     true 
+        // } else {
+        //     false
+        // }
     }
 }
 
@@ -58,10 +107,10 @@ impl<T: Buf + MarkBuf> Frame<T> {
 impl<T: Buf + MarkBuf> Serialize for Frame<T> {
     fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
-        if !self.no_serialize_header() {
-            size += self.header.serialize(buffer)?;
-        }
-        size += self.payload.serialize(buffer)?;
+        // if !self.no_serialize_header() {
+        //     size += self.header.serialize(buffer)?;
+        // }
+        // size += self.payload.serialize(buffer)?;
         Ok(size)
     }
 }
@@ -117,7 +166,7 @@ impl Serialize for FrameHeader {
 impl<T: Buf + MarkBuf> Debug for Frame<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Frame")
-            .field("header", &self.header)
+            // .field("header", &self.header)
             // .field("payload", &self.payload)
             .finish()
     }

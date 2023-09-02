@@ -19,7 +19,6 @@ pub use data::Data;
 pub use flag::Flag;
 pub use frame::Frame;
 pub use kind::Kind;
-pub use payload::Payload;
 
 pub use self::go_away::GoAway;
 pub use self::ping::Ping;

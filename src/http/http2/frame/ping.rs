@@ -1,6 +1,6 @@
 use crate::{WebResult, Buf, http::http2::frame::{Kind, Flag}, Http2Error, Serialize, BufMut, MarkBuf};
 
-use super::{FrameHeader, Frame, frame::Frame1, StreamIdentifier};
+use super::{FrameHeader, Frame, StreamIdentifier};
 
 
 pub type Payload = [u8; 8];
@@ -45,7 +45,7 @@ impl Ping {
     }
 
     /// Builds a `Ping` frame from a raw frame.
-    pub fn load<B: Buf>(head: FrameHeader, bytes: &mut B) -> WebResult<Ping> {
+    pub fn parse<B: Buf>(head: FrameHeader, bytes: &mut B) -> WebResult<Ping> {
         debug_assert_eq!(head.kind(), &Kind::Ping);
 
         // PING frames are not associated with any individual stream. If a PING
@@ -94,8 +94,8 @@ impl Serialize for Ping {
     }
 }
 
-impl<T> From<Ping> for Frame1<T> {
-    fn from(src: Ping) -> Frame1<T> {
-        Frame1::Ping(src)
+impl<T> From<Ping> for Frame<T> {
+    fn from(src: Ping) -> Frame<T> {
+        Frame::Ping(src)
     }
 }

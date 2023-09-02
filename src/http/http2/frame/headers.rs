@@ -1,11 +1,17 @@
-
-
+use crate::{BufMut, Request, Serialize};
 use std::fmt;
-use crate::{Request, Serialize, BufMut};
 
-use crate::{HeaderMap, Method, Scheme, http::{StatusCode, header, http2::{Decoder, encoder::Encoder}}, HeaderValue, Binary, BinaryMut, Http2Error, WebResult, Buf, MarkBuf, Url};
+use crate::{
+    http::{
+        header,
+        http2::{encoder::Encoder, Decoder},
+        StatusCode,
+    },
+    Binary, BinaryMut, Buf, HeaderMap, HeaderValue, Http2Error, MarkBuf, Method, Scheme, Url,
+    WebResult,
+};
 
-use super::{StreamIdentifier, StreamDependency, FrameHeader, Flag, Kind, frame::Frame1};
+use super::{frame::Frame, Flag, FrameHeader, Kind, StreamDependency, StreamIdentifier};
 
 ///
 /// This could be either a request or a response.
@@ -39,9 +45,6 @@ pub struct PushPromise {
     flags: Flag,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub struct PushPromiseFlag(u8);
-
 #[derive(Debug)]
 pub struct Continuation {
     /// Stream ID of continuation frame
@@ -55,22 +58,12 @@ pub struct Continuation {
 pub struct Parts {
     // Request
     pub method: Option<Method>,
-    pub scheme: Option<String>,
+    pub scheme: Option<Scheme>,
     pub authority: Option<String>,
     pub path: Option<String>,
-    pub protocol: Option<Scheme>,
 
     // Response
     pub status: Option<StatusCode>,
-}
-
-#[derive(Debug)]
-pub struct Iter {
-    /// parts headers
-    parts: Option<Parts>,
-
-    /// Header fields
-    fields: header::IntoIter<HeaderValue>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -92,7 +85,7 @@ struct EncodingHeaderBlock {
 
 impl Headers {
     /// Create a new HEADERS frame
-    pub fn new(stream_id: StreamIdentifier, parts: Parts, fields: HeaderMap) -> Self {
+    pub fn trailers(stream_id: StreamIdentifier, parts: Parts, fields: HeaderMap) -> Self {
         Headers {
             stream_id,
             stream_dep: None,
@@ -105,7 +98,7 @@ impl Headers {
         }
     }
 
-    pub fn trailers(stream_id: StreamIdentifier, fields: HeaderMap) -> Self {
+    pub fn new(stream_id: StreamIdentifier, fields: HeaderMap) -> Self {
         let mut flags = Flag::default();
         flags.set_end_stream();
 
@@ -121,73 +114,48 @@ impl Headers {
         }
     }
 
-    /// Loads the header frame but doesn't actually do HPACK decoding.
-    ///
-    /// HPACK decoding is done in the `load_hpack` step.
-    pub fn load(head: FrameHeader, mut src: BinaryMut) -> WebResult<(Self, BinaryMut)> {
-        let flags = head.flag();
-        let mut pad = 0;
-
-        log::trace!("loading headers; flags={:?}", flags);
-        let len = src.len();
-
-        if head.stream_id().is_zero() {
-            return Err(Http2Error::InvalidStreamId.into());
-        }
-
-        // Read the padding length
-        if flags.is_padded() {
-            if src.is_empty() {
-                return Err(Http2Error::MalformedMessage.into());
-            }
-            pad = src.get_u8() as usize;
-        }
-
-        // Read the stream dependency
-        let stream_dep = if flags.is_priority() {
-            if src.len() < 5 {
-                return Err(Http2Error::MalformedMessage.into());
-            }
-            let stream_dep = StreamDependency::load(&mut src)?;
-
-            if stream_dep.dependency_id() == head.stream_id() {
-                return Err(Http2Error::InvalidDependencyId.into());
-            }
-            Some(stream_dep)
-        } else {
-            None
-        };
-
-        if pad > 0 {
-            if pad > src.len() {
-                return Err(Http2Error::TooMuchPadding(pad as u8).into());
-            }
-
-            src.mark_len(len - pad);
-        }
-
-        let headers = Headers {
-            stream_id: head.stream_id(),
-            stream_dep,
-            header_block: HeaderBlock {
-                fields: HeaderMap::new(),
-                is_over_size: false,
-                parts: Parts::default(),
-            },
-            flags,
-        };
-
-        Ok((headers, src))
-    }
-
-    pub fn load_hpack(
+    pub fn parse<B: Buf + MarkBuf>(
         &mut self,
-        src: &mut BinaryMut,
-        max_header_list_size: usize,
+        mut buffer: B,
         decoder: &mut Decoder,
-    ) -> WebResult<()> {
-        self.header_block.load(src, max_header_list_size, decoder)
+        max_header_list_size: usize,
+    ) -> WebResult<usize> {
+        let headers = decoder.decode(&mut buffer)?;
+        for h in headers {
+            if h.0.is_spec() {
+                let value: String = (&h.1).try_into()?;
+                match h.0.name() {
+                    ":authority" => {
+                        self.header_block.parts.authority = Some(value);
+                    }
+                    ":method" => {
+                        self.header_block.parts.method = Some(Method::try_from(&*value)?);
+                    }
+                    ":path" => {
+                        self.header_block.parts.path = Some(value);
+                    }
+                    ":scheme" => {
+                        self.header_block.parts.scheme = Some(Scheme::try_from(&*value)?);
+                    }
+                    _ => {
+                        self.header_block.fields.insert_exact(h.0, h.1);
+                    }
+                }
+            } else {
+                self.header_block.fields.insert_exact(h.0, h.1);
+            }
+        }
+        Ok(buffer.mark_commit())
     }
+
+    // pub fn parse<B: Buf+MarkBuf>(
+    //     &mut self,
+    //     src: &mut B,
+    //     max_header_list_size: usize,
+    //     decoder: &mut Decoder,
+    // ) -> WebResult<()> {
+    //     self.header_block.parse(src, max_header_list_size, decoder)
+    // }
 
     pub fn stream_id(&self) -> StreamIdentifier {
         self.stream_id
@@ -217,7 +185,6 @@ impl Headers {
         (self.header_block.parts, self.header_block.fields)
     }
 
-    #[cfg(feature = "unstable")]
     pub fn parts_mut(&mut self) -> &mut Parts {
         &mut self.header_block.parts
     }
@@ -235,11 +202,7 @@ impl Headers {
         self.header_block.fields
     }
 
-    pub fn encode(
-        self,
-        encoder: &mut Encoder,
-        dst: &mut BinaryMut,
-    ) -> Option<Continuation> {
+    pub fn encode(self, encoder: &mut Encoder, dst: &mut BinaryMut) -> Option<Continuation> {
         // At this point, the `is_end_headers` flag should always be set
         debug_assert!(self.flags.is_end_headers());
 
@@ -256,9 +219,9 @@ impl Headers {
     }
 }
 
-impl<T> From<Headers> for Frame1<T> {
+impl<T> From<Headers> for Frame<T> {
     fn from(src: Headers) -> Self {
-        Frame1::Headers(src)
+        Frame::Headers(src)
     }
 }
 
@@ -269,10 +232,6 @@ impl fmt::Debug for Headers {
             .field("stream_id", &self.stream_id)
             .field("flags", &self.flags);
 
-        if let Some(ref protocol) = self.header_block.parts.protocol {
-            builder.field("protocol", protocol);
-        }
-
         if let Some(ref dep) = self.stream_dep {
             builder.field("stream_dep", dep);
         }
@@ -282,38 +241,7 @@ impl fmt::Debug for Headers {
     }
 }
 
-// ===== util =====
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct ParseU64Error;
-
-pub fn parse_u64(src: &[u8]) -> Result<u64, ParseU64Error> {
-    if src.len() > 19 {
-        // At danger for overflow...
-        return Err(ParseU64Error);
-    }
-
-    let mut ret = 0;
-
-    for &d in src {
-        if d < b'0' || d > b'9' {
-            return Err(ParseU64Error);
-        }
-
-        ret *= 10;
-        ret += (d - b'0') as u64;
-    }
-
-    Ok(ret)
-}
-
 // ===== impl PushPromise =====
-
-#[derive(Debug)]
-pub enum PushPromiseHeaderError {
-    InvalidContentLength(Result<u64, ParseU64Error>),
-    NotSafeAndCacheable,
-}
 
 impl PushPromise {
     pub fn new(
@@ -338,7 +266,6 @@ impl PushPromise {
         // use PushPromiseHeaderHttp2Error::*;
         // The spec has some requirements for promised request headers
         // [https://httpwg.org/specs/rfc7540.html#PushRequests]
-
 
         if req.get_body_len() == 0 {
             return Err(Http2Error::PayloadLengthTooShort.into());
@@ -368,62 +295,27 @@ impl PushPromise {
         self.header_block.fields
     }
 
-    /// Loads the push promise frame but doesn't actually do HPACK decoding.
-    ///
-    /// HPACK decoding is done in the `load_hpack` step.
-    pub fn load(head: FrameHeader, mut src: BinaryMut) -> WebResult<(Self, BinaryMut)> {
-        let flags = head.flag();
-        let len = src.len();
-        let mut pad = 0;
-
-        if head.stream_id().is_zero() {
-            return Err(Http2Error::InvalidStreamId.into());
-        }
-
-        // Read the padding length
-        if flags.is_padded() {
-            if src.is_empty() {
-                return Err(Http2Error::MalformedMessage.into());
-            }
-
-            // TODO: Ensure payload is sized correctly
-            pad = src.get_u8() as usize;
-        }
-
-        if src.len() < 5 {
-            return Err(Http2Error::MalformedMessage.into());
-        }
-
-        let promised_id = StreamIdentifier::parse(&mut src);
-
-        if pad > 0 {
-            if pad > src.len() {
-                return Err(Http2Error::TooMuchPadding(pad as u8).into());
-            }
-
-            src.mark_len(len - pad);
-        }
-
-        let frame = PushPromise {
-            flags,
-            header_block: HeaderBlock {
-                fields: HeaderMap::new(),
-                is_over_size: false,
-                parts: Parts::default(),
-            },
-            promised_id,
-            stream_id: head.stream_id(),
-        };
-        Ok((frame, src))
-    }
-
-    pub fn load_hpack(
-        &mut self,
-        src: &mut BinaryMut,
-        max_header_list_size: usize,
+    pub fn parse<B: Buf + MarkBuf>(
+        head: FrameHeader,
+        mut src: B,
         decoder: &mut Decoder,
-    ) -> WebResult<()> {
-        self.header_block.load(src, max_header_list_size, decoder)
+        max_header_list_size: usize,
+    ) -> WebResult<Self> {
+        let promised_id = StreamIdentifier::parse(&mut src);
+        let mut push = PushPromise::new(
+            head.stream_id(),
+            promised_id,
+            Parts {
+                method: None,
+                scheme: None,
+                authority: None,
+                path: None,
+                status: None,
+            },
+            HeaderMap::new(),
+        );
+        push.header_block.parse(&mut src, max_header_list_size, decoder)?;
+        Ok(push)
     }
 
     pub fn stream_id(&self) -> StreamIdentifier {
@@ -446,11 +338,7 @@ impl PushPromise {
         self.header_block.is_over_size
     }
 
-    pub fn encode(
-        self,
-        encoder: &mut Encoder,
-        dst: &mut BinaryMut,
-    ) -> Option<Continuation> {
+    pub fn encode(self, encoder: &mut Encoder, dst: &mut BinaryMut) -> Option<Continuation> {
         // At this point, the `is_end_headers` flag should always be set
         debug_assert!(self.flags.is_end_headers());
 
@@ -474,9 +362,9 @@ impl PushPromise {
     }
 }
 
-impl<T> From<PushPromise> for Frame1<T> {
+impl<T> From<PushPromise> for Frame<T> {
     fn from(src: PushPromise) -> Self {
-        Frame1::PushPromise(src)
+        Frame::PushPromise(src)
     }
 }
 
@@ -498,11 +386,11 @@ impl Continuation {
         FrameHeader::new(Kind::Continuation, Flag::end_headers(), self.stream_id)
     }
 
-    pub fn encode(self, dst: &mut BinaryMut) -> Option<Continuation> {
+    pub fn parse<B: Buf>(self, dst: &mut B) -> Option<Continuation> {
         // Get the CONTINUATION frame head
         let head = self.head();
-
-        self.header_block.encode(&head, dst, |_| {})
+        // self.header_block.encode(&head, dst, |_| {})
+        None
     }
 }
 
@@ -510,8 +398,6 @@ impl Continuation {
 
 impl Parts {
     pub fn request(method: Method, uri: Url, protocol: Option<Scheme>) -> Self {
-        
-
         let mut path = uri.path;
 
         let mut parts = Parts {
@@ -519,7 +405,6 @@ impl Parts {
             scheme: None,
             authority: None,
             path: Some(path).filter(|p| !p.is_empty()),
-            protocol,
             status: None,
         };
 
@@ -545,7 +430,6 @@ impl Parts {
             scheme: None,
             authority: None,
             path: None,
-            protocol: None,
             status: Some(status),
         }
     }
@@ -556,7 +440,7 @@ impl Parts {
     }
 
     pub fn set_scheme(&mut self, scheme: Scheme) {
-        self.scheme = Some(scheme.as_str().to_string());
+        self.scheme = Some(scheme);
     }
 
     #[cfg(feature = "unstable")]
@@ -674,9 +558,9 @@ impl EncodingHeaderBlock {
 // ===== HeaderBlock =====
 
 impl HeaderBlock {
-    fn load(
+    fn parse<B: Buf + MarkBuf>(
         &mut self,
-        src: &mut BinaryMut,
+        src: &mut B,
         max_header_list_size: usize,
         decoder: &mut Decoder,
     ) -> WebResult<()> {
@@ -770,10 +654,10 @@ impl HeaderBlock {
 
     fn into_encoding(self, encoder: &mut Encoder) -> EncodingHeaderBlock {
         let mut hpack = BinaryMut::new();
-        let headers = Iter {
-            parts: Some(self.parts),
-            fields: self.fields.into_iter(),
-        };
+        // let headers = Iter {
+        //     parts: Some(self.parts),
+        //     fields: self.fields.into_iter(),
+        // };
 
         // encoder.encode(headers, &mut hpack);
 
@@ -799,17 +683,18 @@ impl HeaderBlock {
                     .unwrap_or(0)
             }};
         }
+        0
 
-        parts_size!(method)
-            + parts_size!(scheme)
-            + parts_size!(status)
-            + parts_size!(authority)
-            + parts_size!(path)
-            + self
-                .fields
-                .iter()
-                .map(|(name, value)| decoded_header_size(name.as_str().len(), value.len()))
-                .sum::<usize>()
+        // parts_size!(method)
+        //     + parts_size!(scheme)
+        //     + parts_size!(status)
+        //     + parts_size!(authority)
+        //     + parts_size!(path)
+        //     + self
+        //         .fields
+        //         .iter()
+        //         .map(|(name, value)| decoded_header_size(name.as_str().len(), value.len()))
+        //         .sum::<usize>()
     }
 }
 
