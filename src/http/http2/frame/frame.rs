@@ -14,6 +14,7 @@ pub struct FrameHeader {
     pub id: StreamIdentifier,
 }
 
+#[derive(Debug)]
 pub enum Frame<T = Binary> {
     Data(Data<T>),
     Headers(Headers),
@@ -163,11 +164,61 @@ impl Serialize for FrameHeader {
     }
 }
 
-impl<T: Buf + MarkBuf> Debug for Frame<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Frame")
-            // .field("header", &self.header)
-            // .field("payload", &self.payload)
-            .finish()
+// impl<T: Buf + MarkBuf> Debug for Frame<T> {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         f.debug_struct("Frame")
+//             // .field("header", &self.header)
+//             // .field("payload", &self.payload)
+//             .finish()
+//     }
+// }
+
+
+// impl<T> Ord for Frame<T> {
+//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+//         self.partial_cmp(&other).unwrap()
+//     }
+// }
+
+pub struct PriorityFrame<T = Binary> {
+    pub frame: Frame<T>,
+    pub weight: u8,
+}
+
+impl<T> PriorityFrame<T> {
+    pub fn new(frame: Frame<T>) -> Self {
+        Self {
+            frame,
+            weight: 0,
+        }
+    }
+
+    pub fn set_weight(&mut self, weight: u8) {
+        self.weight = weight;
+    }
+
+    pub fn weight(&self) -> u8 {
+        self.weight
+    }
+}
+
+impl<T> Ord for PriorityFrame<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.weight.cmp(&other.weight)
+    }
+}
+
+impl<T> PartialOrd for PriorityFrame<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.weight.partial_cmp(&other.weight)
+    }
+}
+impl<T> Eq for PriorityFrame<T> {
+
+}
+
+impl<T> PartialEq for PriorityFrame<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.weight == other.weight
     }
 }

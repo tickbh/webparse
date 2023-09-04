@@ -77,6 +77,11 @@ pub trait Buf {
 
     /// 消耗掉多少字节的数据, 做指针偏移
     fn advance(&mut self, n: usize);
+    
+    /// 消耗所有的字节
+    fn advance_all(&mut self) {
+        self.advance(self.remaining());
+    }
 
     /// 获取当前的值, 但不做任何偏移
     fn peek(&self) -> Option<u8> {

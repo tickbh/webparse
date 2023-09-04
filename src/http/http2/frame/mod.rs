@@ -17,7 +17,7 @@ pub use priority::{Priority, StreamDependency};
 pub use headers::{Headers, PushPromise, Continuation};
 pub use data::Data;
 pub use flag::Flag;
-pub use frame::Frame;
+pub use frame::{Frame, PriorityFrame};
 pub use kind::Kind;
 
 pub use self::go_away::GoAway;

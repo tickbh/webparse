@@ -275,6 +275,7 @@ impl BinaryMut {
             self.advance_mut(cnt);
         }
     }
+
 }
 
 impl From<Vec<u8>> for BinaryMut {

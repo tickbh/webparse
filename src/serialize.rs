@@ -36,3 +36,19 @@ impl Serialize for Vec<u8> {
         Ok(buffer.put_slice(&self))
     }
 }
+
+impl Serialize for Binary {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        let len = self.remaining();
+        buffer.put_slice(self.chunk());
+        Ok(len)
+    }
+}
+
+impl Serialize for BinaryMut {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        let len = self.remaining();
+        buffer.put_slice(self.chunk());
+        Ok(len)
+    }
+}

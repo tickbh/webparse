@@ -2,7 +2,7 @@ use crate::{Binary, Serialize, Buf, BufMut, MarkBuf};
 
 use super::{Flag, FrameHeader, Kind, StreamIdentifier};
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Debug)]
 pub struct Data<T = Binary> {
     stream_id: StreamIdentifier,
     data: T,
