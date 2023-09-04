@@ -1,4 +1,4 @@
-use std::{fmt::{self, Result}, result, error::Error};
+use std::{fmt::{self, Result}, result, error::Error, convert::Infallible};
 
 use crate::{http::HttpError, url::UrlError, Http2Error};
 
@@ -55,6 +55,12 @@ impl From<HttpError> for WebError {
 impl From<UrlError> for WebError {
     fn from(e: UrlError) -> Self {
         WebError::Url(e)
+    }
+}
+
+impl From<Infallible> for WebError {
+    fn from(_: Infallible) -> Self {
+        WebError::Extension("Infallible")
     }
 }
 

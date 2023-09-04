@@ -243,9 +243,16 @@ impl Builder {
         <HeaderValue as TryFrom<V>>::Error: Into<WebError>,
     {
         self.and_then(move |mut head| {
-            // let name = <HeaderName as TryFrom<K>>::try_from(key).map_err(Into::into)?;
-            // let value = <HeaderValue as TryFrom<V>>::try_from(value).map_err(Into::into)?;
             head.header.insert(key, value);
+            Ok(head)
+        })
+    }
+
+    pub fn headers(self, header: HeaderMap) -> Builder {
+        self.and_then(move |mut head| {
+            for iter in header {
+                head.header.insert_exact(iter.0, iter.1);
+            }
             Ok(head)
         })
     }
@@ -368,6 +375,13 @@ impl Request<()> {
         Builder::default()
     }
 
+}
+
+impl<T> Request<T>
+where
+    T: Serialize,
+{
+
     pub fn is_http2(&self) -> bool {
         self.parts.version == Version::Http2
     }
@@ -375,12 +389,7 @@ impl Request<()> {
     pub fn parts(&self) -> &Parts {
         &self.parts
     }
-}
-
-impl<T> Request<T>
-where
-    T: Serialize,
-{
+    
     pub fn method(&self) -> &Method {
         &self.parts.method
     }

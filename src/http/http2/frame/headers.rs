@@ -1,4 +1,4 @@
-use crate::{BufMut, Request, Serialize};
+use crate::{BufMut, Request, Serialize, http::request};
 use std::fmt;
 
 use crate::{
@@ -200,6 +200,23 @@ impl Headers {
 
     pub fn into_fields(self) -> HeaderMap {
         self.header_block.fields
+    }
+
+    pub fn into_request(self) -> WebResult<request::Builder> {
+        let mut builder = request::Request::builder();
+        let (parts, header) = self.into_parts();
+        if let Some(m) = parts.method {
+            builder = builder.method(m);
+        }
+        if let Some(path) = parts.path {
+            let mut url = Url::parse(path.into_bytes())?;
+            if let Some(authority) = parts.authority {
+                url.domain = Some(authority);
+            }
+            builder = builder.url(url);
+        }
+        builder = builder.headers(header);
+        Ok(builder)
     }
 
     pub fn encode(self, encoder: &mut Encoder, dst: &mut BinaryMut) -> Option<Continuation> {

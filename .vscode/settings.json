@@ -46,5 +46,6 @@
             "description": "Wrap the expression in an `Option::Some`",
             "scope": "expr"
         }
-    }
+    },
+    "cmake.configureOnOpen": false
 }
