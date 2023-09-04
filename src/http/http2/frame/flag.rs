@@ -20,8 +20,9 @@ impl Flag {
         }
     }
 
-    pub fn load(flag: Flag) -> Flag {
-        flag & Flag::ACK
+    pub fn load(mut flag: Flag) -> Flag {
+        flag.set(Flag::ACK, true);
+        flag
     }
 
     pub fn ack() -> Flag {

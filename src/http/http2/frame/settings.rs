@@ -176,7 +176,7 @@ impl Settings {
         }
 
         // Load the flag
-        let flag = Flag::load(head.flag());
+        let flag = head.flag();
 
         if flag.is_ack() {
             // Ensure that the payload is empty
