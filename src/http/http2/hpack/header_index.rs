@@ -3,13 +3,14 @@ use lazy_static::lazy_static;
 use crate::{HeaderName, HeaderValue, http::value};
 
 
+#[derive(Clone)]
 struct DynamicTable {
     table: VecDeque<(HeaderName, HeaderValue)>,
     size: usize,
     max_size: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HeaderIndex {
     dynamic_table: DynamicTable,
 }

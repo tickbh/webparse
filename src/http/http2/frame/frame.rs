@@ -1,8 +1,16 @@
 use std::fmt::Debug;
 
-use crate::{Buf, BufMut, Http2Error, MarkBuf, WebResult, Serialize, Binary, http::http2::Decoder, HeaderMap};
+use crate::{
+    http::http2::{Decoder, encoder::Encoder}, Binary, Buf, BufMut, HeaderMap, Http2Error, MarkBuf,
+    Serialize, WebResult,
+};
 
-use super::{encode_u24, read_u24, Flag, Kind, StreamIdentifier, Data, Headers, Priority, Settings, GoAway, Ping, WindowUpdate, Reset, headers::{PushPromise, Continuation}};
+use super::{
+    encode_u24,
+    headers::{Continuation, PushPromise},
+    read_u24, Data, Flag, GoAway, Headers, Kind, Ping, Priority, Reset, Settings, StreamIdentifier,
+    WindowUpdate,
+};
 
 pub const FRAME_HEADER_BYTES: usize = 9;
 
@@ -33,7 +41,7 @@ impl Frame<Binary> {
         if header.flag.is_padded() && buf.has_remaining() {
             let pad_length = buf.peek().unwrap();
             if pad_length as u32 > header.length {
-                return Err(Http2Error::into(Http2Error::TooMuchPadding(pad_length)))
+                return Err(Http2Error::into(Http2Error::TooMuchPadding(pad_length)));
             } else {
                 buf.advance(1);
                 buf.mark_len(header.length as usize - pad_length as usize - 1);
@@ -44,48 +52,57 @@ impl Frame<Binary> {
 }
 
 impl<T: Buf + MarkBuf> Frame<T> {
-
-    pub fn parse(header: FrameHeader, mut buf: T, decoder: &mut Decoder, 
-        max_header_list_size: usize) -> WebResult<Frame<T>> {
+    pub fn parse(
+        header: FrameHeader,
+        mut buf: T,
+        decoder: &mut Decoder,
+        max_header_list_size: usize,
+    ) -> WebResult<Frame<T>> {
         Frame::trim_padding(&header, &mut buf)?;
         match header.kind() {
-            Kind::Data => {
-                Ok(Frame::Data(Data::new(header.stream_id(), buf)))
-            }
+            Kind::Data => Ok(Frame::Data(Data::new(header.stream_id(), buf))),
             Kind::Headers => {
                 let mut header = Headers::new(header.stream_id(), HeaderMap::new());
                 header.parse(buf, decoder, max_header_list_size)?;
                 Ok(Frame::Headers(header))
             }
-            Kind::Priority => {
-                Ok(Frame::Priority(Priority::parse(header, &mut buf)?))
-            }
-            Kind::Reset => {
-                Ok(Frame::Reset(Reset::parse(header, &mut buf)?))
-            }
-            Kind::Settings => {
-                Ok(Frame::Settings(Settings::parse(header, &mut buf)?))
-            }
-            Kind::PushPromise => {
-                Ok(Frame::PushPromise(PushPromise::parse(header, buf, decoder, max_header_list_size)?))
-            }
-            Kind::Ping => {
-                Ok(Frame::Ping(Ping::parse(header, &mut buf)?))
-            }
-            Kind::GoAway => {
-                Ok(Frame::GoAway(GoAway::parse(&mut buf)?))
-            }
-            Kind::WindowUpdate => {
-                Ok(Frame::WindowUpdate(WindowUpdate::parse(header, &mut buf)?))
-            }
+            Kind::Priority => Ok(Frame::Priority(Priority::parse(header, &mut buf)?)),
+            Kind::Reset => Ok(Frame::Reset(Reset::parse(header, &mut buf)?)),
+            Kind::Settings => Ok(Frame::Settings(Settings::parse(header, &mut buf)?)),
+            Kind::PushPromise => Ok(Frame::PushPromise(PushPromise::parse(
+                header,
+                buf,
+                decoder,
+                max_header_list_size,
+            )?)),
+            Kind::Ping => Ok(Frame::Ping(Ping::parse(header, &mut buf)?)),
+            Kind::GoAway => Ok(Frame::GoAway(GoAway::parse(&mut buf)?)),
+            Kind::WindowUpdate => Ok(Frame::WindowUpdate(WindowUpdate::parse(header, &mut buf)?)),
             Kind::Continuation => {
                 Err(crate::WebError::Extension(""))
                 // Ok(Frame::Continuation(Continuation::parse(header, &mut buf)?))
             }
-            _ => {
-                Err(crate::WebError::Extension(""))
-            }
+            _ => Err(crate::WebError::Extension("")),
         }
+    }
+
+    pub fn encode<B: Buf+MarkBuf+BufMut>(
+        mut self,
+        buf: &mut B,
+        encoder: &mut Encoder
+    ) -> WebResult<usize> {
+        let size = match self {
+            Frame::Data(_) => todo!(),
+            Frame::Headers(_) => todo!(),
+            Frame::Priority(_) => todo!(),
+            Frame::PushPromise(_) => todo!(),
+            Frame::Settings(s) => s.encode(buf),
+            Frame::Ping(_) => todo!(),
+            Frame::GoAway(_) => todo!(),
+            Frame::WindowUpdate(_) => todo!(),
+            Frame::Reset(_) => todo!(),
+        };
+        Ok(size)
     }
 
     /// How many bytes this Frame will use in a buffer when encoding.
@@ -97,16 +114,15 @@ impl<T: Buf + MarkBuf> Frame<T> {
     pub fn no_serialize_header(&self) -> bool {
         false
         // if self.header.kind == Kind::Settings {
-        //     true 
+        //     true
         // } else {
         //     false
         // }
     }
 }
 
-
 impl<T: Buf + MarkBuf> Serialize for Frame<T> {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         // if !self.no_serialize_header() {
         //     size += self.header.serialize(buffer)?;
@@ -117,9 +133,13 @@ impl<T: Buf + MarkBuf> Serialize for Frame<T> {
 }
 
 impl FrameHeader {
-
     pub fn new(kind: Kind, flag: Flag, id: StreamIdentifier) -> FrameHeader {
-        FrameHeader { length: 0, kind, flag, id }
+        FrameHeader {
+            length: 0,
+            kind,
+            flag,
+            id,
+        }
     }
     #[inline]
     pub fn parse<T: Buf + MarkBuf>(buffer: &mut T) -> WebResult<FrameHeader> {
@@ -149,12 +169,10 @@ impl FrameHeader {
     pub fn flag(&self) -> Flag {
         self.flag
     }
-
 }
 
-
 impl Serialize for FrameHeader {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += encode_u24(buffer, self.length);
         size += buffer.put_u8(self.kind.encode());
@@ -173,7 +191,6 @@ impl Serialize for FrameHeader {
 //     }
 // }
 
-
 // impl<T> Ord for Frame<T> {
 //     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
 //         self.partial_cmp(&other).unwrap()
@@ -187,10 +204,7 @@ pub struct PriorityFrame<T = Binary> {
 
 impl<T> PriorityFrame<T> {
     pub fn new(frame: Frame<T>) -> Self {
-        Self {
-            frame,
-            weight: 0,
-        }
+        Self { frame, weight: 0 }
     }
 
     pub fn set_weight(&mut self, weight: u8) {
@@ -213,9 +227,7 @@ impl<T> PartialOrd for PriorityFrame<T> {
         self.weight.partial_cmp(&other.weight)
     }
 }
-impl<T> Eq for PriorityFrame<T> {
-
-}
+impl<T> Eq for PriorityFrame<T> {}
 
 impl<T> PartialEq for PriorityFrame<T> {
     fn eq(&self, other: &Self) -> bool {
