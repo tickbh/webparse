@@ -180,7 +180,7 @@ impl Settings {
 
         if flag.is_ack() {
             // Ensure that the payload is empty
-            if !payload.has_remaining() {
+            if payload.has_remaining() {
                 return Err(Http2Error::into(Http2Error::InvalidPayloadLength));
             }
 
@@ -255,7 +255,7 @@ impl Settings {
         let mut head = FrameHeader::new(Kind::Settings, self.flags.into(), StreamIdentifier::zero());
         head.length = self.payload_len() as u32;
 
-        log::trace!("encoding SETTINGS; len={}", head.length);
+        println!("encoding SETTINGS; len={}", head.length);
         let mut size = 0;
         size += head.serialize(dst).unwrap();
 
