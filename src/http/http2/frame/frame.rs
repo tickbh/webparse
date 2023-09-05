@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use crate::{
-    http::http2::{Decoder, encoder::Encoder}, Binary, Buf, BufMut, HeaderMap, Http2Error, MarkBuf,
-    Serialize, WebResult,
+    http::http2::{encoder::Encoder, Decoder},
+    Binary, Buf, BufMut, HeaderMap, Http2Error, MarkBuf, Serialize, WebResult,
 };
 
 use super::{
@@ -77,20 +77,34 @@ impl Frame<Binary> {
             Frame::Reset(_f) => Flag::zero(),
         }
     }
-    
+
+    pub fn is_header(&self) -> bool {
+        match self {
+            Frame::Headers(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_data(&self) -> bool {
+        match self {
+            Frame::Data(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_end_headers(&self) -> bool {
         match self {
             Frame::Headers(f) => f.is_end_headers(),
-            _ => false
+            _ => false,
         }
     }
-    
+
     pub fn is_end_stream(&self) -> bool {
         match self {
             Frame::Headers(f) => f.is_end_stream(),
             Frame::Data(f) => f.is_end_stream(),
             // Frame::PushPromise(f) => f.is_end_stream(),
-            _ => false
+            _ => false,
         }
     }
 }
@@ -130,10 +144,10 @@ impl<T: Buf + MarkBuf> Frame<T> {
         }
     }
 
-    pub fn encode<B: Buf+MarkBuf+BufMut>(
+    pub fn encode<B: Buf + MarkBuf + BufMut>(
         mut self,
         buf: &mut B,
-        encoder: &mut Encoder
+        encoder: &mut Encoder,
     ) -> WebResult<usize> {
         let size = match self {
             Frame::Data(_) => todo!(),
