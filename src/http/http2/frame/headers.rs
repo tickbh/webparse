@@ -98,19 +98,16 @@ impl Headers {
         }
     }
 
-    pub fn new(stream_id: StreamIdentifier, fields: HeaderMap) -> Self {
-        let mut flags = Flag::default();
-        flags.set_end_stream();
-
+    pub fn new(header: FrameHeader, fields: HeaderMap) -> Self {
         Headers {
-            stream_id,
+            stream_id: header.stream_id(),
             stream_dep: None,
             header_block: HeaderBlock {
                 fields,
                 is_over_size: false,
                 parts: Parts::default(),
             },
-            flags,
+            flags: header.flag(),
         }
     }
 
@@ -208,8 +205,7 @@ impl Headers {
         self.header_block.fields
     }
 
-    pub fn into_request(self) -> WebResult<request::Builder> {
-        let mut builder = request::Request::builder();
+    pub fn into_request(self, mut builder: request::Builder) -> WebResult<request::Builder> {
         let (parts, header) = self.into_parts();
         if let Some(m) = parts.method {
             builder = builder.method(m);

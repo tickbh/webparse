@@ -104,9 +104,9 @@ impl<T: Buf + MarkBuf> Frame<T> {
     ) -> WebResult<Frame<T>> {
         Frame::trim_padding(&header, &mut buf)?;
         match header.kind() {
-            Kind::Data => Ok(Frame::Data(Data::new(header.stream_id(), buf))),
+            Kind::Data => Ok(Frame::Data(Data::new(header, buf))),
             Kind::Headers => {
-                let mut header = Headers::new(header.stream_id(), HeaderMap::new());
+                let mut header = Headers::new(header, HeaderMap::new());
                 header.parse(buf, decoder, max_header_list_size)?;
                 Ok(Frame::Headers(header))
             }

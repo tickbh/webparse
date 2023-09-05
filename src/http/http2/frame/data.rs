@@ -11,13 +11,13 @@ pub struct Data<T = Binary> {
 }
 
 impl<T> Data<T> {
-    pub fn new(stream_id: StreamIdentifier, payload: T) -> Self {
-        assert!(!stream_id.is_zero());
+    pub fn new(header: FrameHeader, payload: T) -> Self {
+        assert!(!header.stream_id().is_zero());
 
         Data {
-            stream_id,
+            stream_id: header.stream_id(),
             data: payload,
-            flags: Flag::default(),
+            flags: header.flag(),
             pad_len: None,
         }
     }
