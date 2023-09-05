@@ -38,6 +38,10 @@ impl<T> Data<T> {
         }
     }
 
+    pub fn flags(&self) -> Flag {
+        self.flags
+    }
+
     pub fn is_padded(&self) -> bool {
         self.flags.is_padded()
     }

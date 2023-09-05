@@ -49,6 +49,50 @@ impl Frame<Binary> {
         }
         Ok(())
     }
+
+    pub fn stream_id(&self) -> StreamIdentifier {
+        match self {
+            Frame::Data(f) => f.stream_id(),
+            Frame::Headers(f) => f.stream_id(),
+            Frame::Priority(_f) => StreamIdentifier::zero(),
+            Frame::PushPromise(f) => f.stream_id(),
+            Frame::Settings(_f) => StreamIdentifier::zero(),
+            Frame::Ping(_f) => StreamIdentifier::zero(),
+            Frame::GoAway(_f) => StreamIdentifier::zero(),
+            Frame::WindowUpdate(f) => f.stream_id(),
+            Frame::Reset(f) => f.stream_id(),
+        }
+    }
+
+    pub fn flags(&self) -> Flag {
+        match self {
+            Frame::Data(f) => f.flags(),
+            Frame::Headers(f) => f.flags(),
+            Frame::Priority(_f) => Flag::zero(),
+            Frame::PushPromise(f) => f.flags(),
+            Frame::Settings(f) => f.flags(),
+            Frame::Ping(_f) => Flag::zero(),
+            Frame::GoAway(_f) => Flag::zero(),
+            Frame::WindowUpdate(_f) => Flag::zero(),
+            Frame::Reset(_f) => Flag::zero(),
+        }
+    }
+    
+    pub fn is_end_headers(&self) -> bool {
+        match self {
+            Frame::Headers(f) => f.is_end_headers(),
+            _ => false
+        }
+    }
+    
+    pub fn is_end_stream(&self) -> bool {
+        match self {
+            Frame::Headers(f) => f.is_end_stream(),
+            Frame::Data(f) => f.is_end_stream(),
+            // Frame::PushPromise(f) => f.is_end_stream(),
+            _ => false
+        }
+    }
 }
 
 impl<T: Buf + MarkBuf> Frame<T> {

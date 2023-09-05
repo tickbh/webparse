@@ -105,6 +105,10 @@ impl Settings {
         self.flags.is_ack()
     }
 
+    pub fn flags(&self) -> Flag {
+        self.flags
+    }
+
     pub fn initial_window_size(&self) -> Option<u32> {
         self.initial_window_size
     }

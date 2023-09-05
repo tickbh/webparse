@@ -161,6 +161,12 @@ impl Headers {
         self.stream_id
     }
 
+    
+    pub fn flags(&self) -> Flag {
+        self.flags
+    }
+
+
     pub fn is_end_headers(&self) -> bool {
         self.flags.is_end_headers()
     }
@@ -279,6 +285,10 @@ impl PushPromise {
         }
     }
 
+    pub fn flags(&self) -> Flag {
+        self.flags
+    }
+    
     pub fn validate_request(req: &Request<()>) -> WebResult<()> {
         // use PushPromiseHeaderHttp2Error::*;
         // The spec has some requirements for promised request headers

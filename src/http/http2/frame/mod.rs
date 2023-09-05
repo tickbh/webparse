@@ -59,6 +59,13 @@ impl Serialize for StreamIdentifier {
     }
 }
 
+impl From<u32> for StreamIdentifier {
+    fn from(value: u32) -> Self {
+        StreamIdentifier(value)
+    }
+}
+
+
 #[inline(always)]
 pub fn read_u64<T: Buf + MarkBuf>(buf: &mut T) -> u64 {
     if buf.remaining() < 8 {
