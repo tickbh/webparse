@@ -11,7 +11,6 @@ mod helper;
 mod extensions;
 mod serialize;
 
-mod codec;
 
 pub use binary::{Binary, Buf, MarkBuf, BinaryMut, BufMut};
 

@@ -107,6 +107,26 @@ impl Frame<Binary> {
             _ => false,
         }
     }
+
+    
+    pub fn encode<B: Buf + MarkBuf + BufMut>(
+        mut self,
+        buf: &mut B,
+        encoder: &mut Encoder,
+    ) -> WebResult<usize> {
+        let size = match self {
+            Frame::Data(s) => s.encode(buf),
+            Frame::Headers(s) => s.encode(encoder, buf),
+            Frame::Priority(_) => todo!(),
+            Frame::PushPromise(_) => todo!(),
+            Frame::Settings(s) => s.encode(buf),
+            Frame::Ping(_) => todo!(),
+            Frame::GoAway(_) => todo!(),
+            Frame::WindowUpdate(_) => todo!(),
+            Frame::Reset(_) => todo!(),
+        };
+        Ok(size)
+    }
 }
 
 impl<T: Buf + MarkBuf> Frame<T> {
@@ -144,24 +164,6 @@ impl<T: Buf + MarkBuf> Frame<T> {
         }
     }
 
-    pub fn encode<B: Buf + MarkBuf + BufMut>(
-        mut self,
-        buf: &mut B,
-        encoder: &mut Encoder,
-    ) -> WebResult<usize> {
-        let size = match self {
-            Frame::Data(_) => todo!(),
-            Frame::Headers(s) => s.encode(encoder, dst),
-            Frame::Priority(_) => todo!(),
-            Frame::PushPromise(_) => todo!(),
-            Frame::Settings(s) => s.encode(buf),
-            Frame::Ping(_) => todo!(),
-            Frame::GoAway(_) => todo!(),
-            Frame::WindowUpdate(_) => todo!(),
-            Frame::Reset(_) => todo!(),
-        };
-        Ok(size)
-    }
 
     /// How many bytes this Frame will use in a buffer when encoding.
     pub fn encoded_len(&self) -> usize {

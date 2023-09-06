@@ -615,7 +615,7 @@ where
     }
 
     pub fn get_encoder(&self) -> Encoder {
-        Encoder::new_index(self.get_index())
+        Encoder::new_index(self.get_index(), 16_000)
     }
 }
 

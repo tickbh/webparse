@@ -572,7 +572,7 @@ impl<T: Serialize> Response<T> {
     }
 
     pub fn get_encoder(&mut self) -> Encoder {
-        Encoder::new_index(self.get_index())
+        Encoder::new_index(self.get_index(), 16_000)
     }
     
 }

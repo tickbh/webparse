@@ -7,4 +7,4 @@ pub mod header_index;
 
 pub use header_index::HeaderIndex;
 pub use decoder::{Decoder, DecoderError};
-pub use huffman::{HuffmanDecoder, HuffmanDecoderError};
+pub use huffman::{HuffmanDecoder, HuffmanDecoderError, HuffmanEncoder};

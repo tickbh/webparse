@@ -1,4 +1,4 @@
-use crate::{BufMut, Request, Serialize, http::request};
+use crate::{BufMut, Request, Serialize, http::request, HeaderName};
 use std::fmt;
 
 use crate::{
@@ -179,6 +179,38 @@ impl Headers {
     pub fn set_end_stream(&mut self) {
         self.flags.set_end_stream()
     }
+    
+    pub fn set_method(&mut self, method: Method) {
+        self.header_block.parts.method = Some(method);
+    }
+    
+    pub fn method(&mut self) -> &Option<Method> {
+        &self.header_block.parts.method
+    }
+
+    pub fn set_authority(&mut self, authority: String) {
+        self.header_block.parts.authority = Some(authority);
+    }
+    
+    pub fn authority(&mut self) -> &Option<String> {
+        &self.header_block.parts.authority
+    }
+
+    pub fn set_path(&mut self, path: String) {
+        self.header_block.parts.path = Some(path);
+    }
+    
+    pub fn path(&mut self) -> &Option<String> {
+        &self.header_block.parts.path
+    }
+    
+    pub fn set_status(&mut self, status: StatusCode) {
+        self.header_block.parts.status = Some(status);
+    }
+    
+    pub fn status(&mut self) -> &Option<StatusCode> {
+        &self.header_block.parts.status
+    }
 
     pub fn is_over_size(&self) -> bool {
         self.header_block.is_over_size
@@ -205,6 +237,8 @@ impl Headers {
         self.header_block.fields
     }
 
+
+
     pub fn into_request(self, mut builder: request::Builder) -> WebResult<request::Builder> {
         let (parts, header) = self.into_parts();
         if let Some(m) = parts.method {
@@ -221,16 +255,72 @@ impl Headers {
         Ok(builder)
     }
 
-    pub fn encode<B: Buf + MarkBuf + BufMut>(self, encoder: &mut Encoder, dst: &mut B) -> Option<Continuation> {
+    pub fn encode<B: Buf + MarkBuf + BufMut>(self, encoder: &mut Encoder, dst: &mut B) -> usize {
         // At this point, the `is_end_headers` flag should always be set
-        debug_assert!(self.flags.is_end_headers());
+        // debug_assert!(self.flags.is_end_headers());
+
 
         // Get the HEADERS frame head
-        let head = self.head();
+        let mut result = vec![];
 
-        self.header_block
-            .into_encoding(encoder)
-            .encode(&head, dst, |_| {})
+        let mut binary = BinaryMut::new();
+        let parts = self.header_block.parts;
+        let mut fields = self.header_block.fields;
+
+        println!("fields = {:?}", fields);
+        if let Some(method) = parts.method {
+            fields.insert(":method", method.as_str().to_string());
+        }
+        if let Some(authority) = parts.authority {
+        fields.insert(":authority", authority);
+        }
+        if let Some(scheme) = parts.scheme {
+            fields.insert(":scheme", scheme.as_str().to_string());
+        }
+        if let Some(path) = parts.path {
+            fields.insert(":path", path);
+        }
+        if let Some(status) = parts.status {
+            // fields.insert(":status", status.as_str());
+            let _ = encoder.encode_header_into((&HeaderName::from_static(":status"), &HeaderValue::from_static(status.as_str())), &mut binary);   
+            println!("stauts!!!!!!!!!");
+        } else {
+            println!("other!!!!!!!!!");
+        }
+
+        for value in fields {
+            if value.0.bytes_len() + value.1.bytes_len() + binary.remaining() > encoder.max_frame_size as usize {
+                result.push(binary);
+                binary = BinaryMut::new();
+            }
+            let _ = encoder.encode_header_into((&value.0, &value.1), &mut binary);    
+        }
+
+        result.push(binary);
+        let mut size = 0;
+        if result.len() == 1 {
+            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
+            head.flag.set_end_headers();
+            head.length = result[0].remaining() as u32;
+            size += head.serialize(dst).unwrap();
+            size += result[0].serialize(dst).unwrap();
+        } else {
+            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
+            head.length = result[0].remaining() as u32;
+            size += head.serialize(dst).unwrap();
+            size += result[0].serialize(dst).unwrap();
+
+            for idx in 1..result.len() {
+                let mut head = FrameHeader::new(Kind::Continuation, self.flags.into(), self.stream_id);
+                if idx == result.len() - 1 {
+                    head.flag.set_end_headers();
+                }
+                head.length = result[idx].remaining() as u32;
+                size += head.serialize(dst).unwrap();
+                size += result[idx].serialize(dst).unwrap();
+            }
+        }
+        size
     }
 
     fn head(&self) -> FrameHeader {
@@ -485,20 +575,18 @@ impl Parts {
 // ===== impl EncodingHeaderBlock =====
 
 impl EncodingHeaderBlock {
-    fn encode<F, B: Buf + MarkBuf + BufMut>(mut self, head: &FrameHeader, dst: &mut BinaryMut, f: F) -> Option<Continuation>
+    fn encode<F, B: Buf + MarkBuf + BufMut>(mut self, head: &FrameHeader, dst: &mut B, f: F) -> Option<Continuation>
     where
         F: FnOnce(&mut BinaryMut),
     {
-        let head_pos = dst.len();
+        let head_pos = dst.remaining();
 
         // At this point, we don't know how big the h2 frame will be.
         // So, we write the head with length 0, then write the body, and
         // finally write the length once we know the size.
         head.serialize(dst);
 
-        let payload_pos = dst.len();
-
-        f(dst);
+        let payload_pos = dst.remaining();
 
         // Now, encode the header payload
         let continuation = if self.hpack.len() > dst.remaining_mut() {
@@ -515,7 +603,7 @@ impl EncodingHeaderBlock {
         };
 
         // Compute the header block length
-        let payload_len = (dst.len() - payload_pos) as u64;
+        let payload_len = (dst.remaining() - payload_pos) as u64;
 
         // Write the frame length
         // let payload_len_be = payload_len.to_be_bytes();

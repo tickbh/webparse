@@ -1,11 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{WebResult, Http2Error};
+use crate::{WebResult, Http2Error, BufMut, MarkBuf, Buf};
 use lazy_static::lazy_static;
 
-
-
-/// Represents the error variants that the `HuffmanDecoder` can return.
 #[derive(PartialEq)]
 #[derive(Copy)]
 #[derive(Clone)]
@@ -25,8 +22,6 @@ pub enum HuffmanDecoderError {
 pub struct HuffmanDecoder;
 
 impl HuffmanDecoder {
-    
-
     /// Constructs a new HuffmanDecoder with the default Huffman code table, as
     /// defined in the HPACK-draft-10, Appendix B.
     pub fn new() -> HuffmanDecoder {
@@ -137,6 +132,38 @@ impl<'a, I> Iterator for BitIterator<'a, I>
         }
 
         Some(is_set)
+    }
+}
+
+
+pub struct HuffmanEncoder;
+
+impl HuffmanEncoder {
+
+    pub fn encode(src: &[u8]) -> Vec<u8> {
+        let mut result = Vec::with_capacity(src.len());
+        let mut bits: u64 = 0;
+        let mut bits_left = 40;
+    
+        for &b in src {
+            let (code, nbits) = HUFFMAN_CODE_ARRAY[b as usize];
+            let (code, nbits) = (code as u64, nbits as u64);
+            bits |= code << (bits_left - nbits);
+            bits_left -= nbits;
+    
+            while bits_left <= 32 {
+                result.push((bits >> 32) as u8);
+    
+                bits <<= 8;
+                bits_left += 8;
+            }
+        }
+    
+        if bits_left != 40 {
+            bits |= (1 << bits_left) - 1;
+            result.push((bits >> 32) as u8);
+        }
+        result
     }
 }
 

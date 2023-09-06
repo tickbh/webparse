@@ -1,3 +1,4 @@
+
 use crate::{Binary, Serialize, Buf, BufMut, MarkBuf};
 
 use super::{Flag, FrameHeader, Kind, StreamIdentifier};
@@ -66,6 +67,8 @@ impl<T> Data<T> {
         FrameHeader::new(Kind::Data, self.flags.into(), self.stream_id)
     }
 
+    
+
     pub(crate) fn map<F, U>(self, f: F) -> Data<U>
     where
         F: FnOnce(T) -> U,
@@ -79,6 +82,19 @@ impl<T> Data<T> {
     }
 }
 
+impl Data<Binary> {
+    pub fn encode<B: Buf+MarkBuf+BufMut>(&self, dst: &mut B) -> usize {
+        // Create & encode an appropriate frame head
+        let mut head = FrameHeader::new(Kind::Data, self.flags.into(), self.stream_id);
+        head.length = self.data.remaining() as u32;
+
+        println!("encoding SETTINGS; len={}", head.length);
+        let mut size = 0;
+        size += head.serialize(dst).unwrap();
+        size += self.data.serialize(dst).unwrap();
+        size
+    }
+}
 
 impl<T: Buf> Serialize for Data<T> {
     fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> crate::WebResult<usize> {
