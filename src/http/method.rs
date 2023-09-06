@@ -73,6 +73,15 @@ impl Method {
         }
     }
 
+    pub fn res_nobody(&self) -> bool {
+        match self {
+            Method::Head => true,
+            Method::Options => true,
+            Method::Connect => true,
+            _ => false,
+        }
+    }
+
     pub fn as_str(&self) -> &str {
         match self {
             Method::Options => "OPTIONS",
