@@ -151,7 +151,7 @@ impl<T: Buf + MarkBuf> Frame<T> {
     ) -> WebResult<usize> {
         let size = match self {
             Frame::Data(_) => todo!(),
-            Frame::Headers(_) => todo!(),
+            Frame::Headers(s) => s.encode(encoder, dst),
             Frame::Priority(_) => todo!(),
             Frame::PushPromise(_) => todo!(),
             Frame::Settings(s) => s.encode(buf),
@@ -255,6 +255,7 @@ impl Serialize for FrameHeader {
 //     }
 // }
 
+#[derive(Debug)]
 pub struct PriorityFrame<T = Binary> {
     pub frame: Frame<T>,
     pub weight: u8,

@@ -221,7 +221,7 @@ impl Headers {
         Ok(builder)
     }
 
-    pub fn encode(self, encoder: &mut Encoder, dst: &mut BinaryMut) -> Option<Continuation> {
+    pub fn encode<B: Buf + MarkBuf + BufMut>(self, encoder: &mut Encoder, dst: &mut B) -> Option<Continuation> {
         // At this point, the `is_end_headers` flag should always be set
         debug_assert!(self.flags.is_end_headers());
 
@@ -485,7 +485,7 @@ impl Parts {
 // ===== impl EncodingHeaderBlock =====
 
 impl EncodingHeaderBlock {
-    fn encode<F>(mut self, head: &FrameHeader, dst: &mut BinaryMut, f: F) -> Option<Continuation>
+    fn encode<F, B: Buf + MarkBuf + BufMut>(mut self, head: &FrameHeader, dst: &mut BinaryMut, f: F) -> Option<Continuation>
     where
         F: FnOnce(&mut BinaryMut),
     {
