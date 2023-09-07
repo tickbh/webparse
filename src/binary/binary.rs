@@ -608,6 +608,8 @@ where
     }
 }
 
+
+
 // impl From
 
 impl Default for Binary {

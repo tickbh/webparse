@@ -17,7 +17,7 @@ use std::{
     vec::IntoIter,
 };
 
-use crate::{Binary, Buf, MarkBuf};
+use crate::{Binary, Buf, MarkBuf, WebError};
 
 use super::BufMut;
 
@@ -583,6 +583,14 @@ impl fmt::Write for BinaryMut {
 //     }
 // }
 
+impl TryInto<String> for BinaryMut {
+    type Error=WebError;
+
+    fn try_into(self) -> std::result::Result<String, Self::Error> {
+        Ok(String::from_utf8_lossy(&self.chunk()).to_string())
+    }
+}
+
 impl Read for BinaryMut {
     #[inline(always)]
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
@@ -621,6 +629,13 @@ impl Debug for BinaryMut {
             .field("mark", &self.mark)
             .finish()
     }
+}
+
+unsafe impl Sync for BinaryMut {
+
+}
+unsafe impl Send for BinaryMut {
+
 }
 
 #[cfg(test)]

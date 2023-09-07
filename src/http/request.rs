@@ -610,6 +610,14 @@ where
         index
     }
 
+    pub fn body(&self) -> &T {
+        &self.body
+    }
+
+    pub fn body_mut(&mut self) -> &mut T {
+        &mut self.body
+    }
+
     pub fn get_decoder(&self) -> Decoder {
         Decoder::new_index(self.get_index())
     }
