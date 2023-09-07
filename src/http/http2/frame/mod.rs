@@ -13,6 +13,8 @@ mod ping;
 mod reset;
 mod window_update;
 
+use std::cmp::Ordering;
+
 pub use priority::{Priority, StreamDependency};
 pub use headers::{Headers, PushPromise, Continuation};
 pub use data::Data;
@@ -62,6 +64,18 @@ impl Serialize for StreamIdentifier {
 impl From<u32> for StreamIdentifier {
     fn from(value: u32) -> Self {
         StreamIdentifier(value)
+    }
+}
+
+impl Ord for StreamIdentifier {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
+impl PartialOrd for StreamIdentifier {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

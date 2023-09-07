@@ -88,7 +88,7 @@ impl Data<Binary> {
         let mut head = FrameHeader::new(Kind::Data, self.flags.into(), self.stream_id);
         head.length = self.data.remaining() as u32;
 
-        println!("encoding SETTINGS; len={}", head.length);
+        println!("encoding Data; len={}", head.length);
         let mut size = 0;
         size += head.serialize(dst).unwrap();
         size += self.data.serialize(dst).unwrap();
