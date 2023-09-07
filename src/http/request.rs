@@ -29,7 +29,7 @@ pub struct Parts {
     pub version: Version,
     pub url: Url,
     pub path: String,
-    pub extensions: RefCell<Extensions>,
+    pub extensions: Extensions,
 }
 
 #[derive(Debug)]
@@ -77,10 +77,10 @@ impl Builder {
             head.url = req.url().clone();
         });
 
-        match req.parts.extensions.borrow().get::<Arc<RwLock<HeaderIndex>>>() {
+        match req.parts.extensions.get::<Arc<RwLock<HeaderIndex>>>() {
             Some(index) => {
                 let _ = build.inner.as_mut().map(|head| {
-                    head.extensions.borrow_mut().insert(index.clone());
+                    head.extensions.insert(index.clone());
                 });
             }
             _ => (),
@@ -569,7 +569,7 @@ where
     /// assert!(request.extensions().get::<i32>().is_none());
     /// ```
     #[inline]
-    pub fn extensions(&self) -> &RefCell<Extensions> {
+    pub fn extensions(&self) -> &Extensions {
         &self.parts.extensions
     }
 
@@ -601,12 +601,12 @@ where
     }
 
     fn get_index(&self) -> Arc<RwLock<HeaderIndex>> {
-        if let Some(index) = self.parts.extensions.borrow().get::<Arc<RwLock<HeaderIndex>>>() {
+        if let Some(index) = self.parts.extensions.get::<Arc<RwLock<HeaderIndex>>>() {
             return index.clone();
         }
 
         let index = Arc::new(RwLock::new(HeaderIndex::new()));
-        self.parts.extensions.borrow_mut().insert(index.clone());
+        // self.parts.extensions.insert(index.clone());
         index
     }
 
@@ -671,7 +671,7 @@ impl Default for Parts {
             version: Version::Http11,
             url: Url::new(),
             path: String::new(),
-            extensions: RefCell::new(Extensions::new()) ,
+            extensions: Extensions::new() ,
         }
     }
 }
@@ -684,12 +684,12 @@ impl Clone for Parts {
             version: self.version.clone(),
             url: self.url.clone(),
             path: self.path.clone(),
-            extensions: RefCell::new(Extensions::new()),
+            extensions: Extensions::new(),
         };
 
-        match self.extensions.borrow().get::<Arc<RwLock<HeaderIndex>>>() {
+        match self.extensions.get::<Arc<RwLock<HeaderIndex>>>() {
             Some(index) => {
-                value.extensions.borrow_mut().insert(index.clone());
+                value.extensions.insert(index.clone());
             }
             _ => (),
         }
