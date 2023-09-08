@@ -14,8 +14,6 @@ pub enum Method {
     Trace,
     Connect,
     Patch,
-    //http2 协议头
-    Pri,
     Extension(String),
 }
 
@@ -56,10 +54,6 @@ impl Method {
     /// TRACE
     pub const TRACE: Method = Method::Trace;
     pub const STRACE: &'static str = "TRACE";
-
-    /// PRI
-    pub const PRI: Method = Method::Pri;
-    pub const SPRI: &'static str = "PRI";
 }
 
 impl Method {
@@ -93,7 +87,6 @@ impl Method {
             Method::Trace => "TRACE",
             Method::Connect => "CONNECT",
             Method::Patch => "PATCH",
-            Method::Pri => "PRI",
             Method::None => "None",
             Method::Extension(s) => &s.as_str(),
         }
@@ -131,7 +124,7 @@ impl TryFrom<&str> for Method {
             Method::SPATCH => Ok(Method::PATCH),
             Method::STRACE => Ok(Method::TRACE),
             _ => {
-                Ok(Method::Extension(value.to_string()))
+                Err(WebError::Http(crate::HttpError::Method))
             }
         }
     }

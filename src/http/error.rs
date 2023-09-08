@@ -16,6 +16,8 @@ pub enum HttpError {
     Token,
     /// Invalid byte in HTTP version.
     Version,
+    /// 无效的method方法
+    Method,
     /// Partial
     Partial,
     /// StatusCode
@@ -33,6 +35,7 @@ impl HttpError {
             HttpError::Status => "invalid response status",
             HttpError::Token => "invalid token",
             HttpError::Version => "invalid HTTP version",
+            HttpError::Method => "invalid HTTP Method",
             HttpError::Partial => "invalid HTTP length",
             HttpError::InvalidStatusCode => "invalid status code",
         }

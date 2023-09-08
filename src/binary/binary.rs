@@ -264,6 +264,9 @@ impl From<&'static [u8]> for Binary {
 
 impl From<Box<[u8]>> for Binary {
     fn from(value: Box<[u8]>) -> Self {
+        if value.len() == 0 {
+            return Binary::new();
+        }
         let len = value.len();
         let ptr = Box::into_raw(value) as *mut u8;
         Binary {

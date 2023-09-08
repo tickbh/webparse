@@ -444,6 +444,15 @@ where
         self.partial
     }
 
+    pub fn into<B: Serialize>(self, body: B) -> (Request<B>, T) {
+        let new = Request {
+            body,
+            parts: self.parts,
+            partial: self.partial,
+        };
+        (new, self.body)
+    }
+
     fn parse_connect_by_host(url: &mut Url, h: &String) -> WebResult<()> {
         // Host中存在端口号, 则直接取端口号
         let vec: Vec<&str> = h.split(":").collect();
@@ -511,17 +520,6 @@ where
 
     pub fn parse_buffer<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         Helper::skip_empty_lines(buffer)?;
-        {
-            let chunks = buffer.chunk();
-            if chunks.len() >= http2::HTTP2_MAGIC.len()
-                && &chunks[..http2::HTTP2_MAGIC.len()] == http2::HTTP2_MAGIC
-            {
-                self.parts.version = Version::Http2;
-                buffer.advance(http2::HTTP2_MAGIC.len());
-                return self.parse_http2(buffer);
-            }
-        }
-
         self.parts.method = Helper::parse_method(buffer)?;
         Helper::skip_spaces(buffer)?;
         self.parts.path = Helper::parse_token(buffer)?.to_string();
@@ -571,6 +569,12 @@ where
     #[inline]
     pub fn extensions(&self) -> &Extensions {
         &self.parts.extensions
+    }
+
+    
+    #[inline]
+    pub fn extensions_mut(&mut self) -> &mut Extensions {
+        &mut self.parts.extensions
     }
 
     // /// Returns a mutable reference to the associated extensions.

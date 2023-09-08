@@ -26,6 +26,13 @@ impl WebError {
             WebError::Io(_) => "io error",
         }
     }
+
+    pub fn is_partial(&self) -> bool {
+        match self {
+            WebError::Http(HttpError::Partial) => true,
+            _ => false
+        }
+    }
 }
 
 impl fmt::Display for WebError {

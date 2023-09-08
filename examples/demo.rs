@@ -126,7 +126,10 @@ fn debug_request_parse_http2() {
 fn debug_request_parse() {
     let mut request = Request::new();
     // // let value = url::Url::parse("/path");
-    let _result = request.parse(b"GET //:///// HTTP/1.1\r\nHost: \r\n\r\n");
+    let bytes = [80, 79, 83, 84, 32, 47, 112, 111, 115, 116, 32, 72, 84, 84, 80, 47, 49, 46, 49, 13, 10, 72, 111, 115, 116, 58, 32, 49, 57, 50, 46, 49, 54, 56, 46, 49, 55, 57, 46, 49, 51, 51, 58, 56, 48, 56, 48, 13, 10, 85, 115, 101, 114, 45, 65, 103, 101, 110, 116, 58, 32, 99, 117, 114, 108, 47, 55, 46, 55, 52, 46, 48, 13, 10, 65, 99, 99, 101, 112, 116, 58, 32, 42, 47, 42, 13, 10, 67, 111, 110, 110, 101, 99, 116, 105, 111, 110, 58, 32, 85, 112, 103, 114, 97, 100, 101, 44, 32, 72, 84, 84, 80, 50, 45, 83, 101, 116, 116, 105, 110, 103, 115, 13, 10, 85, 112, 103, 114, 97, 100, 101, 58, 32, 104, 50, 99, 13, 10, 72, 84, 84, 80, 50, 45, 83, 101, 116, 116, 105, 110, 103, 115, 58, 32, 65, 65, 77, 65, 65, 65, 66, 107, 65, 65, 81, 67, 65, 65, 65, 65, 65, 65, 73, 65, 65, 65, 65, 65, 13, 10, 99, 117, 115, 116, 111, 109, 45, 107, 101, 121, 58, 99, 117, 115, 116, 111, 109, 45, 118, 97, 108, 117, 101, 13, 10, 67, 111, 110, 116, 101, 110, 116, 45, 76, 101, 110, 103, 116, 104, 58, 32, 50, 49, 13, 10, 67, 111, 110, 116, 101, 110, 116, 45, 84, 121, 112, 101, 58, 32, 97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 120, 45, 119, 119, 119, 45, 102, 111, 114, 109, 45, 117, 114, 108, 101, 110, 99, 111, 100, 101, 100, 13, 10, 13, 10, 97, 97, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48];
+    let _result = request.parse(b"GET //:///// HTTP/1.1\r\nHost: Upgrade, HTTP2-Settings \r\n\r\naaa");
+    // let _result = request.parse(&bytes);
+
     println!("result = {:?}", request);
     println!("is_partial = {}", request.is_partial());
     println!("body len = {}", request.get_body_len());
@@ -150,14 +153,14 @@ fn debug_request_parse() {
 }
 
 fn main() {
+    debug_request_parse();
+    // let mut binmut = BinaryMut::new();
+    // "aaa".serialize1(&mut binmut);
 
-    let mut binmut = BinaryMut::new();
-    "aaa".serialize1(&mut binmut);
-
-    let bin = Binary::new();
-    let p = Pay::Data(bin);
-    println!("bbb = {:?}", p);
-    debug_request_parse_full_http2();
+    // let bin = Binary::new();
+    // let p = Pay::Data(bin);
+    // println!("bbb = {:?}", p);
+    // debug_request_parse_full_http2();
     // debug_request_parse_http2();
 
     //  let req = request::Builder::new()

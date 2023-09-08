@@ -18,7 +18,7 @@ impl Helper {
     /// > ```
     #[inline]
     pub fn is_token(b: u8) -> bool {
-        b > 0x1F && b < 0x7F
+        b > 0x1F && b < 0x7F && b != b' '
     }
     
     #[inline]
@@ -227,12 +227,7 @@ impl Helper {
 
         loop {
             b = peek!(buffer)?;
-            if b == b' ' {
-                unsafe {
-                    buffer.advance(1);
-                    return Ok(std::str::from_utf8_unchecked(buffer.mark_slice_skip(1)))
-                }
-            } else if !func(b) {
+            if !func(b) {
                 return Ok(
                     unsafe {
                         std::str::from_utf8_unchecked(buffer.mark_slice())

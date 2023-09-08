@@ -26,16 +26,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'webparse'",
+            "name": "Debug example 'demo'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=webparse",
+                    "--example=demo",
                     "--package=webparse"
                 ],
                 "filter": {
-                    "name": "webparse",
-                    "kind": "bin"
+                    "name": "demo",
+                    "kind": "example"
                 }
             },
             "args": [],
@@ -44,17 +44,36 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'webparse'",
+            "name": "Debug unit tests in example 'demo'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=webparse",
+                    "--example=demo",
                     "--package=webparse"
                 ],
                 "filter": {
-                    "name": "webparse",
-                    "kind": "bin"
+                    "name": "demo",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'http1'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=http1",
+                    "--package=webparse"
+                ],
+                "filter": {
+                    "name": "http1",
+                    "kind": "test"
                 }
             },
             "args": [],

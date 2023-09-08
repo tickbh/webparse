@@ -1,4 +1,5 @@
 pub const HTTP2_MAGIC: &[u8] = b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
+pub const MAIGC_LEN: usize = HTTP2_MAGIC.len();
 
 use std::{borrow::Cow, fmt::Debug};
 mod error;

@@ -244,6 +244,12 @@ impl BinaryMut {
         Binary::from(self.into_slice_all())
     }
 
+    pub fn copy_to_binary(&mut self) -> Binary {
+        let binary = Binary::from(self.chunk().to_vec());
+        self.advance_all();
+        binary
+    }
+
     /// 扩展bytes到`BinaryMut`, 将会自动扩展容量空间
     ///
     ///
