@@ -221,8 +221,9 @@ impl BinaryMut {
         }
     }
 
-    pub fn put_slice(&mut self, src: &[u8]) {
+    pub fn put_slice(&mut self, src: &[u8]) -> usize {
         self.extend_from_slice(src);
+        src.len()
     }
 
     /// 将当前的数据转成不可写的对象Binary

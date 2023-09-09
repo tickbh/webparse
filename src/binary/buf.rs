@@ -128,13 +128,14 @@ pub trait Buf {
     /// # Panics
     ///
     /// This function panics if `self.remaining() < dst.len()`
-    fn copy_to_slice(&mut self, dst: &mut [u8]) {
+    fn copy_to_slice(&mut self, dst: &mut [u8]) -> usize {
         assert!(self.remaining() >= dst.len());
         unsafe {
             let src = self.chunk();
             std::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), dst.len());
             self.advance(dst.len())
         }
+        dst.len()
     }
 
 
