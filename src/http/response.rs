@@ -1,7 +1,7 @@
 use std::{any::Any, borrow::Cow, io::Write, sync::{Arc, RwLock}, cell::RefCell};
 
 use crate::{
-    Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, BinaryMut, Buf, BufMut, MarkBuf,
+    Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, BinaryMut, Buf, BufMut, MarkBuf, Request, Binary,
 };
 
 use super::{StatusCode, http2::{Decoder, encoder::Encoder, HeaderIndex, Http2}};
@@ -565,6 +565,26 @@ impl<T: Serialize> Response<T> {
         let index = Arc::new(RwLock::new(HeaderIndex::new()));
         self.parts.extensions.borrow_mut().insert(index.clone());
         index
+    }
+
+    pub fn into<B: Serialize>(self, body: B) -> (Response<B>, T) {
+        let new = Response {
+            body,
+            parts: self.parts,
+            partial: self.partial,
+        };
+        (new, self.body)
+    }
+
+    pub fn into_binary(self) -> Response<Binary> {
+        let mut binary = BinaryMut::new();
+        let _ = self.body.serialize(&mut binary);
+        let new = Response {
+            body: binary.freeze(),
+            parts: self.parts,
+            partial: self.partial,
+        };
+        new
     }
     
     pub fn get_decoder(&mut self) -> Decoder {
