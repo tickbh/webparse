@@ -65,19 +65,16 @@ impl GoAway {
         head
     }
 
-}
-
-
-impl Serialize for GoAway {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> crate::WebResult<usize> {
+    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
-        size += self.head().serialize(buffer)?;
+        size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.last_stream_id.0);
         size += buffer.put_u32(self.error_code.into());
         size += buffer.put_slice(self.debug_data.chunk());
         Ok(size)
     }
 }
+
 
 impl<B> From<GoAway> for frame::Frame<B> {
     fn from(src: GoAway) -> Self {

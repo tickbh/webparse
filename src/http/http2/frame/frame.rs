@@ -115,11 +115,11 @@ impl Frame<Binary> {
         encoder: &mut Encoder,
     ) -> WebResult<usize> {
         let size = match self {
-            Frame::Data(s) => s.encode(buf),
-            Frame::Headers(s) => s.encode(encoder, buf),
+            Frame::Data(mut s) => s.encode(buf),
+            Frame::Headers(mut s) => s.encode(encoder, buf),
             Frame::Priority(_) => todo!(),
             Frame::PushPromise(_) => todo!(),
-            Frame::Settings(s) => s.encode(buf),
+            Frame::Settings(mut s) => s.encode(buf),
             Frame::Ping(_) => todo!(),
             Frame::GoAway(_) => todo!(),
             Frame::WindowUpdate(_) => todo!(),
@@ -182,7 +182,7 @@ impl<T: Buf + MarkBuf> Frame<T> {
 }
 
 impl<T: Buf + MarkBuf> Serialize for Frame<T> {
-    fn serialize<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         // if !self.no_serialize_header() {
         //     size += self.header.serialize(buffer)?;
@@ -229,18 +229,17 @@ impl FrameHeader {
     pub fn flag(&self) -> Flag {
         self.flag
     }
-}
 
-impl Serialize for FrameHeader {
-    fn serialize<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += encode_u24(buffer, self.length);
         size += buffer.put_u8(self.kind.encode());
         size += buffer.put_u8(self.flag.bits());
-        size += self.id.serialize(buffer)?;
+        size += self.id.encode(buffer)?;
         Ok(size)
     }
 }
+
 
 // impl<T: Buf + MarkBuf> Debug for Frame<T> {
 //     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -302,12 +302,12 @@ impl Headers {
             let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
             head.flag.set_end_headers();
             head.length = result[0].remaining() as u32;
-            size += head.serialize(dst).unwrap();
+            size += head.encode(dst).unwrap();
             size += result[0].serialize(dst).unwrap();
         } else {
             let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
             head.length = result[0].remaining() as u32;
-            size += head.serialize(dst).unwrap();
+            size += head.encode(dst).unwrap();
             size += result[0].serialize(dst).unwrap();
 
             for idx in 1..result.len() {
@@ -316,7 +316,7 @@ impl Headers {
                     head.flag.set_end_headers();
                 }
                 head.length = result[idx].remaining() as u32;
-                size += head.serialize(dst).unwrap();
+                size += head.encode(dst).unwrap();
                 size += result[idx].serialize(dst).unwrap();
             }
         }
@@ -455,12 +455,12 @@ impl PushPromise {
         // At this point, the `is_end_headers` flag should always be set
         debug_assert!(self.flags.is_end_headers());
 
-        let head = self.head();
+        let mut head = self.head();
         let promised_id = self.promised_id;
 
         self.header_block
             .into_encoding(encoder)
-            .encode(&head, dst, |dst| {
+            .encode(&mut head, dst, |dst| {
                 dst.put_u32(promised_id.0);
             })
     }
@@ -575,7 +575,7 @@ impl Parts {
 // ===== impl EncodingHeaderBlock =====
 
 impl EncodingHeaderBlock {
-    fn encode<F, B: Buf + MarkBuf + BufMut>(mut self, head: &FrameHeader, dst: &mut B, f: F) -> Option<Continuation>
+    fn encode<F, B: Buf + MarkBuf + BufMut>(mut self, head: &mut FrameHeader, dst: &mut B, f: F) -> Option<Continuation>
     where
         F: FnOnce(&mut BinaryMut),
     {
@@ -584,7 +584,7 @@ impl EncodingHeaderBlock {
         // At this point, we don't know how big the h2 frame will be.
         // So, we write the head with length 0, then write the body, and
         // finally write the length once we know the size.
-        head.serialize(dst);
+        head.encode(dst);
 
         let payload_pos = dst.remaining();
 

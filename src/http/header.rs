@@ -88,6 +88,19 @@ impl HeaderMap {
     pub fn is_empty(&self) -> bool {
         self.headers.len() == 0
     }
+
+    
+    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        let mut size = 0;
+        for value in self.iter() {
+            size += value.0.encode(buffer)?;
+            size += buffer.put_slice(": ".as_bytes());
+            size += value.1.encode(buffer)?;
+            size += buffer.put_slice("\r\n".as_bytes());
+        }
+        size += buffer.put_slice("\r\n".as_bytes());
+        Ok(size)
+    }
 }
 
 impl Index<&'static str> for HeaderMap {
@@ -140,20 +153,5 @@ impl Clone for HeaderMap {
         Self {
             headers: self.headers.clone(),
         }
-    }
-}
-
-impl Serialize for HeaderMap {
-
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
-        let mut size = 0;
-        for value in self.iter() {
-            size += value.0.serialize(buffer)?;
-            size += buffer.put_slice(": ".as_bytes());
-            size += value.1.serialize(buffer)?;
-            size += buffer.put_slice("\r\n".as_bytes());
-        }
-        size += buffer.put_slice("\r\n".as_bytes());
-        Ok(size)
     }
 }

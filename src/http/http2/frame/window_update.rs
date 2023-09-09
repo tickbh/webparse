@@ -56,17 +56,16 @@ impl WindowUpdate {
         head
     }
 
-}
-
-
-impl Serialize for WindowUpdate {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> crate::WebResult<usize> {
+    pub fn encode<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
-        size += self.head().serialize(buffer)?;
+        size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.size_increment);
         Ok(size)
     }
+
 }
+
+
 
 impl<B> From<WindowUpdate> for Frame<B> {
     fn from(src: WindowUpdate) -> Self {

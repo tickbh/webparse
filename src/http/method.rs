@@ -91,6 +91,13 @@ impl Method {
             Method::Extension(s) => &s.as_str(),
         }
     }
+
+    pub fn encode<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+        match self {
+            Method::None => Err(WebError::Serialize("method")),
+            _ => Ok(buffer.put_slice(self.as_str().as_bytes())),
+        }
+    }
 }
 
 impl Display for Method {
@@ -100,14 +107,6 @@ impl Display for Method {
     }
 }
 
-impl Serialize for Method {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
-        match self {
-            Method::None => Err(WebError::Serialize("method")),
-            _ => Ok(buffer.put_slice(self.as_str().as_bytes())),
-        }
-    }
-}
 
 impl TryFrom<&str> for Method {
     type Error=WebError;

@@ -63,15 +63,6 @@ impl TryFrom<String> for HeaderName {
     }
 }
 
-impl Serialize for HeaderName {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
-        match self {
-            Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
-            Self::Value(name) => Ok(buffer.put_slice(name.as_bytes())),
-        }
-    }
-}
-
 impl HeaderName {
     pub fn from_static(s: &'static str) -> HeaderName {
         HeaderName::Stand(s)
@@ -103,6 +94,13 @@ impl HeaderName {
         match self {
             Self::Stand(s) => &s.as_bytes(),
             Self::Value(s) => &s.as_bytes(),
+        }
+    }
+
+    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        match self {
+            Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
+            Self::Value(name) => Ok(buffer.put_slice(name.as_bytes())),
         }
     }
 }

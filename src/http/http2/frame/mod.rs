@@ -52,14 +52,13 @@ impl StreamIdentifier {
     pub fn is_zero(&self) -> bool {
         self.0 == 0
     }
-}
 
-impl Serialize for StreamIdentifier {
-    fn serialize<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         buffer.put_u32(self.0);
         Ok(4)
     }
 }
+
 
 impl From<u32> for StreamIdentifier {
     fn from(value: u32) -> Self {
@@ -131,7 +130,7 @@ impl SizeIncrement {
 }
 
 impl Serialize for SizeIncrement {
-    fn serialize<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         Ok(buffer.put_u32(self.0))
     }
 }
@@ -154,7 +153,7 @@ impl ErrorCode {
 }
 
 impl Serialize for ErrorCode {
-    fn serialize<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         buffer.put_u32(self.0);
         Ok(4)
     }

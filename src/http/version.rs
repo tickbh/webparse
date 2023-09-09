@@ -37,6 +37,13 @@ impl Version {
             Version::None => "None",
         }
     }
+
+    pub fn encode<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+        match self {
+            Version::None => Err(WebError::Serialize("version")),
+            _ => Ok(buffer.put_slice(&self.as_str().as_bytes()))
+        }
+    }
 }
 
 impl Display for Version {
@@ -46,13 +53,4 @@ impl Display for Version {
     }
 
     
-}
-
-impl Serialize for Version {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
-        match self {
-            Version::None => Err(WebError::Serialize("version")),
-            _ => Ok(buffer.put_slice(&self.as_str().as_bytes()))
-        }
-    }
 }

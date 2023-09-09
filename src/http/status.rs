@@ -202,6 +202,16 @@ impl StatusCode {
     pub fn build_header(&self) -> (HeaderName, HeaderValue) {
         (HeaderName::from_static(":status"), HeaderValue::from_bytes(self.as_str().as_bytes()))
     }
+
+    pub fn encode<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+        match self.canonical_reason() {
+            Some(s) => {
+                Ok(buffer
+                    .put_slice(format!("{} {}\r\n", self.as_str(), s).as_bytes()))
+            }
+            _ => return Err(WebError::from(HttpError::InvalidStatusCode)),
+        }
+    }
 }
 
 impl fmt::Debug for StatusCode {
@@ -519,17 +529,6 @@ status_codes! {
     (511, NETWORK_AUTHENTICATION_REQUIRED, "Network Authentication Required");
 }
 
-impl Serialize for StatusCode {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
-        match self.canonical_reason() {
-            Some(s) => {
-                Ok(buffer
-                    .put_slice(format!("{} {}\r\n", self.as_str(), s).as_bytes()))
-            }
-            _ => return Err(WebError::from(HttpError::InvalidStatusCode)),
-        }
-    }
-}
 
 // A string of packed 3-ASCII-digit status code values for the supported range
 // of [100, 999] (900 codes, 2700 bytes).

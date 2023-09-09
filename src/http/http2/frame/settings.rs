@@ -261,7 +261,7 @@ impl Settings {
 
         println!("encoding SETTINGS; len={}", head.length);
         let mut size = 0;
-        size += head.serialize(dst).unwrap();
+        size += head.encode(dst).unwrap();
 
         // Encode the settings
         self.for_each(|setting| {

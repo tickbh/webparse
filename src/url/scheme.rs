@@ -82,7 +82,7 @@ impl Display for Scheme {
 }
 
 impl Serialize for Scheme {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Scheme::None => Err(WebError::Serialize("scheme")),
             _ => Ok(buffer.put_slice(self.as_str().as_bytes()))

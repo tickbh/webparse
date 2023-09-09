@@ -43,17 +43,16 @@ impl Reset {
         head.length = 4;
         head
     }
-}
 
-
-impl Serialize for Reset {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> crate::WebResult<usize> {
+    pub fn encode<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
-        size += self.head().serialize(buffer)?;
+        size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.error_code.into());
         Ok(size)
     }
 }
+
+
 
 impl<B> From<Reset> for Frame<B> {
     fn from(src: Reset) -> Self {

@@ -35,6 +35,13 @@ impl HeaderValue {
             Self::Value(s) => &s,
         }
     }
+
+    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+        match self {
+            Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
+            Self::Value(vec) => Ok(buffer.put_slice(&**vec)),
+        }
+    }
 }
 
 impl Hash for HeaderValue {
@@ -155,11 +162,3 @@ impl PartialEq<HeaderValue> for str {
     }
 }
 
-impl Serialize for HeaderValue {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
-        match self {
-            Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
-            Self::Value(vec) => Ok(buffer.put_slice(&**vec)),
-        }
-    }
-}

@@ -551,7 +551,7 @@ impl<T: Serialize> Response<T> {
         }
     }
 
-    pub fn httpdata(&self) -> WebResult<Vec<u8>> {
+    pub fn httpdata(&mut self) -> WebResult<Vec<u8>> {
         let mut buffer = BinaryMut::new();
         self.serialize(&mut buffer)?;
         return Ok(buffer.into_slice_all());
@@ -576,7 +576,7 @@ impl<T: Serialize> Response<T> {
         (new, self.body)
     }
 
-    pub fn into_binary(self) -> Response<Binary> {
+    pub fn into_binary(mut self) -> Response<Binary> {
         let mut binary = BinaryMut::new();
         let _ = self.body.serialize(&mut binary);
         let new = Response {
@@ -622,17 +622,13 @@ impl<T> Serialize for Response<T>
 where
     T: Serialize,
 {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
-        if self.parts.version == Version::Http2 {
-            
-        } else {
-            size += self.parts.version.serialize(buffer)?;
-            size += buffer.put_slice(" ".as_bytes());
-            size += self.parts.status.serialize(buffer)?;
-            size += self.parts.header.serialize(buffer)?;
-            size += self.body.serialize(buffer)?;
-        }
+        size += self.parts.version.encode(buffer)?;
+        size += buffer.put_slice(" ".as_bytes());
+        size += self.parts.status.encode(buffer)?;
+        size += self.parts.header.encode(buffer)?;
+        size += self.body.serialize(buffer)?;
         Ok(size)
     }
 
