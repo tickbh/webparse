@@ -1,4 +1,4 @@
-use std::{any::Any, borrow::Cow, io::Write, sync::{Arc, RwLock}, cell::RefCell};
+use std::{any::{Any, TypeId}, borrow::Cow, io::Write, sync::{Arc, RwLock}, cell::RefCell};
 
 use crate::{
     Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, BinaryMut, Buf, BufMut, MarkBuf, Request, Binary,
@@ -576,6 +576,15 @@ impl<T: Serialize> Response<T> {
         (new, self.body)
     }
 
+    pub fn into_type<B: From<T> + Serialize>(self) -> Response<B> {
+        let new = Response {
+            body: From::from(self.body),
+            parts: self.parts,
+            partial: self.partial,
+        };
+        new
+    }
+    
     pub fn into_binary(mut self) -> Response<Binary> {
         let mut binary = BinaryMut::new();
         let _ = self.body.serialize(&mut binary);
@@ -594,8 +603,11 @@ impl<T: Serialize> Response<T> {
     pub fn get_encoder(&mut self) -> Encoder {
         Encoder::new_index(self.get_index(), 16_000)
     }
+
+
     
 }
+
 
 impl<T: Default + Serialize> Default for Response<T> {
     fn default() -> Self {
