@@ -604,7 +604,14 @@ impl<T: Serialize> Response<T> {
         Encoder::new_index(self.get_index(), 16_000)
     }
 
-
+    pub fn encode_header<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+        let mut size = 0;
+        size += self.parts.version.encode(buffer)?;
+        size += buffer.put_slice(" ".as_bytes());
+        size += self.parts.status.encode(buffer)?;
+        size += self.parts.header.encode(buffer)?;
+        Ok(size)
+    }
     
 }
 
