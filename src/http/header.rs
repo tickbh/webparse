@@ -81,6 +81,15 @@ impl HeaderMap {
         }
     }
 
+    pub fn is_keep_alive(&self) -> bool {
+        if self.headers.contains_key(&HeaderName::CONNECTION) {
+            let value = &self.headers[&HeaderName::CONNECTION];
+            value.as_bytes().starts_with(b"Keep-Alive")
+        } else {
+            false
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.headers.len()
     }

@@ -436,8 +436,14 @@ where
         self.parts.get_connect_url()
     }
 
+    /// 获取包体的长度, 如content-length
     pub fn get_body_len(&self) -> usize {
         self.parts.header.get_body_len()
+    }
+
+    /// 是否保持心跳活跃
+    pub fn is_keep_alive(&self) -> bool {
+        self.parts.header.is_keep_alive()
     }
 
     pub fn is_partial(&self) -> bool {
