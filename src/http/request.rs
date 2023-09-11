@@ -459,6 +459,26 @@ where
         (new, self.body)
     }
 
+
+    pub fn into_type<B: From<T> + Serialize>(self) -> Request<B> {
+        let new = Request {
+            body: From::from(self.body),
+            parts: self.parts,
+            partial: self.partial,
+        };
+        new
+    }
+
+
+    // pub fn try_into_type<B: TryFrom<T> + Serialize>(self) -> Request<B> {
+    //     let new = Request {
+    //         body: TryFrom::try_from(self.body),
+    //         parts: self.parts,
+    //         partial: self.partial,
+    //     };
+    //     new
+    // }
+
     fn parse_connect_by_host(url: &mut Url, h: &String) -> WebResult<()> {
         // Host中存在端口号, 则直接取端口号
         let vec: Vec<&str> = h.split(":").collect();
