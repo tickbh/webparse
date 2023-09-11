@@ -10,12 +10,21 @@ pub enum HeaderName {
 
 impl PartialEq for HeaderName {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (HeaderName::Stand(a), HeaderName::Stand(b)) => a == b,
-            (HeaderName::Stand(a), HeaderName::Value(b)) => a == &b.as_str(),
-            (HeaderName::Value(a), HeaderName::Stand(b)) => &a.as_str() == b,
-            (HeaderName::Value(a), HeaderName::Value(b)) => a == b,
+        let a = self.as_bytes();
+        let b = other.as_bytes();
+        if a.len() != b.len() {
+            return false;
         }
+        for i in 0..a.len() {
+            if a[i] == b[i] {
+                continue;
+            }
+            let wrap = a[i].wrapping_sub(b[i]);
+            if wrap != 32 && wrap != 224 {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -35,6 +44,7 @@ impl Hash for HeaderName {
                 state.write_u8(b);
             }
         }
+        state.finish();
     }
 }
 
