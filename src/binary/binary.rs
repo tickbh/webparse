@@ -47,6 +47,7 @@ unsafe impl Send for Binary {
     
 }
 
+#[derive(PartialEq, Eq)]
 pub struct Vtable {
     pub clone: unsafe fn(bin: &Binary) -> Binary,
     pub to_vec: unsafe fn(bin: &Binary) -> Vec<u8>,
@@ -235,6 +236,20 @@ impl Binary {
 
     pub fn copy_from_slice(data: &[u8]) -> Self {
         data.to_vec().into()
+    }
+
+    #[inline]
+    pub fn into_slice_all(&self) -> Vec<u8> {
+        if self.vtable == &STATIC_VTABLE {
+            self.to_vec()
+        } else {
+            if (*self.counter).borrow().load(Ordering::SeqCst) == 1 {
+                (*self.counter).borrow().fetch_add(1, Ordering::Relaxed);
+                self.to_vec()
+            } else {
+                self.to_vec()
+            }
+        }
     }
 }
 
