@@ -66,7 +66,7 @@ impl StreamIdentifier {
         self.0 == 0
     }
 
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         buffer.put_u32(self.0);
         Ok(4)
     }

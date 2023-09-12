@@ -523,15 +523,17 @@ impl PushPromise {
         result.push(binary);
         let mut size = 0;
         if result.len() == 1 {
-            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
+            let mut head = FrameHeader::new(Kind::PushPromise, self.flags.into(), self.stream_id);
             head.flag.set_end_headers();
-            head.length = result[0].remaining() as u32;
+            head.length = result[0].remaining() as u32 + 4;
             size += head.encode(dst).unwrap();
+            size += self.promised_id.encode(dst).unwrap();
             size += result[0].serialize(dst).unwrap();
         } else {
-            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
-            head.length = result[0].remaining() as u32;
+            let mut head = FrameHeader::new(Kind::PushPromise, self.flags.into(), self.stream_id);
+            head.length = result[0].remaining() as u32 + 4;
             size += head.encode(dst).unwrap();
+            size += self.promised_id.encode(dst).unwrap();
             size += result[0].serialize(dst).unwrap();
 
             for idx in 1..result.len() {

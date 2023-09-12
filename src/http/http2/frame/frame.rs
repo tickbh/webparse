@@ -118,7 +118,7 @@ impl Frame<Binary> {
             Frame::Data(mut s) => s.encode(buf),
             Frame::Headers(mut s) => s.encode(encoder, buf),
             Frame::Priority(_) => todo!(),
-            Frame::PushPromise(_) => todo!(),
+            Frame::PushPromise(p) => p.encode(encoder, buf),
             Frame::Settings(mut s) => s.encode(buf),
             Frame::Ping(_) => todo!(),
             Frame::GoAway(_) => todo!(),
