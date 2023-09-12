@@ -256,11 +256,6 @@ impl Headers {
     }
 
     pub fn encode<B: Buf + MarkBuf + BufMut>(self, encoder: &mut Encoder, dst: &mut B) -> usize {
-        // At this point, the `is_end_headers` flag should always be set
-        // debug_assert!(self.flags.is_end_headers());
-
-
-        // Get the HEADERS frame head
         let mut result = vec![];
 
         let mut binary = BinaryMut::new();
@@ -354,25 +349,86 @@ impl fmt::Debug for Headers {
 
 impl PushPromise {
     pub fn new(
-        stream_id: StreamIdentifier,
+        header: FrameHeader, 
         promised_id: StreamIdentifier,
-        parts: Parts,
         fields: HeaderMap,
     ) -> Self {
         PushPromise {
-            flags: Flag::default(),
+            flags: header.flag(),
             header_block: HeaderBlock {
                 fields,
                 is_over_size: false,
-                parts,
+                parts: Parts::default(),
             },
             promised_id,
-            stream_id,
+            stream_id: header.stream_id(),
         }
     }
 
+    pub fn stream_id(&self) -> StreamIdentifier {
+        self.stream_id
+    }
+
+    
     pub fn flags(&self) -> Flag {
         self.flags
+    }
+
+
+    pub fn is_end_headers(&self) -> bool {
+        self.flags.is_end_headers()
+    }
+
+    pub fn set_end_headers(&mut self) {
+        self.flags.set_end_headers();
+    }
+
+    pub fn is_end_stream(&self) -> bool {
+        self.flags.is_end_stream()
+    }
+
+    pub fn set_end_stream(&mut self) {
+        self.flags.set_end_stream()
+    }
+    
+    pub fn set_method(&mut self, method: Method) {
+        self.header_block.parts.method = Some(method);
+    }
+    
+    pub fn method(&mut self) -> &Option<Method> {
+        &self.header_block.parts.method
+    }
+
+    pub fn set_authority(&mut self, authority: String) {
+        self.header_block.parts.authority = Some(authority);
+    }
+    
+    pub fn authority(&mut self) -> &Option<String> {
+        &self.header_block.parts.authority
+    }
+
+    pub fn set_path(&mut self, path: String) {
+        self.header_block.parts.path = Some(path);
+    }
+    
+    pub fn path(&mut self) -> &Option<String> {
+        &self.header_block.parts.path
+    }
+    
+    pub fn set_status(&mut self, status: StatusCode) {
+        self.header_block.parts.status = Some(status);
+    }
+    
+    pub fn status(&mut self) -> &Option<StatusCode> {
+        &self.header_block.parts.status
+    }
+
+    pub fn is_over_size(&self) -> bool {
+        self.header_block.is_over_size
+    }
+
+    pub fn into_parts(self) -> (Parts, HeaderMap) {
+        (self.header_block.parts, self.header_block.fields)
     }
     
     pub fn validate_request(req: &Request<()>) -> WebResult<()> {
@@ -416,63 +472,85 @@ impl PushPromise {
     ) -> WebResult<Self> {
         let promised_id = StreamIdentifier::parse(&mut src);
         let mut push = PushPromise::new(
-            head.stream_id(),
+            head,
             promised_id,
-            Parts {
-                method: None,
-                scheme: None,
-                authority: None,
-                path: None,
-                status: None,
-            },
             HeaderMap::new(),
         );
         push.header_block.parse(&mut src, max_header_list_size, decoder)?;
         Ok(push)
     }
 
-    pub fn stream_id(&self) -> StreamIdentifier {
-        self.stream_id
-    }
-
     pub fn promised_id(&self) -> StreamIdentifier {
         self.promised_id
     }
 
-    pub fn is_end_headers(&self) -> bool {
-        self.flags.is_end_headers()
-    }
+    pub fn encode<B: Buf + MarkBuf + BufMut>(self, encoder: &mut Encoder, dst: &mut B) -> usize {
+        let mut result = vec![];
 
-    pub fn set_end_headers(&mut self) {
-        self.flags.set_end_headers();
-    }
+        let mut binary = BinaryMut::new();
+        let parts = self.header_block.parts;
+        let mut fields = self.header_block.fields;
 
-    pub fn is_over_size(&self) -> bool {
-        self.header_block.is_over_size
-    }
+        println!("fields = {:?}", fields);
+        if let Some(method) = parts.method {
+            fields.insert(":method", method.as_str().to_string());
+        }
+        if let Some(authority) = parts.authority {
+        fields.insert(":authority", authority);
+        }
+        if let Some(scheme) = parts.scheme {
+            fields.insert(":scheme", scheme.as_str().to_string());
+        }
+        if let Some(path) = parts.path {
+            fields.insert(":path", path);
+        }
+        if let Some(status) = parts.status {
+            // fields.insert(":status", status.as_str());
+            let _ = encoder.encode_header_into((&HeaderName::from_static(":status"), &HeaderValue::from_static(status.as_str())), &mut binary);   
+            println!("stauts!!!!!!!!!");
+        } else {
+            println!("other!!!!!!!!!");
+        }
 
-    pub fn encode(self, encoder: &mut Encoder, dst: &mut BinaryMut) -> Option<Continuation> {
-        // At this point, the `is_end_headers` flag should always be set
-        debug_assert!(self.flags.is_end_headers());
+        for value in fields {
+            if value.0.bytes_len() + value.1.bytes_len() + binary.remaining() > encoder.max_frame_size as usize {
+                result.push(binary);
+                binary = BinaryMut::new();
+            }
+            let _ = encoder.encode_header_into((&value.0, &value.1), &mut binary);    
+        }
 
-        let mut head = self.head();
-        let promised_id = self.promised_id;
+        result.push(binary);
+        let mut size = 0;
+        if result.len() == 1 {
+            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
+            head.flag.set_end_headers();
+            head.length = result[0].remaining() as u32;
+            size += head.encode(dst).unwrap();
+            size += result[0].serialize(dst).unwrap();
+        } else {
+            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
+            head.length = result[0].remaining() as u32;
+            size += head.encode(dst).unwrap();
+            size += result[0].serialize(dst).unwrap();
 
-        self.header_block
-            .into_encoding(encoder)
-            .encode(&mut head, dst, |dst| {
-                dst.put_u32(promised_id.0);
-            })
+            for idx in 1..result.len() {
+                let mut head = FrameHeader::new(Kind::Continuation, self.flags.into(), self.stream_id);
+                if idx == result.len() - 1 {
+                    head.flag.set_end_headers();
+                }
+                head.length = result[idx].remaining() as u32;
+                size += head.encode(dst).unwrap();
+                size += result[idx].serialize(dst).unwrap();
+            }
+        }
+        size
     }
 
     fn head(&self) -> FrameHeader {
         FrameHeader::new(Kind::PushPromise, self.flags, self.stream_id)
     }
 
-    /// Consume `self`, returning the parts of the frame
-    pub fn into_parts(self) -> (Parts, HeaderMap) {
-        (self.header_block.parts, self.header_block.fields)
-    }
 }
 
 impl<T> From<PushPromise> for Frame<T> {

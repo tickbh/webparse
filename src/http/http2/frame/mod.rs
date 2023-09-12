@@ -57,6 +57,11 @@ impl StreamIdentifier {
         StreamIdentifier(2)
     }
 
+    pub fn next_id(&mut self) -> StreamIdentifier {
+        self.0 = self.0 + 2;
+        self.clone()
+    }
+
     pub fn is_zero(&self) -> bool {
         self.0 == 0
     }

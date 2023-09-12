@@ -21,9 +21,10 @@ pub struct Parts {
     pub status: StatusCode,
     pub header: HeaderMap,
     pub version: Version,
-    pub extensions: RefCell<Extensions>,
+    pub extensions: Extensions,
 }
 
+#[derive(Debug)]
 pub struct Builder {
     inner: WebResult<Parts>,
 }
@@ -188,7 +189,7 @@ impl Builder {
         T: Any + Send + Sync + 'static,
     {
         self.and_then(move |mut head| {
-            head.extensions.borrow_mut().insert(extension);
+            head.extensions.insert(extension);
             Ok(head)
         })
     }
@@ -206,7 +207,7 @@ impl Builder {
     /// assert_eq!(extensions.get::<&'static str>(), Some(&"My Extension"));
     /// assert_eq!(extensions.get::<u32>(), Some(&5u32));
     /// ```
-    pub fn extensions_ref(&self) -> Option<&RefCell<Extensions>> {
+    pub fn extensions_ref(&self) -> Option<&Extensions> {
         self.inner.as_ref().ok().map(|h| &h.extensions)
     }
 
@@ -446,8 +447,14 @@ impl<T: Serialize> Response<T> {
     /// assert!(response.extensions().get::<i32>().is_none());
     /// ```
     #[inline]
-    pub fn extensions(&self) -> &RefCell<Extensions> {
+    pub fn extensions(&self) -> &Extensions {
         &self.parts.extensions
+    }
+
+    
+    #[inline]
+    pub fn extensions_mut(&mut self) -> &mut Extensions {
+        &mut self.parts.extensions
     }
 
     // /// Returns a mutable reference to the associated extensions.
@@ -557,16 +564,6 @@ impl<T: Serialize> Response<T> {
         return Ok(buffer.into_slice_all());
     }
 
-    fn get_index(&mut self) -> Arc<RwLock<HeaderIndex>> {
-        if let Some(index) = self.parts.extensions.borrow().get::<Arc<RwLock<HeaderIndex>>>() {
-            return index.clone();
-        }
-
-        let index = Arc::new(RwLock::new(HeaderIndex::new()));
-        self.parts.extensions.borrow_mut().insert(index.clone());
-        index
-    }
-
     pub fn into<B: Serialize>(self, body: B) -> (Response<B>, T) {
         let new = Response {
             body,
@@ -594,14 +591,6 @@ impl<T: Serialize> Response<T> {
             partial: self.partial,
         };
         new
-    }
-    
-    pub fn get_decoder(&mut self) -> Decoder {
-        Decoder::new_index(self.get_index())
-    }
-
-    pub fn get_encoder(&mut self) -> Encoder {
-        Encoder::new_index(self.get_index(), 16_000)
     }
 
     pub fn encode_header<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
@@ -632,8 +621,28 @@ impl Default for Parts {
             status: StatusCode::OK,
             header: HeaderMap::new(),
             version: Version::Http11,
-            extensions: RefCell::new(Extensions::new()),
+            extensions: Extensions::new(),
         }
+    }
+}
+
+
+impl Clone for Parts {
+    fn clone(&self) -> Self {
+        let mut value = Self {
+            status: self.status.clone(),
+            header: self.header.clone(),
+            version: self.version.clone(),
+            extensions: Extensions::new(),
+        };
+
+        match self.extensions.get::<Arc<RwLock<HeaderIndex>>>() {
+            Some(index) => {
+                value.extensions.insert(index.clone());
+            }
+            _ => (),
+        }
+        value
     }
 }
 

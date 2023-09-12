@@ -88,7 +88,7 @@ impl Data<Binary> {
         let mut head = FrameHeader::new(Kind::Data, self.flags.into(), self.stream_id);
         head.length = self.data.remaining() as u32;
 
-        println!("encoding Data; len={}", head.length);
+        println!("encoding Data; len={} value = {:?} id = {:?}", head.length, String::from_utf8_lossy(self.data.chunk()), self.stream_id);
         let mut size = 0;
         size += head.encode(dst).unwrap();
         size += self.data.serialize(dst).unwrap();
