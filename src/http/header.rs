@@ -85,10 +85,23 @@ impl HeaderMap {
         if self.headers.contains_key(&HeaderName::CONNECTION) {
             println!("contain!!!!");
             let value = &self.headers[&HeaderName::CONNECTION];
-            value.as_bytes().starts_with(b"Keep-Alive")
+            Self::contains_bytes(value.as_bytes(), b"Keep-Alive")
         } else {
             false
         }
+    }
+
+    pub fn get_upgrade_protocol(&self) -> Option<String> {
+        if !self.headers.contains_key(&HeaderName::CONNECTION) || !self.headers.contains_key(&HeaderName::UPGRADE) {
+            return None;
+        }
+        println!("contain!!!!");
+        let value = &self.headers[&HeaderName::CONNECTION];
+        if !Self::contains_bytes(value.as_bytes(), b"Upgrade") {
+            return None;
+        }
+        let value = &self.headers[&HeaderName::UPGRADE];
+        value.as_string()
     }
 
     pub fn len(&self) -> usize {
@@ -110,6 +123,18 @@ impl HeaderMap {
         }
         size += buffer.put_slice("\r\n".as_bytes());
         Ok(size)
+    }
+
+    fn contains_bytes(src: &[u8], dst: &[u8]) -> bool {
+        if dst.len() > src.len() {
+            return false;
+        }
+        for i in 0..(src.len() - dst.len()) {
+            if &src[i..(i + dst.len())] == dst {
+                return true;
+            }
+        }
+        false
     }
 }
 

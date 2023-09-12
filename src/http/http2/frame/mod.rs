@@ -49,6 +49,14 @@ impl StreamIdentifier {
         StreamIdentifier(0)
     }
 
+    pub fn client_first() -> StreamIdentifier {
+        StreamIdentifier(1)
+    }
+
+    pub fn server_first() -> StreamIdentifier {
+        StreamIdentifier(2)
+    }
+
     pub fn is_zero(&self) -> bool {
         self.0 == 0
     }

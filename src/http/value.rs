@@ -36,6 +36,13 @@ impl HeaderValue {
         }
     }
 
+    pub fn as_string(&self) -> Option<String> {
+        match self {
+            Self::Stand(s) => Some(s.to_string()),
+            Self::Value(s) => String::from_utf8(s.clone()).map_or(None, |s| Some(s)),
+        }
+    }
+
     pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
