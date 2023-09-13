@@ -140,10 +140,10 @@ fn debug_request_parse() {
     println!("host len = {:?}", request.get_connect_url());
     println!(
         "http data = {}",
-        String::from_utf8_lossy(&request.httpdata().unwrap())
+        String::from_utf8_lossy(&request.http1_data().unwrap())
     );
     assert_eq!(
-        String::from_utf8_lossy(&request.httpdata().unwrap()).as_bytes(),
+        String::from_utf8_lossy(&request.http1_data().unwrap()).as_bytes(),
         b"GET //:///// HTTP/1.1\r\nHost: \r\n\r\n"
     );
     let x = &request.headers()["Host"];

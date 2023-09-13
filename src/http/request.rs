@@ -1,11 +1,7 @@
-use std::{
-    borrow::Cow,
-    cell::RefCell,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use super::{
-    http2::{self, encoder::Encoder, Decoder, HeaderIndex},
+    http2::{encoder::Encoder, Decoder, HeaderIndex},
     HeaderMap, Method, Version,
 };
 use crate::{
@@ -39,7 +35,7 @@ pub struct Builder {
 }
 
 impl Builder {
-    /// Creates a new default instance of `Builder` to construct a `Request`.
+    /// 创建默认的Builder对象.
     ///
     /// # Examples
     ///
@@ -56,7 +52,7 @@ impl Builder {
         Builder::default()
     }
 
-    pub fn from_req<T: Serialize>(req: Request<T>) -> Builder {
+    pub fn from_req<T: Serialize>(req: &Request<T>) -> Builder {
         let mut build = Builder::default();
         if req.method() != &Method::None {
             let _ = build.inner.as_mut().map(|head| {
@@ -78,20 +74,10 @@ impl Builder {
             head.url = req.url().clone();
         });
 
-        match req.parts.extensions.get::<Arc<RwLock<HeaderIndex>>>() {
-            Some(index) => {
-                let _ = build.inner.as_mut().map(|head| {
-                    head.extensions.insert(index.clone());
-                });
-            }
-            _ => (),
-        }
         build
     }
 
-    /// Set the HTTP method for this request.
-    ///
-    /// By default this is `GET`.
+    /// 设置HTTP的方法, 默认值为'GET'
     ///
     /// # Examples
     ///
@@ -115,9 +101,7 @@ impl Builder {
         })
     }
 
-    /// Get the HTTP Method for this request.
-    ///
-    /// By default this is `GET`. If builder has error, returns None.
+    /// 获取HTTP的值, 如果Builder有错误返回空
     ///
     /// # Examples
     ///
@@ -134,9 +118,9 @@ impl Builder {
         self.inner.as_ref().ok().map(|h| &h.method)
     }
 
-    /// Set the URI for this request.
+    /// 设置请求的URL,可包含http(s)前缀,或仅为'/'开头的路径
     ///
-    /// By default this is `/`.
+    /// 默认值为 `/`.
     ///
     /// # Examples
     ///
@@ -159,9 +143,7 @@ impl Builder {
         })
     }
 
-    /// Get the URI for this request
-    ///
-    /// By default this is `/`.
+    /// 获取Url的值, 若有错误返回None
     ///
     /// # Examples
     ///
@@ -178,9 +160,7 @@ impl Builder {
         self.inner.as_ref().ok().map(|h| &h.url)
     }
 
-    /// Set the HTTP version for this request.
-    ///
-    /// By default this is HTTP/1.1
+    /// 设置http的版本格式, 默认为'HTTP/1.1'
     ///
     /// # Examples
     ///
@@ -199,9 +179,7 @@ impl Builder {
         })
     }
 
-    /// Get the HTTP version for this request
-    ///
-    /// By default this is HTTP/1.1.
+    /// 获取http的版本格式
     ///
     /// # Examples
     ///
@@ -218,17 +196,12 @@ impl Builder {
         self.inner.as_ref().ok().map(|h| &h.version)
     }
 
-    /// Appends a header to this request builder.
-    ///
-    /// This function will append the provided key/value as a header to the
-    /// internal `HeaderMap` being constructed. Essentially this is equivalent
-    /// to calling `HeaderMap::append`.
+    /// 添加头文件信息到Builder底下, 当前header实现的是无序的HashMap格式
     ///
     /// # Examples
     ///
     /// ```
     /// # use webparse::*;
-    /// # use webparse::header::HeaderValue;
     ///
     /// let req = Request::builder()
     ///     .header("Accept", "text/html")
@@ -248,18 +221,18 @@ impl Builder {
             Ok(head)
         })
     }
-
+    
+    /// 从另一个HeaderMap中进行header构建
     pub fn headers(self, header: HeaderMap) -> Builder {
         self.and_then(move |mut head| {
             for iter in header {
-                head.header.insert_exact(iter.0, iter.1);
+                head.header.insert(iter.0, iter.1);
             }
             Ok(head)
         })
     }
 
-    /// Get header on this request builder.
-    /// when builder has error returns None
+    /// 获取头信息的引用
     ///
     /// # Example
     ///
@@ -276,9 +249,7 @@ impl Builder {
         self.inner.as_ref().ok().map(|h| &h.header)
     }
 
-    /// Get headers on this request builder.
-    ///
-    /// When builder has error returns None.
+    /// 获取可更改头的信息
     ///
     /// # Example
     ///
@@ -298,16 +269,7 @@ impl Builder {
         self.inner.as_mut().ok().map(|h| &mut h.header)
     }
 
-    /// "Consumes" this builder, using the provided `body` to return a
-    /// constructed `Request`.
-    ///
-    /// # Errors
-    ///
-    /// This function may return an error if any previously configured argument
-    /// failed to parse or get converted to the internal representation. For
-    /// example if an invalid `head` was specified via `header("Foo",
-    /// "Bar\r\n")` the error will be returned when this function is called
-    /// rather than when `header` was called.
+    /// 传入Body信息,构建出Request的请求信息
     ///
     /// # Examples
     ///
@@ -334,6 +296,8 @@ impl Builder {
         })
     }
 
+    /// 获取请求的body长度, 如果为0则表示不存在长度信息, 
+    /// 直到收到关闭信息则表示结束, http/1.1为关闭链接, http/2则是end_stream
     pub fn get_body_len(&self) -> usize {
         if let Ok(inner) = &self.inner {
             inner.header.get_body_len()
@@ -341,8 +305,6 @@ impl Builder {
             0
         }
     }
-
-    // private
 
     fn and_then<F>(self, func: F) -> Self
     where
@@ -389,10 +351,12 @@ impl<T> Request<T>
 where
     T: Serialize,
 {
+    /// 查看请求是否是http2
     pub fn is_http2(&self) -> bool {
         self.parts.version == Version::Http2
     }
 
+    /// 返回parts信息
     pub fn parts(&self) -> &Parts {
         &self.parts
     }
@@ -431,11 +395,14 @@ where
         self.parts.get_host()
     }
 
+    /// 返回完整的域名加上端口号信息
+    /// 如wwww.baidu.com:80, wwww.google.com:443
     pub fn get_connect_url(&self) -> Option<String> {
         self.parts.get_connect_url()
     }
 
-    /// 获取包体的长度, 如content-length
+    /// 获取请求的body长度, 如果为0则表示不存在长度信息, 
+    /// 直到收到关闭信息则表示结束, http/1.1为关闭链接, http/2则是end_stream
     pub fn get_body_len(&self) -> usize {
         self.parts.header.get_body_len()
     }
@@ -491,53 +458,6 @@ where
         }
 
         Ok(())
-    }
-
-    pub fn parse_http2_header<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
-        let mut decoder = self.get_decoder();
-        let headers = decoder.decode(buffer)?;
-        for h in headers {
-            if h.0.is_spec() {
-                let value: String = (&h.1).try_into()?;
-                match h.0.name() {
-                    ":authority" => {
-                        self.parts.url.domain = Some(value);
-                        self.headers_mut().insert_exact(h.0, h.1);
-                    }
-                    ":method" => {
-                        self.parts.method = Method::try_from(&*value)?;
-                    }
-                    ":path" => {
-                        self.parts.path = value;
-                    }
-                    ":scheme" => {
-                        self.parts.url.scheme = Scheme::try_from(&*value)?;
-                    }
-                    _ => {
-                        self.headers_mut().insert_exact(h.0, h.1);
-                    }
-                }
-            } else {
-                self.headers_mut().insert_exact(h.0, h.1);
-            }
-        }
-        if self.parts.path != "/".to_string() {
-            let url = Url::parse(self.parts.path.as_bytes().to_vec())?;
-            self.parts.url.merge(url);
-        }
-        Ok(buffer.mark_commit())
-    }
-
-    pub fn parse_http2<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
-
-        self.parts.version = Version::Http2;
-        Ok(buffer.mark_commit())
-    }
-
-    pub fn parse2(&mut self, buf: &[u8]) -> WebResult<usize> {
-        self.partial = true;
-        let mut buffer = BinaryMut::from(buf);
-        self.parse_http2(&mut buffer)
     }
 
     pub fn parse_buffer<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
@@ -598,41 +518,11 @@ where
         &mut self.parts.extensions
     }
 
-    // /// Returns a mutable reference to the associated extensions.
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// # use webparse::*;
-    // /// let mut request: Request<()> = Request::default();
-    // /// request.extensions_mut().insert("hello");
-    // /// assert_eq!(request.extensions().get(), Some(&"hello"));
-    // /// ```
-    // #[inline]
-    // pub fn extensions_mut(&mut self) -> &mut Extensions {
-    //     &mut self.parts.extensions.borrow_mut()
-    // }
-
-    pub fn httpdata(&mut self) -> WebResult<Vec<u8>> {
+    pub fn http1_data(&mut self) -> WebResult<Vec<u8>> {
         let mut buffer = BinaryMut::new();
-        self.serialize(&mut buffer)?;
+        self.encode_header(&mut buffer)?;
+        self.body.serialize(&mut buffer)?;
         return Ok(buffer.into_slice_all());
-    }
-
-    pub fn http2data(&mut self) -> WebResult<Vec<u8>> {
-        let mut buffer = BinaryMut::new();
-        self.serialize(&mut buffer)?;
-        return Ok(buffer.into_slice_all());
-    }
-
-    fn get_index(&self) -> Arc<RwLock<HeaderIndex>> {
-        if let Some(index) = self.parts.extensions.get::<Arc<RwLock<HeaderIndex>>>() {
-            return index.clone();
-        }
-
-        let index = Arc::new(RwLock::new(HeaderIndex::new()));
-        // self.parts.extensions.insert(index.clone());
-        index
     }
 
     pub fn body(&self) -> &T {
@@ -643,13 +533,19 @@ where
         &mut self.body
     }
 
-    pub fn get_decoder(&self) -> Decoder {
-        Decoder::new_index(self.get_index())
+
+    pub fn encode_header<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+        let mut size = 0;
+        size += self.parts.method.encode(buffer)?;
+        size += buffer.put_u8(b' ');
+        size += self.parts.path.serialize(buffer)?;
+        size += buffer.put_u8(b' ');
+        size += self.parts.version.encode(buffer)?;
+        size += buffer.put_slice("\r\n".as_bytes());
+        size += self.parts.header.encode(buffer)?;
+        Ok(size)
     }
 
-    pub fn get_encoder(&self) -> Encoder {
-        Encoder::new_index(self.get_index(), 16_000)
-    }
 }
 
 impl Parts {
@@ -722,57 +618,6 @@ impl Clone for Parts {
     }
 }
 
-impl<T> Serialize for Request<T>
-where
-    T: Serialize,
-{
-    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
-        let mut size = 0;
-        match self.parts.version {
-            Version::Http11 => {
-                size += self.parts.method.encode(buffer)?;
-                size += buffer.put_u8(b' ');
-                size += self.parts.path.serialize(buffer)?;
-                size += buffer.put_u8(b' ');
-                size += self.parts.version.encode(buffer)?;
-                size += buffer.put_slice("\r\n".as_bytes());
-                size += self.parts.header.encode(buffer)?;
-                size += self.body.serialize(buffer)?;
-                Ok(size)
-            }
-            Version::Http2 => {
-                let mut encode = self.get_encoder();
-                encode.encode_header_into(
-                    (
-                        &HeaderName::from_static(":method"),
-                        &HeaderValue::from_bytes(self.parts.method.as_str().as_bytes()),
-                    ),
-                    buffer,
-                )?;
-                encode.encode_header_into(
-                    (
-                        &HeaderName::from_static(":path"),
-                        &HeaderValue::from_bytes(self.parts.path.as_bytes()),
-                    ),
-                    buffer,
-                )?;
-                if self.parts.url.scheme != Scheme::None {
-                    encode.encode_header_into(
-                        (
-                            &HeaderName::from_static(":scheme"),
-                            &HeaderValue::from_bytes(self.parts.url.scheme.as_str().as_bytes()),
-                        ),
-                        buffer,
-                    )?;
-                }
-                encode.encode_into(self.parts.header.iter(), buffer)?;
-                self.body.serialize(buffer)?;
-                Ok(size)
-            }
-            _ => Err(WebError::Extension("un support")),
-        }
-    }
-}
 
 mod tests {
     use crate::{http::request::Builder, Helper, Method, Request, Scheme, Version};
@@ -785,22 +630,6 @@ mod tests {
                 let size = req.parse($buf.as_ref()).unwrap();
                 assert_eq!(size, $buf.len());
                 assert_eq!(&req.httpdata().unwrap(), $buf);
-                closure(req);
-                fn closure($arg: Request<()>) {
-                    $body
-                }
-            }
-        };
-    }
-
-    macro_rules! req2 {
-        ($name:ident, $buf:expr, |$arg:ident| $body:expr) => {
-            #[test]
-            fn $name() {
-                let mut req = Request::new();
-                let size = req.parse2($buf.as_ref()).unwrap();
-                assert_eq!(size, $buf.len());
-                // assert_eq!(&req.httpdata().unwrap(), $buf);
                 closure(req);
                 fn closure($arg: Request<()>) {
                     $body
@@ -865,64 +694,64 @@ mod tests {
         }
     }
 
-    req2! {
-        urltest_005,
-        Helper::hexstr_to_vec("8286 8441 0f77 7777 2e65 7861 6d70 6c65 2e63 6f6d"),
-        |req| {
-            assert_eq!(req.method(), &Method::Get);
-            assert_eq!(req.path(), "/");
-            assert_eq!(&req.url().path, "/");
-            assert_eq!(req.url().query, None);
-            assert_eq!(req.version(), &Version::Http2);
-            assert_eq!(req.headers().len(), 1);
-            assert_eq!(&req.headers()[":authority"], "www.example.com");
-        }
-    }
+    // req2! {
+    //     urltest_005,
+    //     Helper::hexstr_to_vec("8286 8441 0f77 7777 2e65 7861 6d70 6c65 2e63 6f6d"),
+    //     |req| {
+    //         assert_eq!(req.method(), &Method::Get);
+    //         assert_eq!(req.path(), "/");
+    //         assert_eq!(&req.url().path, "/");
+    //         assert_eq!(req.url().query, None);
+    //         assert_eq!(req.version(), &Version::Http2);
+    //         assert_eq!(req.headers().len(), 1);
+    //         assert_eq!(&req.headers()[":authority"], "www.example.com");
+    //     }
+    // }
 
-    #[test]
-    fn http2_test() {
-        let mut req = Request::new();
-        let buf = Helper::hexstr_to_vec("8286 8441 0f77 7777 2e65 7861 6d70 6c65 2e63 6f6d");
-        let size = req.parse2(buf.as_ref()).unwrap();
-        assert_eq!(size, buf.len());
-        assert_eq!(req.method(), &Method::Get);
-        assert_eq!(req.scheme(), &Scheme::Http);
-        assert_eq!(req.path(), "/");
-        assert_eq!(&req.url().path, "/");
-        assert_eq!(req.url().query, None);
-        assert_eq!(req.version(), &Version::Http2);
-        assert_eq!(req.headers().len(), 1);
-        assert_eq!(&req.headers()[":authority"], "www.example.com");
+    // #[test]
+    // fn http2_test() {
+    //     let mut req = Request::new();
+    //     let buf = Helper::hexstr_to_vec("8286 8441 0f77 7777 2e65 7861 6d70 6c65 2e63 6f6d");
+    //     let size = req.parse2(buf.as_ref()).unwrap();
+    //     assert_eq!(size, buf.len());
+    //     assert_eq!(req.method(), &Method::Get);
+    //     assert_eq!(req.scheme(), &Scheme::Http);
+    //     assert_eq!(req.path(), "/");
+    //     assert_eq!(&req.url().path, "/");
+    //     assert_eq!(req.url().query, None);
+    //     assert_eq!(req.version(), &Version::Http2);
+    //     assert_eq!(req.headers().len(), 1);
+    //     assert_eq!(&req.headers()[":authority"], "www.example.com");
 
-        let mut req = Builder::from_req(req).body(()).unwrap();
-        let buf = Helper::hexstr_to_vec("8286 84be 5808 6e6f 2d63 6163 6865");
-        let size = req.parse2(buf.as_ref()).unwrap();
-        assert_eq!(size, buf.len());
+    //     let mut req = Builder::from_req(&req).body(()).unwrap();
+    //     let buf = Helper::hexstr_to_vec("8286 84be 5808 6e6f 2d63 6163 6865");
+    //     let size = req.parse2(buf.as_ref()).unwrap();
+    //     assert_eq!(size, buf.len());
 
-        assert_eq!(req.method(), &Method::Get);
-        assert_eq!(req.scheme(), &Scheme::Http);
-        assert_eq!(req.path(), "/");
-        assert_eq!(&req.url().path, "/");
-        assert_eq!(req.url().query, None);
-        assert_eq!(req.version(), &Version::Http2);
-        assert_eq!(req.headers().len(), 2);
-        assert_eq!(&req.headers()[":authority"], "www.example.com");
-        assert_eq!(&req.headers()["cache-control"], "no-cache");
+    //     assert_eq!(req.method(), &Method::Get);
+    //     assert_eq!(req.scheme(), &Scheme::Http);
+    //     assert_eq!(req.path(), "/");
+    //     assert_eq!(&req.url().path, "/");
+    //     assert_eq!(req.url().query, None);
+    //     assert_eq!(req.version(), &Version::Http2);
+    //     assert_eq!(req.headers().len(), 2);
+    //     assert_eq!(&req.headers()[":authority"], "www.example.com");
+    //     assert_eq!(&req.headers()["cache-control"], "no-cache");
 
-        let mut req = Builder::from_req(req).body(()).unwrap();
-        let buf = Helper::hexstr_to_vec(
-            "8287 85bf 400a 6375 7374 6f6d 2d6b 6579 0c63 7573 746f 6d2d 7661 6c75 65",
-        );
-        let size = req.parse2(buf.as_ref()).unwrap();
-        assert_eq!(size, buf.len());
-        assert_eq!(req.method(), &Method::Get);
-        assert_eq!(req.scheme(), &Scheme::Https);
-        assert_eq!(req.path(), "/index.html");
-        assert_eq!(&req.url().path, "/index.html");
-        assert_eq!(req.url().query, None);
-        assert_eq!(req.version(), &Version::Http2);
-        assert_eq!(req.headers().len(), 2);
-        assert_eq!(&req.headers()[":authority"], "www.example.com");
-        assert_eq!(&req.headers()["custom-key"], "custom-value");
-    }
+    //     let mut req = Builder::from_req(&req).body(()).unwrap();
+    //     let buf = Helper::hexstr_to_vec(
+    //         "8287 85bf 400a 6375 7374 6f6d 2d6b 6579 0c63 7573 746f 6d2d 7661 6c75 65",
+    //     );
+    //     let size = req.parse2(buf.as_ref()).unwrap();
+    //     assert_eq!(size, buf.len());
+    //     assert_eq!(req.method(), &Method::Get);
+    //     assert_eq!(req.scheme(), &Scheme::Https);
+    //     assert_eq!(req.path(), "/index.html");
+    //     assert_eq!(&req.url().path, "/index.html");
+    //     assert_eq!(req.url().query, None);
+    //     assert_eq!(req.version(), &Version::Http2);
+    //     assert_eq!(req.headers().len(), 2);
+    //     assert_eq!(&req.headers()[":authority"], "www.example.com");
+    //     assert_eq!(&req.headers()["custom-key"], "custom-value");
+    // }
 }

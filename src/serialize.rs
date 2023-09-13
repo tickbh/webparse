@@ -1,15 +1,9 @@
-use std::{io::Write, borrow::Cow};
 
 use crate::{WebResult, WebError, Buf, BufMut, MarkBuf, Binary, BinaryMut};
 
 static EMPTY_ARRAY: Vec<u8> = vec![];
 pub trait Serialize {
     fn serialize<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize>;
-    // {
-    //     Ok(buffer.put_slice(&self.serial_bytes()?))
-    // }
-
-    // fn serial_bytes<'a>(&'a self) -> WebResult<Cow<'a, [u8]>>;
 }
 
 
