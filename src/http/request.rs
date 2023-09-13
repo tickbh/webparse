@@ -1,9 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use super::{
-    http2::{encoder::Encoder, Decoder, HeaderIndex},
-    HeaderMap, Method, Version,
-};
+use super::{http2::HeaderIndex, HeaderMap, Method, Version};
 use crate::{
     BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, MarkBuf, Scheme,
     Serialize, Url, WebError, WebResult,
@@ -221,7 +218,7 @@ impl Builder {
             Ok(head)
         })
     }
-    
+
     /// 从另一个HeaderMap中进行header构建
     pub fn headers(self, header: HeaderMap) -> Builder {
         self.and_then(move |mut head| {
@@ -296,7 +293,7 @@ impl Builder {
         })
     }
 
-    /// 获取请求的body长度, 如果为0则表示不存在长度信息, 
+    /// 获取请求的body长度, 如果为0则表示不存在长度信息,
     /// 直到收到关闭信息则表示结束, http/1.1为关闭链接, http/2则是end_stream
     pub fn get_body_len(&self) -> usize {
         if let Ok(inner) = &self.inner {
@@ -401,7 +398,7 @@ where
         self.parts.get_connect_url()
     }
 
-    /// 获取请求的body长度, 如果为0则表示不存在长度信息, 
+    /// 获取请求的body长度, 如果为0则表示不存在长度信息,
     /// 直到收到关闭信息则表示结束, http/1.1为关闭链接, http/2则是end_stream
     pub fn get_body_len(&self) -> usize {
         self.parts.header.get_body_len()
@@ -533,7 +530,6 @@ where
         &mut self.body
     }
 
-
     pub fn encode_header<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += self.parts.method.encode(buffer)?;
@@ -545,7 +541,6 @@ where
         size += self.parts.header.encode(buffer)?;
         Ok(size)
     }
-
 }
 
 impl Parts {
@@ -618,7 +613,6 @@ impl Clone for Parts {
     }
 }
 
-
 mod tests {
     use crate::{http::request::Builder, Helper, Method, Request, Scheme, Version};
 
@@ -629,7 +623,7 @@ mod tests {
                 let mut req = Request::new();
                 let size = req.parse($buf.as_ref()).unwrap();
                 assert_eq!(size, $buf.len());
-                assert_eq!(&req.httpdata().unwrap(), $buf);
+                assert_eq!(&req.http1_data().unwrap(), $buf);
                 closure(req);
                 fn closure($arg: Request<()>) {
                     $body

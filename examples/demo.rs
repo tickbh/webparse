@@ -283,48 +283,48 @@ fn main() {
 
     let mut rrr = req.body(()).unwrap();
 
-    let data = rrr.http2data().unwrap();
+    // let data = rrr.http2data().unwrap();
 
-    println!("req.httpdata() = {:?}", hex_debug_print(&data));
+    // println!("req.httpdata() = {:?}", hex_debug_print(&data));
 
-    let mut decode = Decoder::new();
-    let mut buf = BinaryMut::from(data);
-    let result = decode.decode_with_cb(&mut buf, |n, v| {
-        println!("n = {:?}, v = {}", n, v);
-    });
+    // let mut decode = Decoder::new();
+    // let mut buf = BinaryMut::from(data);
+    // let result = decode.decode_with_cb(&mut buf, |n, v| {
+    //     println!("n = {:?}, v = {}", n, v);
+    // });
 
-    let mut index = Arc::new(HeaderIndex::new());
-    Arc::get_mut(&mut index).map(|v| {
-        v.add_header(
-            HeaderName::from_static("aaa"),
-            HeaderValue::from_static("aa"),
-        );
-    });
+    // let mut index = Arc::new(HeaderIndex::new());
+    // Arc::get_mut(&mut index).map(|v| {
+    //     v.add_header(
+    //         HeaderName::from_static("aaa"),
+    //         HeaderValue::from_static("aa"),
+    //     );
+    // });
 
-    let xx = Arc::get_mut(&mut index);
-    println!("========={:?}", xx);
-    let xx111 = Arc::get_mut(&mut index);
-    println!("========={:?}", xx111);
-    // rrr.extensions_mut().insert(index);
-    // let new = rrr.extensions_mut().get_mut::<Arc<HeaderIndex>>();
-    // println!("========={:?}", new);
+    // let xx = Arc::get_mut(&mut index);
+    // println!("========={:?}", xx);
+    // let xx111 = Arc::get_mut(&mut index);
+    // println!("========={:?}", xx111);
+    // // rrr.extensions_mut().insert(index);
+    // // let new = rrr.extensions_mut().get_mut::<Arc<HeaderIndex>>();
+    // // println!("========={:?}", new);
 
-    // if true {
-    //     return;
-    // }
+    // // if true {
+    // //     return;
+    // // }
 
-    let u = url::Builder::new()
-        .scheme("https")
-        .domain("www.baidu.com")
-        .build()
-        .unwrap();
-    println!("u = {}", u);
+    // let u = url::Builder::new()
+    //     .scheme("https")
+    //     .domain("www.baidu.com")
+    //     .build()
+    //     .unwrap();
+    // println!("u = {}", u);
 
-    let response = Response::builder()
-        .header("Accept", "text/html")
-        .header("X-Custom-Foo", "bar")
-        .body("my is web")
-        .unwrap();
+    // let response = Response::builder()
+    //     .header("Accept", "text/html")
+    //     .header("X-Custom-Foo", "bar")
+    //     .body("my is web")
+    //     .unwrap();
 
     // println!(
     //     "ssssssssssss {}",
