@@ -110,20 +110,20 @@ impl Frame<Binary> {
 
     
     pub fn encode<B: Buf + MarkBuf + BufMut>(
-        mut self,
+        self,
         buf: &mut B,
         encoder: &mut Encoder,
     ) -> WebResult<usize> {
         let size = match self {
             Frame::Data(mut s) => s.encode(buf)?,
-            Frame::Headers(mut s) => s.encode(encoder, buf)?,
-            Frame::Priority(_) => todo!(),
+            Frame::Headers(s) => s.encode(encoder, buf)?,
+            Frame::Priority(v) => v.encode(buf)?,
             Frame::PushPromise(p) => p.encode(encoder, buf)?,
-            Frame::Settings(mut s) => s.encode(buf)?,
+            Frame::Settings(s) => s.encode(buf)?,
             Frame::Ping(v) => v.encode(buf)?,
             Frame::GoAway(v) => v.encode(buf)?,
-            Frame::WindowUpdate(_) => todo!(),
-            Frame::Reset(_) => todo!(),
+            Frame::WindowUpdate(v) => v.encode(buf)?,
+            Frame::Reset(v) => v.encode(buf)?,
         };
         Ok(size)
     }

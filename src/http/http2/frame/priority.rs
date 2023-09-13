@@ -1,6 +1,6 @@
-use crate::{WebResult, Http2Error, http::http2::Http2, Buf};
+use crate::{WebResult, Http2Error, http::http2::Http2, Buf, MarkBuf, BufMut};
 
-use super::{StreamIdentifier, FrameHeader, frame::Frame};
+use super::{StreamIdentifier, FrameHeader, frame::Frame, Flag};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Priority {
@@ -51,6 +51,14 @@ impl Priority {
     pub fn weight(&self) -> u8 {
         self.dependency.weight
     }
+
+    pub fn encode<B: Buf + MarkBuf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+        let mut head = FrameHeader::new(super::Kind::Priority, Flag::zero(), self.stream_id);
+        let mut size = 0;
+        size += head.encode(dst)?;
+        size += self.dependency.encode(dst)?;
+        Ok(size)
+    }
     
 }
 
@@ -83,5 +91,11 @@ impl StreamDependency {
 
     pub fn dependency_id(&self) -> StreamIdentifier {
         self.dependency_id
+    }
+    
+    fn encode<B: Buf + MarkBuf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+        self.dependency_id.encode(dst);
+        dst.put_u8(self.weight);
+        Ok(5)
     }
 }

@@ -44,7 +44,7 @@ impl Reset {
         head
     }
 
-    pub fn encode<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> crate::WebResult<usize> {
+    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.error_code.into());
