@@ -1,10 +1,20 @@
-use std::{any::{Any, TypeId}, borrow::Cow, io::Write, sync::{Arc, RwLock}, cell::RefCell};
-
-use crate::{
-    Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, BinaryMut, Buf, BufMut, MarkBuf, Request, Binary,
+use std::{
+    any::{Any, TypeId},
+    borrow::Cow,
+    cell::RefCell,
+    io::Write,
+    sync::{Arc, RwLock},
 };
 
-use super::{StatusCode, http2::{Decoder, encoder::Encoder, HeaderIndex, Http2}};
+use crate::{
+    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, MarkBuf,
+    Request, Serialize, Version, WebError, WebResult,
+};
+
+use super::{
+    http2::{encoder::Encoder, Decoder, HeaderIndex},
+    StatusCode,
+};
 
 #[derive(Debug)]
 pub struct Response<T>
@@ -298,7 +308,6 @@ impl Response<()> {
     pub fn builder() -> Builder {
         Builder::new()
     }
-
 }
 
 impl<T: Serialize> Response<T> {
@@ -451,7 +460,6 @@ impl<T: Serialize> Response<T> {
         &self.parts.extensions
     }
 
-    
     #[inline]
     pub fn extensions_mut(&mut self) -> &mut Extensions {
         &mut self.parts.extensions
@@ -581,7 +589,7 @@ impl<T: Serialize> Response<T> {
         };
         new
     }
-    
+
     pub fn into_binary(mut self) -> Response<Binary> {
         let mut binary = BinaryMut::new();
         let _ = self.body.serialize(&mut binary);
@@ -593,7 +601,7 @@ impl<T: Serialize> Response<T> {
         new
     }
 
-    pub fn encode_header<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode_header<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += self.parts.version.encode(buffer)?;
         size += buffer.put_slice(" ".as_bytes());
@@ -601,9 +609,7 @@ impl<T: Serialize> Response<T> {
         size += self.parts.header.encode(buffer)?;
         Ok(size)
     }
-    
 }
-
 
 impl<T: Default + Serialize> Default for Response<T> {
     fn default() -> Self {
@@ -625,7 +631,6 @@ impl Default for Parts {
         }
     }
 }
-
 
 impl Clone for Parts {
     fn clone(&self) -> Self {
@@ -650,7 +655,7 @@ impl<T> Serialize for Response<T>
 where
     T: Serialize,
 {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += self.parts.version.encode(buffer)?;
         size += buffer.put_slice(" ".as_bytes());
@@ -659,5 +664,4 @@ where
         size += self.body.serialize(buffer)?;
         Ok(size)
     }
-
 }

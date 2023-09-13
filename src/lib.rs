@@ -15,7 +15,7 @@ mod serialize;
 pub use binary::{Binary, Buf, MarkBuf, BinaryMut, BufMut};
 
 pub use http::{HeaderMap, HeaderName, HeaderValue, Method, Version, Request, Response, HttpError};
-pub use http::http2::{Http2Error};
+pub use http::http2::{self, Http2Error};
 
 pub use error::{WebError, WebResult};
 // pub use buffer::Buffer;

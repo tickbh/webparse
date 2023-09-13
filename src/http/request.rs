@@ -1,10 +1,11 @@
 use std::{
     borrow::Cow,
-    sync::{Arc, RwLock}, cell::RefCell,
+    cell::RefCell,
+    sync::{Arc, RwLock},
 };
 
 use super::{
-    http2::{self, encoder::Encoder, Decoder, HeaderIndex, Http2},
+    http2::{self, encoder::Encoder, Decoder, HeaderIndex},
     HeaderMap, Method, Version,
 };
 use crate::{
@@ -382,14 +383,12 @@ impl Request<()> {
     pub fn builder() -> Builder {
         Builder::default()
     }
-
 }
 
 impl<T> Request<T>
 where
     T: Serialize,
 {
-
     pub fn is_http2(&self) -> bool {
         self.parts.version == Version::Http2
     }
@@ -397,7 +396,7 @@ where
     pub fn parts(&self) -> &Parts {
         &self.parts
     }
-    
+
     pub fn method(&self) -> &Method {
         &self.parts.method
     }
@@ -469,7 +468,6 @@ where
         (new, self.body)
     }
 
-
     pub fn into_type<B: From<T> + Serialize>(self) -> Request<B> {
         let new = Request {
             body: From::from(self.body),
@@ -478,8 +476,6 @@ where
         };
         new
     }
-
-
 
     fn parse_connect_by_host(url: &mut Url, h: &String) -> WebResult<()> {
         // Host中存在端口号, 则直接取端口号
@@ -533,8 +529,7 @@ where
     }
 
     pub fn parse_http2<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
-        Http2::parse_buffer(self, buffer)?;
-        
+
         self.parts.version = Version::Http2;
         Ok(buffer.mark_commit())
     }
@@ -598,7 +593,6 @@ where
         &self.parts.extensions
     }
 
-    
     #[inline]
     pub fn extensions_mut(&mut self) -> &mut Extensions {
         &mut self.parts.extensions
@@ -702,7 +696,7 @@ impl Default for Parts {
             version: Version::Http11,
             url: Url::new(),
             path: String::new(),
-            extensions: Extensions::new() ,
+            extensions: Extensions::new(),
         }
     }
 }
@@ -732,7 +726,7 @@ impl<T> Serialize for Request<T>
 where
     T: Serialize,
 {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         match self.parts.version {
             Version::Http11 => {
@@ -774,7 +768,7 @@ where
                 encode.encode_into(self.parts.header.iter(), buffer)?;
                 self.body.serialize(buffer)?;
                 Ok(size)
-            },
+            }
             _ => Err(WebError::Extension("un support")),
         }
     }

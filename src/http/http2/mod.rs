@@ -16,128 +16,28 @@ pub use hpack::*;
 
 use self::frame::{Flag, Frame, FrameHeader, Kind, StreamIdentifier};
 
-pub struct Http2;
 
-impl Http2 {
-    pub fn parse_buffer<T: serialize::Serialize, B: Buf + MarkBuf>(
-        request: &mut Request<T>,
-        buffer: &mut B,
-    ) -> WebResult<()> {
-        // while buffer.has_remaining() {
-        //     let frame_header = FrameHeader::parse(buffer)?;
-        //     let frame = Frame::parse(frame_header, buffer)?;
-        //     println!("frame = {:?}", frame);
-        //     match frame.payload {
-        //         Payload::Data { data } => {}
-        //         Payload::Headers {
-        //             priority,
-        //             mut block,
-        //         } => {
-        //             request.parse_http2_header(&mut block)?;
-        //             if request.method().is_nobody() {
-        //                 return Ok(());
-        //             }
-        //         }
-        //         Payload::Priority(priority) => {}
-        //         Payload::Reset(err) => {}
-        //         Payload::Settings(s) => {
-        //             let frame = Frame {
-        //                 header: FrameHeader {
-        //                     length: 0,
-        //                     kind: Kind::Settings,
-        //                     flag: Flag::ack(),
-        //                     id: StreamIdentifier(0),
-        //                 },
-        //                 payload: Payload::Settings::<Binary>(Settings::default()),
-        //             };
-        //             let has = {
-        //                 request
-        //                     .extensions()
-        //                     .borrow()
-        //                     .get::<Vec<Frame<Binary>>>()
-        //                     .is_some()
-        //             };
-        //             if has {
-        //                 request
-        //                     .extensions()
-        //                     .borrow_mut()
-        //                     .get_mut::<Vec<Frame<Binary>>>()
-        //                     .unwrap()
-        //                     .push(frame);
-        //             } else {
-        //                 let vec = vec![frame];
-        //                 request.extensions().borrow_mut().insert(vec);
-        //             }
-        //         }
-        //         Payload::WindowUpdate(s) => {}
-        //         _ => {}
-        //     }
-        // }
-        Ok(())
-    }
+pub type FrameSize = u32;
+pub type WindowSize = u32;
 
-    // pub fn build_body_frame<T: serialize::Serialize>(
-    //     res: &mut Response<T>,
-    // ) -> WebResult<Option<Frame<BinaryMut>>> {
-    //     let mut buf = BinaryMut::new();
-    //     res.body().serialize(&mut buf)?;
-    //     if buf.remaining() == 0 {
-    //         return Ok(None);
-    //     }
-    //     let header = FrameHeader {
-    //         length: buf.remaining() as u32,
-    //         kind: Kind::Data,
-    //         flag: Flag::end_stream(),
-    //         id: StreamIdentifier(1),
-    //     };
-    //     let payload = Payload::Data { data: buf };
-    //     let frame = Frame { header, payload };
-    //     Ok(Some(frame))
-    // }
+// Constants
+pub const MAX_WINDOW_SIZE: WindowSize = (1 << 31) - 1; // i32::MAX as u32
+pub const DEFAULT_REMOTE_RESET_STREAM_MAX: usize = 20;
+pub const DEFAULT_RESET_STREAM_MAX: usize = 10;
+pub const DEFAULT_RESET_STREAM_SECS: u64 = 30;
+pub const DEFAULT_MAX_SEND_BUFFER_SIZE: usize = 1024 * 400;
 
-    // pub fn build_header_frame<T: serialize::Serialize>(
-    //     res: &mut Response<T>,
-    // ) -> WebResult<Frame<BinaryMut>> {
-    //     let mut buf = BinaryMut::new();
-    //     let mut enocder = res.get_encoder();
-    //     let status = res.status().build_header();
-    //     enocder
-    //         .encode_header_into((&status.0, &status.1), &mut buf)
-    //         .map_err(WebError::from)?;
-    //     enocder.encode_into(res.headers().iter(), &mut buf)?;
-    //     let header = FrameHeader {
-    //         length: buf.remaining() as u32,
-    //         kind: Kind::Headers,
-    //         flag: Flag::end_headers() | Flag::end_stream(),
-    //         id: StreamIdentifier(1),
-    //     };
-    //     let payload = Payload::Headers {
-    //         priority: None,
-    //         block: buf,
-    //     };
-    //     let frame = Frame { header, payload };
-    //     Ok(frame)
-    // }
+/// The default value of SETTINGS_HEADER_TABLE_SIZE
+pub const DEFAULT_SETTINGS_HEADER_TABLE_SIZE: usize = 4_096;
 
-    // pub fn build_response_frame<T: serialize::Serialize>(
-    //     res: &mut Response<T>,
-    // ) -> WebResult<Vec<Frame<BinaryMut>>> {
-    //     let mut result = vec![];
-    //     result.push(Self::build_header_frame(res)?);
-    //     if let Some(frame) = Self::build_body_frame(res)? {
-    //         result.push(frame);
-    //     }
-    //     Ok(result)
-    // }
+/// The default value of SETTINGS_INITIAL_WINDOW_SIZE
+pub const DEFAULT_INITIAL_WINDOW_SIZE: u32 = 65_535;
 
-    pub fn serialize<T: serialize::Serialize>(
-        res: &mut Response<T>,
-        buffer: &mut BinaryMut,
-    ) -> WebResult<()> {
-        // let vecs = Self::build_response_frame(res)?;
-        // for vec in vecs {
-        //     vec.serialize(buffer);
-        // }
-        Ok(())
-    }
-}
+/// The default value of MAX_FRAME_SIZE
+pub const DEFAULT_MAX_FRAME_SIZE: FrameSize = 16_384;
+
+/// INITIAL_WINDOW_SIZE upper bound
+pub const MAX_INITIAL_WINDOW_SIZE: usize = (1 << 31) - 1;
+
+/// MAX_FRAME_SIZE upper bound
+pub const MAX_MAX_FRAME_SIZE: FrameSize = (1 << 24) - 1;

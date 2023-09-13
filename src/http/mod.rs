@@ -20,5 +20,3 @@ pub use request::Request;
 pub use response::Response;
 pub use status::StatusCode;
 
-
-
