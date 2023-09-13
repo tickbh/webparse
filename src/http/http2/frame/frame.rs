@@ -120,8 +120,8 @@ impl Frame<Binary> {
             Frame::Priority(_) => todo!(),
             Frame::PushPromise(p) => p.encode(encoder, buf)?,
             Frame::Settings(mut s) => s.encode(buf)?,
-            Frame::Ping(_) => todo!(),
-            Frame::GoAway(_) => todo!(),
+            Frame::Ping(v) => v.encode(buf)?,
+            Frame::GoAway(v) => v.encode(buf)?,
             Frame::WindowUpdate(_) => todo!(),
             Frame::Reset(_) => todo!(),
         };
@@ -230,7 +230,7 @@ impl FrameHeader {
         self.flag
     }
 
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += encode_u24(buffer, self.length);
         size += buffer.put_u8(self.kind.encode());

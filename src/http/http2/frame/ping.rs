@@ -5,7 +5,7 @@ use super::{FrameHeader, Frame, StreamIdentifier};
 
 pub type Payload = [u8; 8];
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Ping {
     ack: bool,
     payload: Payload,
@@ -30,6 +30,10 @@ impl Ping {
 
     pub fn pong(payload: Payload) -> Ping {
         Ping { ack: true, payload }
+    }
+    
+    pub fn ret_pong(&self) -> Ping {
+        Ping { ack: true, payload: self.payload }
     }
 
     pub fn is_ack(&self) -> bool {
@@ -78,9 +82,20 @@ impl Ping {
     
     pub(crate) fn head(&self) -> FrameHeader {
         let flags = if self.ack { Flag::ack() } else { Flag::zero() };
-        let mut head = FrameHeader::new(Kind::GoAway, flags.into(), StreamIdentifier::zero());
+        let mut head = FrameHeader::new(Kind::Ping, flags.into(), StreamIdentifier::zero());
         head.length = self.payload.len() as u32;
         head
+    }
+
+    
+    pub fn encode<B: Buf+MarkBuf+BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+        let head = self.head();
+
+        println!("encoding Ping; len={}", head.length);
+        let mut size = 0;
+        size += head.encode(dst)?;
+        size += dst.put_slice(&self.payload);
+        Ok(size)
     }
 
 }
