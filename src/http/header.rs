@@ -47,6 +47,18 @@ impl HeaderMap {
         }
         self.insert_exact(name.unwrap(), value.unwrap())
     }
+    
+    pub fn remove<T>(&mut self, name: T) -> Option<HeaderValue>
+    where
+        HeaderName: TryFrom<T>,
+        <HeaderName as TryFrom<T>>::Error: Into<WebError>,
+    {
+        let name = HeaderName::try_from(name).map_err(Into::into);
+        if name.is_err() {
+            return None;
+        }
+        self.headers.remove(&name.unwrap())
+    }
 
     pub fn clear(&mut self) {
         self.headers.clear()

@@ -1,4 +1,4 @@
-use crate::{BufMut, Request, Serialize, http::request, HeaderName};
+use crate::{http::request, BufMut, HeaderName, Request, Serialize};
 use std::fmt;
 
 use crate::{
@@ -148,11 +148,10 @@ impl Headers {
     pub fn stream_id(&self) -> StreamIdentifier {
         self.stream_id
     }
-    
+
     pub fn flags(&self) -> Flag {
         self.flags
     }
-
 
     pub fn is_end_headers(&self) -> bool {
         self.flags.is_end_headers()
@@ -169,11 +168,11 @@ impl Headers {
     pub fn set_end_stream(&mut self) {
         self.flags.set_end_stream()
     }
-    
+
     pub fn set_method(&mut self, method: Method) {
         self.header_block.parts.method = Some(method);
     }
-    
+
     pub fn method(&mut self) -> &Option<Method> {
         &self.header_block.parts.method
     }
@@ -181,7 +180,7 @@ impl Headers {
     pub fn set_authority(&mut self, authority: String) {
         self.header_block.parts.authority = Some(authority);
     }
-    
+
     pub fn authority(&mut self) -> &Option<String> {
         &self.header_block.parts.authority
     }
@@ -189,15 +188,15 @@ impl Headers {
     pub fn set_path(&mut self, path: String) {
         self.header_block.parts.path = Some(path);
     }
-    
+
     pub fn path(&mut self) -> &Option<String> {
         &self.header_block.parts.path
     }
-    
+
     pub fn set_status(&mut self, status: StatusCode) {
         self.header_block.parts.status = Some(status);
     }
-    
+
     pub fn status(&mut self) -> &Option<StatusCode> {
         &self.header_block.parts.status
     }
@@ -243,67 +242,63 @@ impl Headers {
         Ok(builder)
     }
 
-    pub fn encode<B: Buf + MarkBuf + BufMut>(self, encoder: &mut Encoder, dst: &mut B) -> usize {
-        let mut result = vec![];
-
+    pub fn encode<B: Buf + MarkBuf + BufMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
         let mut binary = BinaryMut::new();
-        let parts = self.header_block.parts;
-        let mut fields = self.header_block.fields;
+        // let mut parts = self.header_block.parts;
+        // let mut fields = self.header_block.fields;
+        self.header_block.parts.encode_header(&mut self.header_block.fields);
+        self.header_block.encode(encoder, dst, self.stream_id)
 
-        println!("fields = {:?}", fields);
-        if let Some(method) = parts.method {
-            fields.insert(":method", method.as_str().to_string());
-        }
-        if let Some(authority) = parts.authority {
-        fields.insert(":authority", authority);
-        }
-        if let Some(scheme) = parts.scheme {
-            fields.insert(":scheme", scheme.as_str().to_string());
-        }
-        if let Some(path) = parts.path {
-            fields.insert(":path", path);
-        }
-        if let Some(status) = parts.status {
-            // fields.insert(":status", status.as_str());
-            let _ = encoder.encode_header_into((&HeaderName::from_static(":status"), &HeaderValue::from_static(status.as_str())), &mut binary);   
-            println!("stauts!!!!!!!!!");
-        } else {
-            println!("other!!!!!!!!!");
-        }
+        // if let Some(status) = parts.status {
+        //     // fields.insert(":status", status.as_str());
+        //     let _ = encoder.encode_header_into(
+        //         (
+        //             &HeaderName::from_static(":status"),
+        //             &HeaderValue::from_static(status.as_str()),
+        //         ),
+        //         &mut binary,
+        //     );
+        //     println!("stauts!!!!!!!!!");
+        // } else {
+        //     println!("other!!!!!!!!!");
+        // }
 
-        for value in fields {
-            if value.0.bytes_len() + value.1.bytes_len() + binary.remaining() > encoder.max_frame_size as usize {
-                result.push(binary);
-                binary = BinaryMut::new();
-            }
-            let _ = encoder.encode_header_into((&value.0, &value.1), &mut binary);    
-        }
+        // for value in fields {
+        //     if value.0.bytes_len() + value.1.bytes_len() + binary.remaining()
+        //         > encoder.max_frame_size as usize
+        //     {
+        //         result.push(binary);
+        //         binary = BinaryMut::new();
+        //     }
+        //     let _ = encoder.encode_header_into((&value.0, &value.1), &mut binary);
+        // }
 
-        result.push(binary);
-        let mut size = 0;
-        if result.len() == 1 {
-            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
-            head.flag.set_end_headers();
-            head.length = result[0].remaining() as u32;
-            size += head.encode(dst).unwrap();
-            size += result[0].serialize(dst).unwrap();
-        } else {
-            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
-            head.length = result[0].remaining() as u32;
-            size += head.encode(dst).unwrap();
-            size += result[0].serialize(dst).unwrap();
+        // result.push(binary);
+        // let mut size = 0;
+        // if result.len() == 1 {
+        //     let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
+        //     head.flag.set_end_headers();
+        //     head.length = result[0].remaining() as u32;
+        //     size += head.encode(dst).unwrap();
+        //     size += result[0].serialize(dst).unwrap();
+        // } else {
+        //     let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id);
+        //     head.length = result[0].remaining() as u32;
+        //     size += head.encode(dst).unwrap();
+        //     size += result[0].serialize(dst).unwrap();
 
-            for idx in 1..result.len() {
-                let mut head = FrameHeader::new(Kind::Continuation, self.flags.into(), self.stream_id);
-                if idx == result.len() - 1 {
-                    head.flag.set_end_headers();
-                }
-                head.length = result[idx].remaining() as u32;
-                size += head.encode(dst).unwrap();
-                size += result[idx].serialize(dst).unwrap();
-            }
-        }
-        size
+        //     for idx in 1..result.len() {
+        //         let mut head =
+        //             FrameHeader::new(Kind::Continuation, self.flags.into(), self.stream_id);
+        //         if idx == result.len() - 1 {
+        //             head.flag.set_end_headers();
+        //         }
+        //         head.length = result[idx].remaining() as u32;
+        //         size += head.encode(dst).unwrap();
+        //         size += result[idx].serialize(dst).unwrap();
+        //     }
+        // }
+        // size
     }
 
     fn head(&self) -> FrameHeader {
@@ -336,11 +331,7 @@ impl fmt::Debug for Headers {
 // ===== impl PushPromise =====
 
 impl PushPromise {
-    pub fn new(
-        header: FrameHeader, 
-        promised_id: StreamIdentifier,
-        fields: HeaderMap,
-    ) -> Self {
+    pub fn new(header: FrameHeader, promised_id: StreamIdentifier, fields: HeaderMap) -> Self {
         PushPromise {
             flags: header.flag(),
             header_block: HeaderBlock {
@@ -357,11 +348,9 @@ impl PushPromise {
         self.stream_id
     }
 
-    
     pub fn flags(&self) -> Flag {
         self.flags
     }
-
 
     pub fn is_end_headers(&self) -> bool {
         self.flags.is_end_headers()
@@ -378,11 +367,11 @@ impl PushPromise {
     pub fn set_end_stream(&mut self) {
         self.flags.set_end_stream()
     }
-    
+
     pub fn set_method(&mut self, method: Method) {
         self.header_block.parts.method = Some(method);
     }
-    
+
     pub fn method(&mut self) -> &Option<Method> {
         &self.header_block.parts.method
     }
@@ -390,7 +379,7 @@ impl PushPromise {
     pub fn set_authority(&mut self, authority: String) {
         self.header_block.parts.authority = Some(authority);
     }
-    
+
     pub fn authority(&mut self) -> &Option<String> {
         &self.header_block.parts.authority
     }
@@ -398,15 +387,15 @@ impl PushPromise {
     pub fn set_path(&mut self, path: String) {
         self.header_block.parts.path = Some(path);
     }
-    
+
     pub fn path(&mut self) -> &Option<String> {
         &self.header_block.parts.path
     }
-    
+
     pub fn set_status(&mut self, status: StatusCode) {
         self.header_block.parts.status = Some(status);
     }
-    
+
     pub fn status(&mut self) -> &Option<StatusCode> {
         &self.header_block.parts.status
     }
@@ -418,7 +407,7 @@ impl PushPromise {
     pub fn into_parts(self) -> (Parts, HeaderMap) {
         (self.header_block.parts, self.header_block.fields)
     }
-    
+
     pub fn validate_request(req: &Request<()>) -> WebResult<()> {
         // use PushPromiseHeaderHttp2Error::*;
         // The spec has some requirements for promised request headers
@@ -459,12 +448,9 @@ impl PushPromise {
         max_header_list_size: usize,
     ) -> WebResult<Self> {
         let promised_id = StreamIdentifier::parse(&mut src);
-        let mut push = PushPromise::new(
-            head,
-            promised_id,
-            HeaderMap::new(),
-        );
-        push.header_block.parse(&mut src, max_header_list_size, decoder)?;
+        let mut push = PushPromise::new(head, promised_id, HeaderMap::new());
+        // push.header_block
+        //     .parse(&mut src, max_header_list_size, decoder)?;
         Ok(push)
     }
 
@@ -472,88 +458,94 @@ impl PushPromise {
         self.promised_id
     }
 
-    pub fn encode<B: Buf + MarkBuf + BufMut>(self, encoder: &mut Encoder, dst: &mut B) -> usize {
-        let mut result = vec![];
-
+    pub fn encode<B: Buf + MarkBuf + BufMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
         let mut binary = BinaryMut::new();
-        let parts = self.header_block.parts;
-        let mut fields = self.header_block.fields;
+        self.header_block.parts.encode_header(&mut self.header_block.fields);
 
-        println!("fields = {:?}", fields);
-        if let Some(method) = parts.method {
-            fields.insert(":method", method.as_str().to_string());
+        if let Some(v) = self.header_block.fields.remove(":method") {
+            let _ =
+                encoder.encode_header_into((&HeaderName::from_static(":method"), &v), &mut binary);
         }
-        if let Some(authority) = parts.authority {
-        fields.insert(":authority", authority);
+        if let Some(v) = self.header_block.fields.remove(":authority") {
+            let _ = encoder
+                .encode_header_into((&HeaderName::from_static(":authority"), &v), &mut binary);
         }
-        if let Some(scheme) = parts.scheme {
-            fields.insert(":scheme", scheme.as_str().to_string());
+        if let Some(v) = self.header_block.fields.remove(":scheme") {
+            let _ =
+                encoder.encode_header_into((&HeaderName::from_static(":scheme"), &v), &mut binary);
         }
-        if let Some(path) = parts.path {
-            fields.insert(":path", path);
+        if let Some(v) = self.header_block.fields.remove(":path") {
+            let _ =
+                encoder.encode_header_into((&HeaderName::from_static(":path"), &v), &mut binary);
         }
 
         let mut size = 0;
         let mut head = FrameHeader::new(Kind::PushPromise, self.flags.into(), self.stream_id);
-        
-        for value in fields.iter() {
-            let _ = encoder.encode_header_into((value.0, value.1), &mut binary);    
-        }
-        fields.clear();
         head.flag.set_end_headers();
         head.length = binary.remaining() as u32 + 4;
         size += head.encode(dst).unwrap();
         size += self.promised_id.encode(dst).unwrap();
         size += binary.serialize(dst).unwrap();
 
-        binary = BinaryMut::new();
+        self.header_block.encode(encoder, dst, self.promised_id)
+        // binary = BinaryMut::new();
 
-        if let Some(status) = parts.status {
-            // fields.insert(":status", status.as_str());
-            let _ = encoder.encode_header_into((&HeaderName::from_static(":status"), &HeaderValue::from_static(status.as_str())), &mut binary);   
-            println!("stauts!!!!!!!!!");
-        } else {
-            println!("other!!!!!!!!!");
-        }
+        // if let Some(status) = parts.status {
+        //     // fields.insert(":status", status.as_str());
+        //     let _ = encoder.encode_header_into(
+        //         (
+        //             &HeaderName::from_static(":status"),
+        //             &HeaderValue::from_static(status.as_str()),
+        //         ),
+        //         &mut binary,
+        //     );
+        //     println!("stauts!!!!!!!!!");
+        // } else {
+        //     println!("other!!!!!!!!!");
+        // }
 
-        for value in fields {
-            if value.0.bytes_len() + value.1.bytes_len() + binary.remaining() > encoder.max_frame_size as usize {
-                result.push(binary);
-                binary = BinaryMut::new();
-            }
-            let _ = encoder.encode_header_into((&value.0, &value.1), &mut binary);    
-        }
+        // let mut result = vec![];
 
-        result.push(binary);
-        if result.len() == 1 {
-            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.promised_id);
-            head.flag.set_end_headers();
-            head.length = result[0].remaining() as u32;
-            size += head.encode(dst).unwrap();
-            size += result[0].serialize(dst).unwrap();
-        } else {
-            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.promised_id);
-            head.length = result[0].remaining() as u32;
-            size += head.encode(dst).unwrap();
-            size += result[0].serialize(dst).unwrap();
+        // for value in fields {
+        //     if value.0.bytes_len() + value.1.bytes_len() + binary.remaining()
+        //         > encoder.max_frame_size as usize
+        //     {
+        //         result.push(binary);
+        //         binary = BinaryMut::new();
+        //     }
+        //     let _ = encoder.encode_header_into((&value.0, &value.1), &mut binary);
+        // }
 
-            for idx in 1..result.len() {
-                let mut head = FrameHeader::new(Kind::Continuation, self.flags.into(), self.stream_id);
-                if idx == result.len() - 1 {
-                    head.flag.set_end_headers();
-                }
-                head.length = result[idx].remaining() as u32;
-                size += head.encode(dst).unwrap();
-                size += result[idx].serialize(dst).unwrap();
-            }
-        }
-        size
+        // result.push(binary);
+        // if result.len() == 1 {
+        //     let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.promised_id);
+        //     head.flag.set_end_headers();
+        //     head.length = result[0].remaining() as u32;
+        //     size += head.encode(dst).unwrap();
+        //     size += result[0].serialize(dst).unwrap();
+        // } else {
+        //     let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.promised_id);
+        //     head.length = result[0].remaining() as u32;
+        //     size += head.encode(dst).unwrap();
+        //     size += result[0].serialize(dst).unwrap();
+
+        //     for idx in 1..result.len() {
+        //         let mut head =
+        //             FrameHeader::new(Kind::Continuation, self.flags.into(), self.stream_id);
+        //         if idx == result.len() - 1 {
+        //             head.flag.set_end_headers();
+        //         }
+        //         head.length = result[idx].remaining() as u32;
+        //         size += head.encode(dst).unwrap();
+        //         size += result[idx].serialize(dst).unwrap();
+        //     }
+        // }
+        // size
     }
 
     fn head(&self) -> FrameHeader {
         FrameHeader::new(Kind::PushPromise, self.flags, self.stream_id)
     }
-
 }
 
 impl<T> From<PushPromise> for Frame<T> {
@@ -596,7 +588,7 @@ impl Parts {
 
         let mut parts = Parts {
             method: Some(method),
-            scheme: None,
+            scheme: protocol,
             authority: None,
             path: Some(path).filter(|p| !p.is_empty()),
             status: None,
@@ -651,12 +643,36 @@ impl Parts {
         self.status
             .map_or(false, |status| status.is_informational())
     }
+
+    pub fn encode_header(&mut self, header: &mut HeaderMap) {
+        println!("fields = {:?}", header);
+        if let Some(method) = self.method.take() {
+            header.insert(":method", method.as_str().to_string());
+        }
+        if let Some(authority) = self.authority.take() {
+            header.insert(":authority", authority);
+        }
+        if let Some(scheme) = self.scheme.take() {
+            header.insert(":scheme", scheme.as_str().to_string());
+        }
+        if let Some(path) = self.path.take() {
+            header.insert(":path", path);
+        }
+        if let Some(status) = self.status.take() {
+            header.insert(":status", status.as_str());
+        }
+    }
 }
 
 // ===== impl EncodingHeaderBlock =====
 
 impl EncodingHeaderBlock {
-    fn encode<F, B: Buf + MarkBuf + BufMut>(mut self, head: &mut FrameHeader, dst: &mut B, f: F) -> Option<Continuation>
+    fn encode<F, B: Buf + MarkBuf + BufMut>(
+        mut self,
+        head: &mut FrameHeader,
+        dst: &mut B,
+        f: F,
+    ) -> Option<Continuation>
     where
         F: FnOnce(&mut BinaryMut),
     {
@@ -750,98 +766,52 @@ impl EncodingHeaderBlock {
 // ===== HeaderBlock =====
 
 impl HeaderBlock {
-    fn parse<B: Buf + MarkBuf>(
-        &mut self,
-        src: &mut B,
-        max_header_list_size: usize,
-        decoder: &mut Decoder,
-    ) -> WebResult<()> {
-        let mut reg = !self.fields.is_empty();
-        let mut malformed = false;
-        let mut headers_size = self.calculate_header_list_size();
+    pub const FIRST: [&'static str; 5] = [":status", ":path", ":method", ":authority", ":scheme"];
 
-        macro_rules! set_parts {
-            ($field:ident, $val:expr) => {{
-                if reg {
-                    log::trace!("load_hpack; header malformed -- parts not at head of block");
-                    malformed = true;
-                } else if self.parts.$field.is_some() {
-                    log::trace!("load_hpack; header malformed -- repeated parts");
-                    malformed = true;
-                } else {
-                    let __val = $val;
-                    headers_size +=
-                        decoded_header_size(stringify!($field).len() + 1, __val.as_str().len());
-                    if headers_size < max_header_list_size {
-                        self.parts.$field = Some(__val);
-                    } else if !self.is_over_size {
-                        log::trace!("load_hpack; header list size over max");
-                        self.is_over_size = true;
-                    }
+    pub fn encode<B: Buf + BufMut + MarkBuf>(&mut self, encoder: &mut Encoder, dst: &mut B, stream_id: StreamIdentifier) -> WebResult<usize> {
+        let mut result = vec![];
+        let mut binary = BinaryMut::new();
+        for key in Self::FIRST {
+            if let Some(v) = self.fields.remove(key) {
+                let _ = encoder.encode_header_into((&HeaderName::from_static(key), &v), &mut binary);
+            }
+        }
+        for value in self.fields.iter() {
+            if value.0.bytes_len() + value.1.bytes_len() + binary.remaining()
+                > encoder.max_frame_size as usize
+            {
+                result.push(binary);
+                binary = BinaryMut::new();
+            }
+            let _ = encoder.encode_header_into((&value.0, &value.1), &mut binary);
+        }
+
+        result.push(binary);
+        let mut size = 0;
+        if result.len() == 1 {
+            let flag = Flag::end_headers();
+            let mut head = FrameHeader::new(Kind::Headers, flag, stream_id);
+            head.length = result[0].remaining() as u32;
+            size += head.encode(dst).unwrap();
+            size += result[0].serialize(dst).unwrap();
+        } else {
+            let mut head = FrameHeader::new(Kind::Headers, Flag::zero(), stream_id);
+            head.length = result[0].remaining() as u32;
+            size += head.encode(dst).unwrap();
+            size += result[0].serialize(dst).unwrap();
+
+            for idx in 1..result.len() {
+                let mut head =
+                    FrameHeader::new(Kind::Continuation, Flag::zero(), stream_id);
+                if idx == result.len() - 1 {
+                    head.flag.set_end_headers();
                 }
-            }};
+                head.length = result[idx].remaining() as u32;
+                size += head.encode(dst).unwrap();
+                size += result[idx].serialize(dst).unwrap();
+            }
         }
-
-        // let mut cursor = Cursor::new(src);
-
-        // If the header frame is malformed, we still have to continue decoding
-        // the headers. A malformed header frame is a stream level error, but
-        // the hpack state is connection level. In order to maintain correct
-        // state for other streams, the hpack decoding process must complete.
-        // let res = decoder.decode(src, |header| {
-        //     use crate::hpack::Header::*;
-
-        //     match header {
-        //         Field { name, value } => {
-        //             // Connection level header fields are not supported and must
-        //             // result in a protocol error.
-
-        //             if name == header::CONNECTION
-        //                 || name == header::TRANSFER_ENCODING
-        //                 || name == header::UPGRADE
-        //                 || name == "keep-alive"
-        //                 || name == "proxy-connection"
-        //             {
-        //                 log::trace!("load_hpack; connection level header");
-        //                 malformed = true;
-        //             } else if name == header::TE && value != "trailers" {
-        //                 log::trace!(
-        //                     "load_hpack; TE header not set to trailers; val={:?}",
-        //                     value
-        //                 );
-        //                 malformed = true;
-        //             } else {
-        //                 reg = true;
-
-        //                 headers_size += decoded_header_size(name.as_str().len(), value.len());
-        //                 if headers_size < max_header_list_size {
-        //                     self.fields.append(name, value);
-        //                 } else if !self.is_over_size {
-        //                     log::trace!("load_hpack; header list size over max");
-        //                     self.is_over_size = true;
-        //                 }
-        //             }
-        //         }
-        //         Authority(v) => set_parts!(authority, v),
-        //         Method(v) => set_parts!(method, v),
-        //         Scheme(v) => set_parts!(scheme, v),
-        //         Path(v) => set_parts!(path, v),
-        //         Protocol(v) => set_parts!(protocol, v),
-        //         Status(v) => set_parts!(status, v),
-        //     }
-        // });
-
-        // if let Err(e) = res {
-        //     log::trace!("hpack decoding error; err={:?}", e);
-        //     return Err(e.into());
-        // }
-
-        if malformed {
-            log::trace!("malformed message");
-            return Err(Http2Error::MalformedMessage.into());
-        }
-
-        Ok(())
+        Ok(size)
     }
 
     fn into_encoding(self, encoder: &mut Encoder) -> EncodingHeaderBlock {

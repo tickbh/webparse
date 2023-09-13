@@ -73,7 +73,7 @@ impl Setting {
         Setting::from_id(id, val)
     }
 
-    fn encode<B: Buf+MarkBuf+BufMut>(&self, dst: &mut B) -> usize {
+    fn encode<B: Buf+MarkBuf+BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         use self::Setting::*;
 
         let (kind, val) = match *self {
@@ -88,7 +88,7 @@ impl Setting {
 
         dst.put_u16(kind);
         dst.put_u32(val);
-        6
+        Ok(6)
     }
 }
 
@@ -254,21 +254,21 @@ impl Settings {
         len
     }
 
-    pub fn encode<B: Buf+MarkBuf+BufMut>(&self, dst: &mut B) -> usize {
+    pub fn encode<B: Buf+MarkBuf+BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         // Create & encode an appropriate frame head
         let mut head = FrameHeader::new(Kind::Settings, self.flags.into(), StreamIdentifier::zero());
         head.length = self.payload_len() as u32;
 
         println!("encoding SETTINGS; len={}", head.length);
         let mut size = 0;
-        size += head.encode(dst).unwrap();
+        size += head.encode(dst)?;
 
         // Encode the settings
         self.for_each(|setting| {
             log::trace!("encoding setting; val={:?}", setting);
-            size += setting.encode(dst)
+            size += setting.encode(dst).unwrap()
         });
-        size
+        Ok(size)
     }
 
     fn for_each<F: FnMut(Setting)>(&self, mut f: F) {

@@ -115,11 +115,11 @@ impl Frame<Binary> {
         encoder: &mut Encoder,
     ) -> WebResult<usize> {
         let size = match self {
-            Frame::Data(mut s) => s.encode(buf),
-            Frame::Headers(mut s) => s.encode(encoder, buf),
+            Frame::Data(mut s) => s.encode(buf)?,
+            Frame::Headers(mut s) => s.encode(encoder, buf)?,
             Frame::Priority(_) => todo!(),
-            Frame::PushPromise(p) => p.encode(encoder, buf),
-            Frame::Settings(mut s) => s.encode(buf),
+            Frame::PushPromise(p) => p.encode(encoder, buf)?,
+            Frame::Settings(mut s) => s.encode(buf)?,
             Frame::Ping(_) => todo!(),
             Frame::GoAway(_) => todo!(),
             Frame::WindowUpdate(_) => todo!(),
