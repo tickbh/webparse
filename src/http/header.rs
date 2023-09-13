@@ -111,7 +111,6 @@ impl HeaderMap {
     pub fn is_empty(&self) -> bool {
         self.headers.len() == 0
     }
-
     
     pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;

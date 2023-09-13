@@ -263,6 +263,27 @@ impl Url {
         }
         Ok(String::from_utf8_lossy(&vec).to_string())
     }
+
+    pub fn get_authority(&self) -> String {
+        let port = if self.scheme != Scheme::None && self.port.is_some() {
+            match (&self.scheme, self.port) {
+                (Scheme::Http, Some(80)) => None,
+                (Scheme::Https, Some(443)) => None,
+                _ => Some(format!(":{}", self.port.as_ref().unwrap()).to_string())
+            }
+        } else {
+            None
+        };
+        if self.domain.is_some() {
+            format!("{}{}", self.domain.as_ref().unwrap(), port.unwrap_or(String::new()))
+        } else {
+            String::new()
+        }
+    }
+    
+    pub fn get_scheme(&self) -> String {
+        self.scheme.as_str().to_string()
+    }
 }
 
 impl Display for Url {

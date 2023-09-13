@@ -145,19 +145,9 @@ impl Headers {
         Ok(buffer.mark_commit())
     }
 
-    // pub fn parse<B: Buf+MarkBuf>(
-    //     &mut self,
-    //     src: &mut B,
-    //     max_header_list_size: usize,
-    //     decoder: &mut Decoder,
-    // ) -> WebResult<()> {
-    //     self.header_block.parse(src, max_header_list_size, decoder)
-    // }
-
     pub fn stream_id(&self) -> StreamIdentifier {
         self.stream_id
     }
-
     
     pub fn flags(&self) -> Flag {
         self.flags
@@ -236,8 +226,6 @@ impl Headers {
     pub fn into_fields(self) -> HeaderMap {
         self.header_block.fields
     }
-
-
 
     pub fn into_request(self, mut builder: request::Builder) -> WebResult<request::Builder> {
         let (parts, header) = self.into_parts();
@@ -504,6 +492,22 @@ impl PushPromise {
         if let Some(path) = parts.path {
             fields.insert(":path", path);
         }
+
+        let mut size = 0;
+        let mut head = FrameHeader::new(Kind::PushPromise, self.flags.into(), self.stream_id);
+        
+        for value in fields.iter() {
+            let _ = encoder.encode_header_into((value.0, value.1), &mut binary);    
+        }
+        fields.clear();
+        head.flag.set_end_headers();
+        head.length = binary.remaining() as u32 + 4;
+        size += head.encode(dst).unwrap();
+        size += self.promised_id.encode(dst).unwrap();
+        size += binary.serialize(dst).unwrap();
+
+        binary = BinaryMut::new();
+
         if let Some(status) = parts.status {
             // fields.insert(":status", status.as_str());
             let _ = encoder.encode_header_into((&HeaderName::from_static(":status"), &HeaderValue::from_static(status.as_str())), &mut binary);   
@@ -521,19 +525,16 @@ impl PushPromise {
         }
 
         result.push(binary);
-        let mut size = 0;
         if result.len() == 1 {
-            let mut head = FrameHeader::new(Kind::PushPromise, self.flags.into(), self.stream_id);
+            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.promised_id);
             head.flag.set_end_headers();
-            head.length = result[0].remaining() as u32 + 4;
+            head.length = result[0].remaining() as u32;
             size += head.encode(dst).unwrap();
-            size += self.promised_id.encode(dst).unwrap();
             size += result[0].serialize(dst).unwrap();
         } else {
-            let mut head = FrameHeader::new(Kind::PushPromise, self.flags.into(), self.stream_id);
-            head.length = result[0].remaining() as u32 + 4;
+            let mut head = FrameHeader::new(Kind::Headers, self.flags.into(), self.promised_id);
+            head.length = result[0].remaining() as u32;
             size += head.encode(dst).unwrap();
-            size += self.promised_id.encode(dst).unwrap();
             size += result[0].serialize(dst).unwrap();
 
             for idx in 1..result.len() {

@@ -441,6 +441,16 @@ where
         self.parts.header.get_body_len()
     }
 
+    /// 获取请求的authority
+    pub fn get_authority(&self) -> String {
+        self.parts.url.get_authority()
+    }
+
+    /// 获取请求的scheme
+    pub fn get_scheme(&self) -> String {
+        self.parts.url.get_scheme()
+    }
+
     /// 是否保持心跳活跃
     pub fn is_keep_alive(&self) -> bool {
         self.parts.header.is_keep_alive()
@@ -470,14 +480,6 @@ where
     }
 
 
-    // pub fn try_into_type<B: TryFrom<T> + Serialize>(self) -> Request<B> {
-    //     let new = Request {
-    //         body: TryFrom::try_from(self.body),
-    //         parts: self.parts,
-    //         partial: self.partial,
-    //     };
-    //     new
-    // }
 
     fn parse_connect_by_host(url: &mut Url, h: &String) -> WebResult<()> {
         // Host中存在端口号, 则直接取端口号
@@ -495,7 +497,6 @@ where
         Ok(())
     }
 
-    
     pub fn parse_http2_header<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut decoder = self.get_decoder();
         let headers = decoder.decode(buffer)?;
