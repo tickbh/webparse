@@ -2,13 +2,13 @@ use crate::{WebResult, Http2Error, http::http2::Http2, Buf};
 
 use super::{StreamIdentifier, FrameHeader, frame::Frame};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Priority {
     stream_id: StreamIdentifier,
     dependency: StreamDependency,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct StreamDependency {
     /// The ID of the stream dependency target
     dependency_id: StreamIdentifier,
@@ -35,6 +35,23 @@ impl Priority {
             dependency,
         })
     }
+
+    pub fn into(self) -> (StreamIdentifier, StreamIdentifier, u8) {
+        (self.stream_id, self.dependency.dependency_id, self.dependency.weight)
+    }
+
+    pub fn stream_id(&self) -> StreamIdentifier {
+        self.stream_id
+    }
+    
+    pub fn dependency_id(&self) -> StreamIdentifier {
+        self.dependency.dependency_id
+    }
+
+    pub fn weight(&self) -> u8 {
+        self.dependency.weight
+    }
+    
 }
 
 impl<B> From<Priority> for Frame<B> {
@@ -59,12 +76,8 @@ impl StreamDependency {
             return Err(Http2Error::InvalidPayloadLength.into());
         }
 
-        // Parse the stream ID and exclusive flag
         let dependency_id = StreamIdentifier::parse(src);
-
-        // Read the weight
         let weight = src.get_u8();
-        // todo!!
         Ok(StreamDependency::new(dependency_id, weight, false))
     }
 

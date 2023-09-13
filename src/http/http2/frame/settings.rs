@@ -1,7 +1,9 @@
-use crate::{WebResult, Http2Error, Buf, MarkBuf, BufMut, Serialize, http::http2::frame::{Kind, StreamIdentifier}};
+use crate::{
+    http::http2::frame::{Kind, StreamIdentifier},
+    Buf, BufMut, Http2Error, MarkBuf, Serialize, WebResult,
+};
 
-use super::{Flag, frame::FrameHeader};
-
+use super::{frame::FrameHeader, Flag};
 
 #[derive(Clone, Default, Eq, PartialEq, Debug, Hash)]
 pub struct Settings {
@@ -15,7 +17,6 @@ pub struct Settings {
     max_header_list_size: Option<u32>,
     enable_connect_protocol: Option<u32>,
 }
-
 
 /// The default value of SETTINGS_HEADER_TABLE_SIZE
 pub const DEFAULT_SETTINGS_HEADER_TABLE_SIZE: usize = 4_096;
@@ -32,7 +33,6 @@ pub const MAX_INITIAL_WINDOW_SIZE: usize = (1 << 31) - 1;
 /// MAX_FRAME_SIZE upper bound
 pub const MAX_MAX_FRAME_SIZE: u32 = (1 << 24) - 1;
 
-
 #[derive(Debug)]
 pub enum Setting {
     HeaderTableSize(u32),
@@ -43,7 +43,6 @@ pub enum Setting {
     MaxHeaderListSize(u32),
     EnableConnectProtocol(u32),
 }
-
 
 // ===== impl Setting =====
 
@@ -66,14 +65,14 @@ impl Setting {
         }
     }
 
-    fn parse<T: Buf+MarkBuf>(bytes: &mut T) -> Option<Setting> {
+    fn parse<T: Buf + MarkBuf>(bytes: &mut T) -> Option<Setting> {
         let id: u16 = bytes.get_u16();
         let val: u32 = bytes.get_u32();
 
         Setting::from_id(id, val)
     }
 
-    fn encode<B: Buf+MarkBuf+BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    fn encode<B: Buf + MarkBuf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         use self::Setting::*;
 
         let (kind, val) = match *self {
@@ -91,7 +90,6 @@ impl Setting {
         Ok(6)
     }
 }
-
 
 impl Settings {
     pub fn ack() -> Settings {
@@ -170,7 +168,7 @@ impl Settings {
     }
     */
 
-    pub fn parse<T: Buf+MarkBuf>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
+    pub fn parse<T: Buf + MarkBuf>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
         use self::Setting::*;
 
         debug_assert_eq!(head.kind(), &Kind::Settings);
@@ -254,9 +252,10 @@ impl Settings {
         len
     }
 
-    pub fn encode<B: Buf+MarkBuf+BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + MarkBuf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         // Create & encode an appropriate frame head
-        let mut head = FrameHeader::new(Kind::Settings, self.flags.into(), StreamIdentifier::zero());
+        let mut head =
+            FrameHeader::new(Kind::Settings, self.flags.into(), StreamIdentifier::zero());
         head.length = self.payload_len() as u32;
 
         println!("encoding SETTINGS; len={}", head.length);
@@ -303,7 +302,6 @@ impl Settings {
         }
     }
 }
-
 
 #[repr(u16)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

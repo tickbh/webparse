@@ -263,8 +263,8 @@ pub struct PriorityFrame<T = Binary> {
 }
 
 impl<T> PriorityFrame<T> {
-    pub fn new(frame: Frame<T>) -> Self {
-        Self { frame, weight: 0 }
+    pub fn new(frame: Frame<T>, weight: u8) -> Self {
+        Self { frame, weight }
     }
 
     pub fn set_weight(&mut self, weight: u8) {
