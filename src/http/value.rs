@@ -139,10 +139,10 @@ impl PartialEq<HeaderValue> for HeaderValue {
     }
 }
 
-impl PartialEq<str> for HeaderValue {
-    fn eq(&self, other: &str) -> bool {
+impl PartialEq<&str> for HeaderValue {
+    fn eq(&self, other: &&str) -> bool {
         match self {
-            HeaderValue::Stand(s) => s == &other,
+            HeaderValue::Stand(s) => s == other,
             HeaderValue::Value(s) => &s[..] == other.as_bytes(),
         }
     }
@@ -163,7 +163,7 @@ impl PartialEq<[u8]> for HeaderValue {
     }
 }
 
-impl PartialEq<HeaderValue> for str {
+impl PartialEq<HeaderValue> for &str {
     fn eq(&self, url: &HeaderValue) -> bool {
         url == self
     }

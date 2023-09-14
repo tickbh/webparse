@@ -67,8 +67,6 @@ impl<T> Data<T> {
         FrameHeader::new(Kind::Data, self.flags.into(), self.stream_id)
     }
 
-    
-
     pub(crate) fn map<F, U>(self, f: F) -> Data<U>
     where
         F: FnOnce(T) -> U,

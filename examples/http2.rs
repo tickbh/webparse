@@ -1,27 +1,6 @@
-# webparse
-
-一个包含http1.1及http2的解析库。极少的依赖
-
-## 使用方法
-
-http/1.1的解析示例
-
-```rust
-let mut req = webparse::Request::new();
-let ret = req.parse(b"GET /index.html HTTP/1.1\r\nHost");
-assert!(ret.err().unwrap().is_partial());
-
-let buf = b"GET /index.html HTTP/1.1\r\nHost: example.domain\r\n\r\n";
-let ret = req.parse(buf).unwrap();
-
-assert!(ret == buf.len());
-assert!(req.is_complete());
-```
-
-http2的头解析示例，包含huffman，[rfc7541 C.4](https://httpwg.org/specs/rfc7541.html#huffman.code) 
-```rust
 use webparse::{Helper, http2::{frame::Headers, Decoder, DEFAULT_SETTINGS_HEADER_TABLE_SIZE}, BinaryMut, Method, Scheme};
 
+/// https://httpwg.org/specs/rfc7541.html#huffman.code, C.4
 fn parse_header() {
     let mut decoder = Decoder::new();
     // C.4.1
@@ -61,7 +40,7 @@ fn parse_header() {
     println!("fields = {:?}", header.fields());
     assert!(header.fields()["custom-key"] == "custom-value");
 }
-```
 
-## License
-Apache License, Version 2.0 ([LICENSE-APACHE](./LICENSE) or [https://apache.org/licenses/LICENSE-2.0](https://apache.org/licenses/LICENSE-2.0))
+fn main() {
+    parse_header();
+}

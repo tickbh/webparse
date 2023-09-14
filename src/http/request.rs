@@ -423,6 +423,10 @@ where
         self.partial
     }
 
+    pub fn is_complete(&self) -> bool {
+        !self.partial
+    }
+
     pub fn into<B: Serialize>(self, body: B) -> (Request<B>, T) {
         let new = Request {
             body,
@@ -690,7 +694,7 @@ mod tests {
 
     // req2! {
     //     urltest_005,
-    //     Helper::hexstr_to_vec("8286 8441 0f77 7777 2e65 7861 6d70 6c65 2e63 6f6d"),
+    //     Helper::hex_to_vec("8286 8441 0f77 7777 2e65 7861 6d70 6c65 2e63 6f6d"),
     //     |req| {
     //         assert_eq!(req.method(), &Method::Get);
     //         assert_eq!(req.path(), "/");
@@ -705,7 +709,7 @@ mod tests {
     // #[test]
     // fn http2_test() {
     //     let mut req = Request::new();
-    //     let buf = Helper::hexstr_to_vec("8286 8441 0f77 7777 2e65 7861 6d70 6c65 2e63 6f6d");
+    //     let buf = Helper::hex_to_vec("8286 8441 0f77 7777 2e65 7861 6d70 6c65 2e63 6f6d");
     //     let size = req.parse2(buf.as_ref()).unwrap();
     //     assert_eq!(size, buf.len());
     //     assert_eq!(req.method(), &Method::Get);
@@ -718,7 +722,7 @@ mod tests {
     //     assert_eq!(&req.headers()[":authority"], "www.example.com");
 
     //     let mut req = Builder::from_req(&req).body(()).unwrap();
-    //     let buf = Helper::hexstr_to_vec("8286 84be 5808 6e6f 2d63 6163 6865");
+    //     let buf = Helper::hex_to_vec("8286 84be 5808 6e6f 2d63 6163 6865");
     //     let size = req.parse2(buf.as_ref()).unwrap();
     //     assert_eq!(size, buf.len());
 
@@ -733,7 +737,7 @@ mod tests {
     //     assert_eq!(&req.headers()["cache-control"], "no-cache");
 
     //     let mut req = Builder::from_req(&req).body(()).unwrap();
-    //     let buf = Helper::hexstr_to_vec(
+    //     let buf = Helper::hex_to_vec(
     //         "8287 85bf 400a 6375 7374 6f6d 2d6b 6579 0c63 7573 746f 6d2d 7661 6c75 65",
     //     );
     //     let size = req.parse2(buf.as_ref()).unwrap();

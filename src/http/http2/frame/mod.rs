@@ -16,7 +16,7 @@ mod window_update;
 use std::cmp::Ordering;
 
 pub use priority::{Priority, StreamDependency};
-pub use headers::{Headers, PushPromise, Continuation};
+pub use headers::{Headers, PushPromise};
 pub use data::Data;
 pub use flag::Flag;
 pub use frame::{Frame, PriorityFrame};

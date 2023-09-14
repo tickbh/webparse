@@ -6,12 +6,9 @@ authors = [ "tickbh <tickdream125@hotmail.com>" ]
 description = "http1.1/http2 parse http解析库"
 repository = "https://github.com/tickbh/webparse"
 license = "Apache-2.0"
-keywords = []
+keywords = ["http1", "http2", "parse", "http"]
 
 [dependencies]
 log="0.4.19"
 bitflags="2.4"
 lazy_static = "1.4.0"
-
-# [dependencies.example]
-# tokio="1"

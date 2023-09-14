@@ -354,7 +354,7 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn hexstr_to_vec(s: &str) -> Vec<u8> {
+    pub fn hex_to_vec(s: &str) -> Vec<u8> {
         let mut result = vec![];
         let bytes = s.as_bytes();
         let mut val = 0;

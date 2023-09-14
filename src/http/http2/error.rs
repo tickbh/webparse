@@ -10,7 +10,6 @@ pub enum Http2Error {
     Huffman(HuffmanDecoderError),
     /// A full frame header was not passed.
     Short,
-
     /// An unsupported value was set for the flag value.
     BadFlag(u8),
 
