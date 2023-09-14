@@ -126,6 +126,13 @@ impl TryFrom<String> for HeaderValue {
     }
 }
 
+impl TryFrom<usize> for HeaderValue {
+    type Error = WebError;
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        Ok(HeaderValue::Value(format!("{}", value).into_bytes()))
+    }
+}
+
 impl Eq for HeaderValue {}
 
 impl PartialEq<HeaderValue> for HeaderValue {

@@ -597,6 +597,12 @@ impl<T: Serialize> Response<T> {
         new
     }
 
+    
+    /// 获取返回的body长度, 如果为0则表示未写入信息
+    pub fn get_body_len(&self) -> usize {
+        self.parts.header.get_body_len()
+    }
+
     pub fn encode_header<B: Buf + BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += self.parts.version.encode(buffer)?;
