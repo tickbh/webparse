@@ -94,7 +94,7 @@ impl StreamDependency {
     }
     
     fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
-        self.dependency_id.encode(dst);
+        self.dependency_id.encode(dst)?;
         dst.put_u8(self.weight);
         Ok(5)
     }

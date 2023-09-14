@@ -500,15 +500,10 @@ impl Parts {
             status: None,
         };
 
-        // If the URI includes a scheme component, add it to the parts headers
-        //
-        // TODO: Scheme must be set...
         if uri.scheme != Scheme::None {
             parts.set_scheme(uri.scheme);
         }
 
-        // If the URI includes an authority component, add it to the parts
-        // headers
         if let Some(authority) = uri.domain {
             parts.set_authority(authority);
         }
@@ -526,7 +521,6 @@ impl Parts {
         }
     }
 
-    #[cfg(feature = "unstable")]
     pub fn set_status(&mut self, value: StatusCode) {
         self.status = Some(value);
     }
@@ -535,17 +529,11 @@ impl Parts {
         self.scheme = Some(scheme);
     }
 
-    #[cfg(feature = "unstable")]
-    pub fn set_protocol(&mut self, protocol: Protocol) {
-        self.protocol = Some(protocol);
-    }
-
     pub fn set_authority(&mut self, authority: String) {
         self.authority = Some(authority);
     }
 
-    /// Whether it has status 1xx
-    pub(crate) fn is_informational(&self) -> bool {
+    pub fn is_informational(&self) -> bool {
         self.status
             .map_or(false, |status| status.is_informational())
     }

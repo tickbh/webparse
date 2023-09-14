@@ -97,9 +97,7 @@ unsafe fn shared_to_vec(bin: &Binary) -> Vec<u8> {
 }
 
 unsafe fn shared_drop(bin: &mut Binary) {
-    println!("now drop = {:?}", bin.as_slice());
     if (*bin.counter).borrow_mut().fetch_sub(1, Ordering::Release) == 1 {
-        println!("share drop value {:?}", bin.ptr);
         let ori = bin.ptr.sub(bin.cursor);
         dealloc(
             ori as *mut u8,

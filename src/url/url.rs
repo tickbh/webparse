@@ -73,7 +73,6 @@ impl Url {
                 result.push(b);
             }
         }
-        println!("ok ==== {:?}",  String::from_utf8(result.clone()));
         match String::from_utf8(result) {
             Ok(s) => Ok(Some(s)),
             Err(_) => Err(WebError::from(UrlError::UrlInvalid))

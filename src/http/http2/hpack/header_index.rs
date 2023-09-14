@@ -1,6 +1,6 @@
 use std::{collections::{VecDeque, vec_deque, HashMap}, fmt};
 use lazy_static::lazy_static;
-use crate::{HeaderName, HeaderValue};
+use crate::{HeaderName, HeaderValue, http2::DEFAULT_SETTINGS_HEADER_TABLE_SIZE};
 
 
 #[derive(Clone)]
@@ -14,15 +14,6 @@ struct DynamicTable {
 pub struct HeaderIndex {
     dynamic_table: DynamicTable,
 }
-
-// type HeaderTuple<'a> = (&'a HeaderName, &'a HeaderValue);
-
-// impl Hash for HeaderTuple<'a> {
-//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        
-//     }
-// }
-
 
 /// An `Iterator` through elements of the `DynamicTable`.
 ///
@@ -55,7 +46,7 @@ impl DynamicTable {
     fn new() -> DynamicTable {
         // The default maximum size corresponds to the default HTTP/2
         // setting
-        DynamicTable::with_size(4096)
+        DynamicTable::with_size(DEFAULT_SETTINGS_HEADER_TABLE_SIZE)
     }
 
     /// Creates a new empty dynamic table with the given maximum size.
@@ -79,14 +70,14 @@ impl DynamicTable {
         }
     }
 
-    fn set_max_table_size(&mut self, new_max_size: usize) {
+    pub fn set_max_table_size(&mut self, new_max_size: usize) {
         self.max_size = new_max_size;
         // Make the table size fit within the new constraints.
         self.consolidate_table();
     }
 
     /// Returns the maximum size of the table in octets.
-    fn get_max_table_size(&self) -> usize {
+    pub fn get_max_table_size(&self) -> usize {
         self.max_size
     }
 
@@ -126,7 +117,7 @@ impl DynamicTable {
     }
 
     /// Converts the current state of the table to a `Vec`
-    fn to_vec(&self) -> Vec<(HeaderName, HeaderValue)> {
+    pub fn to_vec(&self) -> Vec<(HeaderName, HeaderValue)> {
         let mut ret: Vec<(HeaderName, HeaderValue)> = Vec::new();
         for elem in self.table.iter() {
             ret.push(elem.clone());
@@ -264,8 +255,6 @@ static STATIC_TABLE_RAW: &'static [(&'static str, &'static str)] = &[
     ("via", ""),
     ("www-authenticate", ""),
 ];
-
-
 
 lazy_static! {
     static ref STATIC_TABLE: Vec<(HeaderName, HeaderValue)> = {

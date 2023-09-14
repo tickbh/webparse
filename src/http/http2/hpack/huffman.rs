@@ -169,8 +169,8 @@ impl HuffmanEncoder {
 
 
 
-const EOS_VALUE: u32 = 0x3fffffff;
-const EOS_LEN: u8 = 30;
+pub const EOS_VALUE: u32 = 0x3fffffff;
+pub const EOS_LEN: u8 = 30;
 
 // See README.md for actual characters of the following hex codes.
 static HUFFMAN_CODE_ARRAY: &'static [(u32, u8)] = &[
