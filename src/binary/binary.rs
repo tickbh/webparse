@@ -316,9 +316,7 @@ impl Buf for Binary {
             self.inc_start(n);
         }
     }
-}
-
-impl MarkBuf for Binary {
+    
     fn mark_slice_skip(&mut self, skip: usize) -> &[u8] {
         debug_assert!(self.cursor - skip >= self.mark);
         let cursor = self.cursor;
@@ -375,6 +373,7 @@ impl MarkBuf for Binary {
     //     bin
     // }
 }
+
 
 impl Read for Binary {
     #[inline(always)]
@@ -442,32 +441,6 @@ impl Borrow<[u8]> for Binary {
         self.as_slice()
     }
 }
-
-// impl IntoIterator for Binary {
-//     type Item = u8;
-//     type IntoIter = IntoIter<Binary>;
-
-//     fn into_iter(self) -> Self::IntoIter {
-//         IntoIter::new(self)
-//     }
-// }
-
-// impl<'a> IntoIterator for &'a Binary {
-//     type Item = &'a u8;
-//     type IntoIter = core::slice::Iter<'a, u8>;
-
-//     fn into_iter(self) -> Self::IntoIter {
-//         self.as_slice().iter()
-//     }
-// }
-
-// impl FromIterator<u8> for Binary {
-//     fn from_iter<T: IntoIterator<Item = u8>>(into_iter: T) -> Self {
-//         Vec::from_iter(into_iter).into()
-//     }
-// }
-
-// impl Eq
 
 impl PartialEq for Binary {
     fn eq(&self, other: &Binary) -> bool {

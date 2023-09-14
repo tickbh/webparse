@@ -328,9 +328,7 @@ impl Buf for BinaryMut {
             self.inc_start(n);
         }
     }
-}
-
-impl MarkBuf for BinaryMut {
+    
     fn mark_commit(&mut self) -> usize {
         self.mark = self.cursor;
         self.mark
@@ -386,6 +384,7 @@ impl MarkBuf for BinaryMut {
         bin
     }
 }
+
 
 unsafe impl BufMut for BinaryMut {
     fn remaining_mut(&self) -> usize {

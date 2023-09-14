@@ -40,7 +40,16 @@ macro_rules! buf_get_impl {
     }};
 }
 
-pub trait MarkBuf: Buf {
+pub trait Buf {
+    /// 获取剩余数量
+    fn remaining(&self) -> usize;
+
+    /// 获取当前数据的切片引用
+    fn chunk(&self) -> &[u8];
+
+    /// 消耗掉多少字节的数据, 做指针偏移
+    fn advance(&mut self, n: usize);
+    
     /// 获取从起始值到当前值的slice引用
     fn mark_slice_skip(&mut self, skip: usize) -> &[u8];
 
@@ -66,18 +75,7 @@ pub trait MarkBuf: Buf {
         self.advance(1);
         self.mark_commit();
     }
-}
 
-pub trait Buf {
-    /// 获取剩余数量
-    fn remaining(&self) -> usize;
-
-    /// 获取当前数据的切片引用
-    fn chunk(&self) -> &[u8];
-
-    /// 消耗掉多少字节的数据, 做指针偏移
-    fn advance(&mut self, n: usize);
-    
     /// 消耗所有的字节
     fn advance_all(&mut self) {
         self.advance(self.remaining());
@@ -926,54 +924,54 @@ pub trait Buf {
 }
 
 
-impl Buf for &[u8] {
-    #[inline]
-    fn remaining(&self) -> usize {
-        self.len()
-    }
+// impl Buf for &[u8] {
+//     #[inline]
+//     fn remaining(&self) -> usize {
+//         self.len()
+//     }
 
-    #[inline]
-    fn chunk(&self) -> &[u8] {
-        self
-    }
+//     #[inline]
+//     fn chunk(&self) -> &[u8] {
+//         self
+//     }
 
-    #[inline]
-    fn advance(&mut self, cnt: usize) {
-        *self = &self[cnt..];
-    }
+//     #[inline]
+//     fn advance(&mut self, cnt: usize) {
+//         *self = &self[cnt..];
+//     }
 
-}
+// }
 
-impl<T: AsRef<[u8]>> Buf for std::io::Cursor<T> {
-    fn remaining(&self) -> usize {
-        let len = self.get_ref().as_ref().len();
-        let pos = self.position();
+// impl<T: AsRef<[u8]>> Buf for std::io::Cursor<T> {
+//     fn remaining(&self) -> usize {
+//         let len = self.get_ref().as_ref().len();
+//         let pos = self.position();
 
-        if pos >= len as u64 {
-            return 0;
-        }
+//         if pos >= len as u64 {
+//             return 0;
+//         }
 
-        len - pos as usize
-    }
+//         len - pos as usize
+//     }
 
-    fn chunk(&self) -> &[u8] {
-        let len = self.get_ref().as_ref().len();
-        let pos = self.position();
+//     fn chunk(&self) -> &[u8] {
+//         let len = self.get_ref().as_ref().len();
+//         let pos = self.position();
 
-        if pos >= len as u64 {
-            return &[];
-        }
+//         if pos >= len as u64 {
+//             return &[];
+//         }
 
-        &self.get_ref().as_ref()[pos as usize..]
-    }
+//         &self.get_ref().as_ref()[pos as usize..]
+//     }
 
-    fn advance(&mut self, cnt: usize) {
-        let pos = (self.position() as usize)
-            .checked_add(cnt)
-            .expect("overflow");
+//     fn advance(&mut self, cnt: usize) {
+//         let pos = (self.position() as usize)
+//             .checked_add(cnt)
+//             .expect("overflow");
 
-        assert!(pos <= self.get_ref().as_ref().len());
-        self.set_position(pos as u64);
-    }
+//         assert!(pos <= self.get_ref().as_ref().len());
+//         self.set_position(pos as u64);
+//     }
 
-}
+// }

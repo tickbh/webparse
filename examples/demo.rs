@@ -147,10 +147,10 @@ fn debug_request_parse() {
         b"GET //:///// HTTP/1.1\r\nHost: \r\n\r\n"
     );
     let x = &request.headers()["Host"];
-    if x == "foo" {
+    if x == &"foo" {
         println!("111");
     }
-    if "foo" == x {
+    if &"foo" == x {
         println!("111");
     }
 }
