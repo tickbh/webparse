@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, MarkBuf, Serialize, Version, WebError, WebResult,
+    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult,
 };
 
 use super::{
@@ -597,7 +597,7 @@ impl<T: Serialize> Response<T> {
         new
     }
 
-    pub fn encode_header<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode_header<B: Buf + BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += self.parts.version.encode(buffer)?;
         size += buffer.put_slice(" ".as_bytes());
@@ -651,7 +651,7 @@ impl<T> Serialize for Response<T>
 where
     T: Serialize,
 {
-    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += self.parts.version.encode(buffer)?;
         size += buffer.put_slice(" ".as_bytes());

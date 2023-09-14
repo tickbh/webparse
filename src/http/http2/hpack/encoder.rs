@@ -1,5 +1,5 @@
 use super::{HeaderIndex, huffman::HuffmanEncoder};
-use crate::{BinaryMut, Buf, BufMut, HeaderName, HeaderValue, MarkBuf};
+use crate::{BinaryMut, Buf, BufMut, HeaderName, HeaderValue};
 use std::{
     io,
     num::Wrapping,
@@ -35,7 +35,7 @@ impl Encoder {
         encoded
     }
 
-    pub fn encode_into<'b, I, B: BufMut + Buf + MarkBuf>(
+    pub fn encode_into<'b, I, B: BufMut + Buf>(
         &mut self,
         headers: I,
         writer: &mut B,
@@ -49,7 +49,7 @@ impl Encoder {
         Ok(())
     }
 
-    pub fn encode_header_into<B: BufMut + Buf + MarkBuf>(
+    pub fn encode_header_into<B: BufMut + Buf>(
         &mut self,
         header: (&HeaderName, &HeaderValue),
         writer: &mut B,
@@ -74,7 +74,7 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_literal<B: BufMut + Buf + MarkBuf>(
+    fn encode_literal<B: BufMut + Buf>(
         &mut self,
         header: (&HeaderName, &HeaderValue),
         should_index: bool,
@@ -88,7 +88,7 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_string_literal<B: BufMut + Buf + MarkBuf>(
+    fn encode_string_literal<B: BufMut + Buf>(
         &mut self,
         octet_str: &[u8],
         buf: &mut B,
@@ -99,7 +99,7 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_indexed_name<B: BufMut + Buf + MarkBuf>(
+    fn encode_indexed_name<B: BufMut + Buf>(
         &mut self,
         header: (usize, &HeaderValue),
         should_index: bool,
@@ -113,7 +113,7 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_indexed<B: BufMut + Buf + MarkBuf>(
+    fn encode_indexed<B: BufMut + Buf>(
         &self,
         index: usize,
         buf: &mut B,
@@ -122,7 +122,7 @@ impl Encoder {
         Ok(())
     }
 
-    pub fn encode_integer_into<B: BufMut + Buf + MarkBuf>(
+    pub fn encode_integer_into<B: BufMut + Buf>(
         mut value: usize,
         prefix_size: u8,
         leading_bits: u8,

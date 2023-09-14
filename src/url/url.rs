@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{WebResult, peek, expect, next, WebError, Helper, Binary, Buf, MarkBuf, Scheme, UrlError };
+use crate::{WebResult, peek, expect, next, WebError, Helper, Binary, Buf, Scheme, UrlError };
 
 
 

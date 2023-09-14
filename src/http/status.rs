@@ -21,7 +21,7 @@ use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::{convert::TryFrom, io::Write};
 
-use crate::{HttpError, Serialize, WebError, WebResult, HeaderName, HeaderValue, Buf, BufMut, MarkBuf};
+use crate::{HttpError, Serialize, WebError, WebResult, HeaderName, HeaderValue, Buf, BufMut};
 
 /// An HTTP status code (`status-code` in RFC 7230 et al.).
 ///
@@ -203,7 +203,7 @@ impl StatusCode {
         (HeaderName::from_static(":status"), HeaderValue::from_bytes(self.as_str().as_bytes()))
     }
 
-    pub fn encode<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         match self.canonical_reason() {
             Some(s) => {
                 Ok(buffer

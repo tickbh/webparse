@@ -1,7 +1,7 @@
 use std::hash::Hash;
 use std::{borrow::Cow, fmt};
 
-use crate::{Helper, WebError, WebResult, Buf, BufMut, MarkBuf};
+use crate::{Helper, WebError, WebResult, Buf, BufMut};
 
 #[derive(Clone, Debug)]
 pub enum HeaderValue {
@@ -43,7 +43,7 @@ impl HeaderValue {
         }
     }
 
-    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
             Self::Value(vec) => Ok(buffer.put_slice(&**vec)),

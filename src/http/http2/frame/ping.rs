@@ -1,4 +1,4 @@
-use crate::{WebResult, Buf, http::http2::frame::{Kind, Flag}, Http2Error, Serialize, BufMut, MarkBuf};
+use crate::{WebResult, Buf, http::http2::frame::{Kind, Flag}, Http2Error, Serialize, BufMut};
 
 use super::{FrameHeader, Frame, StreamIdentifier};
 
@@ -88,7 +88,7 @@ impl Ping {
     }
 
     
-    pub fn encode<B: Buf+MarkBuf+BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         let head = self.head();
 
         println!("encoding Ping; len={}", head.length);
@@ -101,7 +101,7 @@ impl Ping {
 }
 
 impl Serialize for Ping {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> crate::WebResult<usize> {
+    fn serialize<B: Buf+BufMut>(&mut self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_slice(&self.payload);

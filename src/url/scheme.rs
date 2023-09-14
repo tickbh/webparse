@@ -1,6 +1,6 @@
 use std::{fmt::Display};
 
-use crate::{byte_map, Helper, WebResult, WebError, Serialize, Buf, MarkBuf, BufMut};
+use crate::{byte_map, Helper, WebResult, WebError, Serialize, Buf, BufMut};
 
 
 
@@ -56,7 +56,7 @@ impl Scheme {
 
     
 
-    pub fn parse_scheme<T: Buf + MarkBuf>(buffer: &mut T) -> WebResult<Scheme> {
+    pub fn parse_scheme<T: Buf>(buffer: &mut T) -> WebResult<Scheme> {
         let scheme = Helper::parse_scheme(buffer)?;
         Scheme::try_from(scheme)
     }
@@ -82,7 +82,7 @@ impl Display for Scheme {
 }
 
 impl Serialize for Scheme {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf+BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Scheme::None => Err(WebError::Serialize("scheme")),
             _ => Ok(buffer.put_slice(self.as_str().as_bytes()))

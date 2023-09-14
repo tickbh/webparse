@@ -5,7 +5,7 @@ use std::num::Wrapping;
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    Buf, HeaderName, HeaderValue, Http2Error, MarkBuf, WebResult,
+    Buf, HeaderName, HeaderValue, Http2Error, WebResult,
 };
 
 use super::huffman::{HuffmanDecoder, HuffmanDecoderError};
@@ -93,7 +93,7 @@ impl Decoder {
         Decoder { index }
     }
 
-    pub fn decode<B: Buf + MarkBuf>(
+    pub fn decode<B: Buf>(
         &mut self,
         buf: &mut B,
     ) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
@@ -106,7 +106,7 @@ impl Decoder {
         Ok(header_list)
     }
 
-    pub fn decode_with_cb<F, B: Buf + MarkBuf>(&mut self, buf: &mut B, mut cb: F) -> WebResult<()>
+    pub fn decode_with_cb<F, B: Buf>(&mut self, buf: &mut B, mut cb: F) -> WebResult<()>
     where
         F: FnMut(Cow<HeaderName>, Cow<HeaderValue>),
     {

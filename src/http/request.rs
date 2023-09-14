@@ -2,8 +2,8 @@ use std::sync::{Arc, RwLock};
 
 use super::{http2::HeaderIndex, HeaderMap, Method, Version};
 use crate::{
-    BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, MarkBuf, Scheme,
-    Serialize, Url, WebError, WebResult,
+    BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, Scheme, Serialize, Url,
+    WebError, WebResult,
 };
 
 #[derive(Debug)]
@@ -461,7 +461,7 @@ where
         Ok(())
     }
 
-    pub fn parse_buffer<B: Buf + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn parse_buffer<B: Buf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         Helper::skip_empty_lines(buffer)?;
         self.parts.method = Helper::parse_method(buffer)?;
         Helper::skip_spaces(buffer)?;
@@ -534,7 +534,7 @@ where
         &mut self.body
     }
 
-    pub fn encode_header<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode_header<B: Buf + BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += self.parts.method.encode(buffer)?;
         size += buffer.put_u8(b' ');
@@ -618,7 +618,6 @@ impl Clone for Parts {
 }
 
 mod tests {
-    
 
     macro_rules! req {
         ($name:ident, $buf:expr, |$arg:ident| $body:expr) => {
@@ -646,7 +645,7 @@ mod tests {
             assert_eq!(req.url().query, Some("b".to_string()));
             assert_eq!(req.version(), &crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
-            assert_eq!(&req.headers()["Host"], "foo");
+            assert_eq!(&req.headers()["Host"], &"foo");
         }
     }
 
@@ -660,7 +659,7 @@ mod tests {
             assert_eq!(req.url().query, None);
             assert_eq!(req.version(), &crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
-            assert_eq!(&req.headers()["Host"], "");
+            assert_eq!(&req.headers()["Host"], &"");
         }
     }
 
@@ -674,7 +673,7 @@ mod tests {
             assert_eq!(req.url().query, Some("efgh?ijkl".to_string()));
             assert_eq!(req.version(), &crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
-            assert_eq!(&req.headers()["Host"], "");
+            assert_eq!(&req.headers()["Host"], &"");
         }
     }
 
@@ -688,7 +687,7 @@ mod tests {
             assert_eq!(req.url().query, None);
             assert_eq!(req.version(), &crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
-            assert_eq!(&req.headers()["Host"], "");
+            assert_eq!(&req.headers()["Host"], &"");
         }
     }
 

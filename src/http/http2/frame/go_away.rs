@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{Binary, WebResult, Http2Error, Buf, BufMut, MarkBuf};
+use crate::{Binary, WebResult, Http2Error, Buf, BufMut};
 
 use super::{StreamIdentifier, Reason, frame, Kind, FrameHeader, Flag};
 
@@ -65,7 +65,7 @@ impl GoAway {
         head
     }
 
-    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> crate::WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.last_stream_id.0);

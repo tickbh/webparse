@@ -7,7 +7,7 @@ use crate::{
         http2::{encoder::Encoder, Decoder},
         StatusCode,
     },
-    Binary, BinaryMut, Buf, HeaderMap, Http2Error, MarkBuf, Method, Scheme, Url,
+    Binary, BinaryMut, Buf, HeaderMap, Http2Error, Method, Scheme, Url,
     WebResult,
 };
 
@@ -111,7 +111,7 @@ impl Headers {
         }
     }
 
-    pub fn parse<B: Buf + MarkBuf>(
+    pub fn parse<B: Buf>(
         &mut self,
         mut buffer: B,
         decoder: &mut Decoder,
@@ -254,7 +254,7 @@ impl Headers {
         Ok(builder)
     }
 
-    pub fn encode<B: Buf + MarkBuf + BufMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
         let _binary = BinaryMut::new();
         self.header_block.parts.encode_header(&mut self.header_block.fields);
         self.header_block.encode(encoder, dst, self.stream_id)
@@ -400,7 +400,7 @@ impl PushPromise {
         self.header_block.fields
     }
 
-    pub fn parse<B: Buf + MarkBuf>(
+    pub fn parse<B: Buf>(
         head: FrameHeader,
         mut src: B,
         _decoder: &mut Decoder,
@@ -417,7 +417,7 @@ impl PushPromise {
         self.promised_id
     }
 
-    pub fn encode<B: Buf + MarkBuf + BufMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
         let mut binary = BinaryMut::new();
         self.header_block.parts.encode_header(&mut self.header_block.fields);
 
@@ -559,7 +559,7 @@ impl Parts {
 impl HeaderBlock {
     pub const FIRST: [&'static str; 5] = [":status", ":path", ":method", ":authority", ":scheme"];
 
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&mut self, encoder: &mut Encoder, dst: &mut B, stream_id: StreamIdentifier) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut>(&mut self, encoder: &mut Encoder, dst: &mut B, stream_id: StreamIdentifier) -> WebResult<usize> {
         let mut result = vec![];
         let mut binary = BinaryMut::new();
         for key in Self::FIRST {

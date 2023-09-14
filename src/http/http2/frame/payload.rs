@@ -1,6 +1,6 @@
 // use std::{fmt, mem};
 
-// use crate::{Http2Error, WebError, WebResult, MarkBuf, Buf, BufMut, Serialize};
+// use crate::{Http2Error, WebError, WebResult, Buf, BufMut, Serialize};
 
 // use super::{
 //     frame::FrameHeader, read_u64, ErrorCode, Flag, Kind, ParserSettings, SizeIncrement,
@@ -12,7 +12,7 @@
 
 // #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 // pub enum Payload<T>
-// where T: Buf + MarkBuf {
+// where T: Buf {
 //     Data {
 //         data: T,
 //     },
@@ -69,7 +69,7 @@
 // }
 
 // impl Serialize for Priority {
-//     fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+//     fn serialize<B: Buf+BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
 //         let mut dependency = self.dependency;
 //         if self.exclusive {
 //             dependency.0 |= 1 << 31
@@ -305,7 +305,7 @@
 
 
 // impl<T: Buf+MarkBuf> Serialize for Payload<T> {
-//     fn serialize<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+//     fn serialize<B: Buf+BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
 //         let size = match *self {
 //             Payload::Data { ref data } => encode_memory(data, buffer),
 //             Payload::Headers {
@@ -354,12 +354,12 @@
 // }
 
 // #[inline]
-// fn encode_memory<T: Buf + MarkBuf, B: Buf + BufMut + MarkBuf>(src: &T, mut dst: &mut B) -> usize {
+// fn encode_memory<T: Buf, B: Buf + BufMut>(src: &T, mut dst: &mut B) -> usize {
 //     dst.put_slice(src.chunk())
 // }
 
 // #[inline]
-// fn trim_padding<T: Buf + MarkBuf>(settings: ParserSettings, header: FrameHeader, buf: &mut T) -> WebResult<()> {
+// fn trim_padding<T: Buf>(settings: ParserSettings, header: FrameHeader, buf: &mut T) -> WebResult<()> {
 //     if settings.padding && buf.has_remaining() {
 //         let pad_length = buf.peek().unwrap();
 //         if pad_length as u32 > header.length {

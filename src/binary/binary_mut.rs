@@ -13,7 +13,7 @@ use std::{
     },
 };
 
-use crate::{Binary, Buf, MarkBuf, WebError};
+use crate::{Binary, Buf, WebError};
 
 use super::BufMut;
 

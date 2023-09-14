@@ -1,4 +1,4 @@
-use crate::{WebResult, Http2Error, Buf, BufMut, MarkBuf};
+use crate::{WebResult, Http2Error, Buf, BufMut};
 
 use super::{StreamIdentifier, Reason, FrameHeader, frame::Frame, Kind, Flag};
 
@@ -44,7 +44,7 @@ impl Reset {
         head
     }
 
-    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> crate::WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.error_code.into());

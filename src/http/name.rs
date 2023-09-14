@@ -1,6 +1,6 @@
 use std::{fmt, hash::Hash};
 
-use crate::{WebError, WebResult, Buf, BufMut, MarkBuf};
+use crate::{WebError, WebResult, Buf, BufMut};
 
 /// 请求头的名字不区分大小写
 #[derive(Clone)]
@@ -108,7 +108,7 @@ impl HeaderName {
         }
     }
 
-    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
             Self::Value(name) => Ok(buffer.put_slice(name.as_bytes())),

@@ -1,5 +1,5 @@
 
-use crate::{Binary, Serialize, Buf, BufMut, MarkBuf, WebResult};
+use crate::{Binary, Serialize, Buf, BufMut, WebResult};
 
 use super::{Flag, FrameHeader, Kind, StreamIdentifier};
 
@@ -81,7 +81,7 @@ impl<T> Data<T> {
 }
 
 impl Data<Binary> {
-    pub fn encode<B: Buf+MarkBuf+BufMut>(&mut self, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&mut self, dst: &mut B) -> WebResult<usize> {
         // Create & encode an appropriate frame head
         let mut head = FrameHeader::new(Kind::Data, self.flags.into(), self.stream_id);
         head.length = self.data.remaining() as u32;

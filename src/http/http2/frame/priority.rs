@@ -1,4 +1,4 @@
-use crate::{WebResult, Http2Error, Buf, MarkBuf, BufMut};
+use crate::{WebResult, Http2Error, Buf, BufMut};
 
 use super::{StreamIdentifier, FrameHeader, frame::Frame, Flag};
 
@@ -52,7 +52,7 @@ impl Priority {
         self.dependency.weight
     }
 
-    pub fn encode<B: Buf + MarkBuf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         let head = FrameHeader::new(super::Kind::Priority, Flag::zero(), self.stream_id);
         let mut size = 0;
         size += head.encode(dst)?;
@@ -93,7 +93,7 @@ impl StreamDependency {
         self.dependency_id
     }
     
-    fn encode<B: Buf + MarkBuf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         self.dependency_id.encode(dst);
         dst.put_u8(self.weight);
         Ok(5)

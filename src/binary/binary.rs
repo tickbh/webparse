@@ -14,8 +14,6 @@ use std::{
     },
 };
 
-use crate::MarkBuf;
-
 use super::Buf;
 
 static EMPTY_ARRAY: &[u8] = &[];

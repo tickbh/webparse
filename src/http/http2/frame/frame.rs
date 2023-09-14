@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::{
     http::http2::{encoder::Encoder, Decoder},
-    Binary, Buf, BufMut, HeaderMap, Http2Error, MarkBuf, Serialize, WebResult,
+    Binary, Buf, BufMut, HeaderMap, Http2Error, Serialize, WebResult,
 };
 
 use super::{
@@ -37,7 +37,7 @@ pub enum Frame<T = Binary> {
 
 impl Frame<Binary> {
     #[inline]
-    pub fn trim_padding<B: Buf + MarkBuf>(header: &FrameHeader, buf: &mut B) -> WebResult<()> {
+    pub fn trim_padding<B: Buf>(header: &FrameHeader, buf: &mut B) -> WebResult<()> {
         if header.flag.is_padded() && buf.has_remaining() {
             let pad_length = buf.peek().unwrap();
             if pad_length as u32 > header.length {
@@ -109,7 +109,7 @@ impl Frame<Binary> {
     }
 
     
-    pub fn encode<B: Buf + MarkBuf + BufMut>(
+    pub fn encode<B: Buf + BufMut>(
         self,
         buf: &mut B,
         encoder: &mut Encoder,
@@ -129,7 +129,7 @@ impl Frame<Binary> {
     }
 }
 
-impl<T: Buf + MarkBuf> Frame<T> {
+impl<T: Buf> Frame<T> {
     pub fn parse(
         header: FrameHeader,
         mut buf: T,
@@ -181,8 +181,8 @@ impl<T: Buf + MarkBuf> Frame<T> {
     }
 }
 
-impl<T: Buf + MarkBuf> Serialize for Frame<T> {
-    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, _buffer: &mut B) -> WebResult<usize> {
+impl<T: Buf> Serialize for Frame<T> {
+    fn serialize<B: Buf + BufMut>(&mut self, _buffer: &mut B) -> WebResult<usize> {
         let size = 0;
         // if !self.no_serialize_header() {
         //     size += self.header.serialize(buffer)?;
@@ -202,7 +202,7 @@ impl FrameHeader {
         }
     }
     #[inline]
-    pub fn parse<T: Buf + MarkBuf>(buffer: &mut T) -> WebResult<FrameHeader> {
+    pub fn parse<T: Buf>(buffer: &mut T) -> WebResult<FrameHeader> {
         if buffer.remaining() < FRAME_HEADER_BYTES {
             return Err(Http2Error::into(Http2Error::Short));
         }
@@ -230,7 +230,7 @@ impl FrameHeader {
         self.flag
     }
 
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += encode_u24(buffer, self.length);
         size += buffer.put_u8(self.kind.encode());
@@ -241,7 +241,7 @@ impl FrameHeader {
 }
 
 
-// impl<T: Buf + MarkBuf> Debug for Frame<T> {
+// impl<T: Buf> Debug for Frame<T> {
 //     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 //         f.debug_struct("Frame")
 //             // .field("header", &self.header)

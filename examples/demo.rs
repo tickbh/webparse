@@ -7,12 +7,12 @@ use webparse::http::http2::{Decoder, HeaderIndex};
 use webparse::http::request;
 use webparse::{
     url, Binary, BinaryMut, Buf, HeaderName, HeaderValue, Helper, Request, Response, Serialize,
-    Url, Version, MarkBuf, BufMut,
+    Url, Version, BufMut,
 };
 
 #[derive(Debug)]
 pub enum Pay<T>
-where T:Buf + MarkBuf {
+where T:Buf {
     Data(T)
 }
 

@@ -1,6 +1,6 @@
 use std::{fmt::Display};
 
-use crate::{WebError, WebResult, Buf, BufMut, MarkBuf};
+use crate::{WebError, WebResult, Buf, BufMut};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Method {
@@ -92,7 +92,7 @@ impl Method {
         }
     }
 
-    pub fn encode<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Method::None => Err(WebError::Serialize("method")),
             _ => Ok(buffer.put_slice(self.as_str().as_bytes())),

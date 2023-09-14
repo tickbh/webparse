@@ -29,7 +29,7 @@ pub use self::reset::Reset;
 pub use self::settings::Settings;
 pub use self::window_update::WindowUpdate;
 
-use crate::{Buf, BufMut, MarkBuf, Serialize, WebResult};
+use crate::{Buf, BufMut, Serialize, WebResult};
 
 pub use self::frame::FrameHeader;
 
@@ -66,7 +66,7 @@ impl StreamIdentifier {
         self.0 == 0
     }
 
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
         buffer.put_u32(self.0);
         Ok(4)
     }
@@ -93,7 +93,7 @@ impl PartialOrd for StreamIdentifier {
 
 
 #[inline(always)]
-pub fn read_u64<T: Buf + MarkBuf>(buf: &mut T) -> u64 {
+pub fn read_u64<T: Buf>(buf: &mut T) -> u64 {
     if buf.remaining() < 8 {
         return 0;
     }
@@ -112,7 +112,7 @@ pub fn read_u31<T: Buf>(buf: &mut T) -> u32 {
 }
 
 #[inline(always)]
-pub fn read_u24<T: Buf + MarkBuf>(buf: &mut T) -> u32 {
+pub fn read_u24<T: Buf>(buf: &mut T) -> u32 {
     if buf.remaining() < 3 {
         return 0;
     }
@@ -120,7 +120,7 @@ pub fn read_u24<T: Buf + MarkBuf>(buf: &mut T) -> u32 {
 }
 
 #[inline(always)]
-pub fn encode_u24<B: Buf + BufMut + MarkBuf>(buf: &mut B, val: u32) -> usize {
+pub fn encode_u24<B: Buf + BufMut>(buf: &mut B, val: u32) -> usize {
     buf.put_u8((val >> 16) as u8);
     buf.put_u8((val >> 8) as u8);
     buf.put_u8((val >> 0) as u8);
@@ -132,18 +132,18 @@ pub fn encode_u24<B: Buf + BufMut + MarkBuf>(buf: &mut B, val: u32) -> usize {
 pub struct SizeIncrement(pub u32);
 
 impl SizeIncrement {
-    pub fn parse<T: Buf + MarkBuf>(buf: &mut T) -> SizeIncrement {
+    pub fn parse<T: Buf>(buf: &mut T) -> SizeIncrement {
         SizeIncrement(buf.get_u32())
     }
 
-    pub fn encode<B: Buf + BufMut + MarkBuf>(&self, buf: &mut B) -> usize {
+    pub fn encode<B: Buf + BufMut>(&self, buf: &mut B) -> usize {
         buf.put_u32(self.0);
         4
     }
 }
 
 impl Serialize for SizeIncrement {
-    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         Ok(buffer.put_u32(self.0))
     }
 }
@@ -159,14 +159,14 @@ pub struct ParserSettings {
 pub struct ErrorCode(pub u32);
 
 impl ErrorCode {
-    pub fn parse<T: Buf + MarkBuf>(buf: &mut T) -> ErrorCode {
+    pub fn parse<T: Buf>(buf: &mut T) -> ErrorCode {
         buf.advance(4);
         ErrorCode(0)
     }
 }
 
 impl Serialize for ErrorCode {
-    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf + BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         buffer.put_u32(self.0);
         Ok(4)
     }

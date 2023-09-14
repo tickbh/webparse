@@ -3,7 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::{HeaderName, HeaderValue, WebError, WebResult, Buf, BufMut, MarkBuf};
+use crate::{HeaderName, HeaderValue, WebError, WebResult, Buf, BufMut};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct HeaderMap {
@@ -120,7 +120,7 @@ impl HeaderMap {
         self.headers.len() == 0
     }
     
-    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         for value in self.iter() {
             size += value.0.encode(buffer)?;

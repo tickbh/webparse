@@ -1,6 +1,6 @@
 use crate::{
     http::http2::{frame::{Kind, StreamIdentifier}, DEFAULT_MAX_FRAME_SIZE, MAX_MAX_FRAME_SIZE, MAX_INITIAL_WINDOW_SIZE},
-    Buf, BufMut, Http2Error, MarkBuf, WebResult,
+    Buf, BufMut, Http2Error, WebResult,
 };
 
 use super::{frame::FrameHeader, Flag};
@@ -50,14 +50,14 @@ impl Setting {
         }
     }
 
-    fn parse<T: Buf + MarkBuf>(bytes: &mut T) -> Option<Setting> {
+    fn parse<T: Buf>(bytes: &mut T) -> Option<Setting> {
         let id: u16 = bytes.get_u16();
         let val: u32 = bytes.get_u32();
 
         Setting::from_id(id, val)
     }
 
-    fn encode<B: Buf + MarkBuf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         use self::Setting::*;
 
         let (kind, val) = match *self {
@@ -153,7 +153,7 @@ impl Settings {
     }
     */
 
-    pub fn parse<T: Buf + MarkBuf>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
+    pub fn parse<T: Buf>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
         use self::Setting::*;
 
         debug_assert_eq!(head.kind(), &Kind::Settings);
@@ -237,7 +237,7 @@ impl Settings {
         len
     }
 
-    pub fn encode<B: Buf + MarkBuf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         // Create & encode an appropriate frame head
         let mut head =
             FrameHeader::new(Kind::Settings, self.flags.into(), StreamIdentifier::zero());

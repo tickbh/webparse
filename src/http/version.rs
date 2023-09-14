@@ -1,6 +1,6 @@
 use std::{fmt::Display};
 
-use crate::{WebError, WebResult, Buf, BufMut, MarkBuf};
+use crate::{WebError, WebResult, Buf, BufMut};
 
 
 
@@ -38,7 +38,7 @@ impl Version {
         }
     }
 
-    pub fn encode<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Version::None => Err(WebError::Serialize("version")),
             _ => Ok(buffer.put_slice(&self.as_str().as_bytes()))

@@ -1,4 +1,4 @@
-use crate::{http::http2::frame::Kind, Http2Error, WebResult, Buf, BufMut, MarkBuf};
+use crate::{http::http2::frame::Kind, Http2Error, WebResult, Buf, BufMut};
 
 use super::{StreamIdentifier, FrameHeader, frame::Frame, Flag};
 
@@ -56,7 +56,7 @@ impl WindowUpdate {
         head
     }
 
-    pub fn encode<B: Buf+BufMut+MarkBuf>(&self, buffer: &mut B) -> crate::WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.size_increment);
