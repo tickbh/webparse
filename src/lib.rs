@@ -12,7 +12,7 @@ mod extensions;
 mod serialize;
 
 
-pub use binary::{Binary, Buf, BinaryMut, BufMut};
+pub use binary::{Binary, Buf, BinaryMut, BufMut, BinaryRef};
 
 pub use http::{HeaderMap, HeaderName, HeaderValue, Method, Version, Request, Response, HttpError};
 pub use http::http2::{self, Http2Error};

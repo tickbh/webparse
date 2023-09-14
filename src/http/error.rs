@@ -22,6 +22,8 @@ pub enum HttpError {
     Partial,
     /// StatusCode
     InvalidStatusCode,
+    /// Scheme 太长了
+    SchemeTooLong,
 
 }
 
@@ -38,6 +40,7 @@ impl HttpError {
             HttpError::Method => "invalid HTTP Method",
             HttpError::Partial => "invalid HTTP length",
             HttpError::InvalidStatusCode => "invalid status code",
+            HttpError::SchemeTooLong => "scheme too long",
         }
     }
 }

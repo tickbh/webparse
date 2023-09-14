@@ -1,5 +1,4 @@
-
-use crate::{http::request, BufMut, HeaderName, Request, Serialize};
+use crate::{http::request, http2::DecoderError, BufMut, HeaderName, Request, Serialize};
 use std::fmt;
 
 use crate::{
@@ -7,8 +6,7 @@ use crate::{
         http2::{encoder::Encoder, Decoder},
         StatusCode,
     },
-    Binary, BinaryMut, Buf, HeaderMap, Http2Error, Method, Scheme, Url,
-    WebResult,
+    BinaryMut, Buf, HeaderMap, Http2Error, Method, Scheme, Url, WebResult,
 };
 
 use super::{frame::Frame, Flag, FrameHeader, Kind, StreamDependency, StreamIdentifier};
@@ -115,10 +113,15 @@ impl Headers {
         &mut self,
         mut buffer: B,
         decoder: &mut Decoder,
-        _max_header_list_size: usize,
+        max_header_list_size: usize,
     ) -> WebResult<usize> {
         let headers = decoder.decode(&mut buffer)?;
+        let mut header_size = 0;
         for h in headers {
+            header_size += h.0.as_bytes().len() + h.1.as_bytes().len() + 32;
+            if header_size > max_header_list_size {
+                return Err(Http2Error::Decoder(DecoderError::HeaderIndexOutOfBounds).into());
+            }
             if h.0.is_spec() {
                 let value: String = (&h.1).try_into()?;
                 match h.0.name() {
@@ -254,9 +257,15 @@ impl Headers {
         Ok(builder)
     }
 
-    pub fn encode<B: Buf + BufMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut>(
+        mut self,
+        encoder: &mut Encoder,
+        dst: &mut B,
+    ) -> WebResult<usize> {
         let _binary = BinaryMut::new();
-        self.header_block.parts.encode_header(&mut self.header_block.fields);
+        self.header_block
+            .parts
+            .encode_header(&mut self.header_block.fields);
         self.header_block.encode(encoder, dst, self.stream_id)
     }
 
@@ -417,9 +426,15 @@ impl PushPromise {
         self.promised_id
     }
 
-    pub fn encode<B: Buf + BufMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut>(
+        mut self,
+        encoder: &mut Encoder,
+        dst: &mut B,
+    ) -> WebResult<usize> {
         let mut binary = BinaryMut::new();
-        self.header_block.parts.encode_header(&mut self.header_block.fields);
+        self.header_block
+            .parts
+            .encode_header(&mut self.header_block.fields);
 
         if let Some(v) = self.header_block.fields.remove(":method") {
             let _ =
@@ -555,16 +570,21 @@ impl Parts {
     }
 }
 
-
 impl HeaderBlock {
     pub const FIRST: [&'static str; 5] = [":status", ":path", ":method", ":authority", ":scheme"];
 
-    pub fn encode<B: Buf + BufMut>(&mut self, encoder: &mut Encoder, dst: &mut B, stream_id: StreamIdentifier) -> WebResult<usize> {
+    pub fn encode<B: Buf + BufMut>(
+        &mut self,
+        encoder: &mut Encoder,
+        dst: &mut B,
+        stream_id: StreamIdentifier,
+    ) -> WebResult<usize> {
         let mut result = vec![];
         let mut binary = BinaryMut::new();
         for key in Self::FIRST {
             if let Some(v) = self.fields.remove(key) {
-                let _ = encoder.encode_header_into((&HeaderName::from_static(key), &v), &mut binary);
+                let _ =
+                    encoder.encode_header_into((&HeaderName::from_static(key), &v), &mut binary);
             }
         }
         for value in self.fields.iter() {
@@ -592,8 +612,7 @@ impl HeaderBlock {
             size += result[0].serialize(dst).unwrap();
 
             for idx in 1..result.len() {
-                let mut head =
-                    FrameHeader::new(Kind::Continuation, Flag::zero(), stream_id);
+                let mut head = FrameHeader::new(Kind::Continuation, Flag::zero(), stream_id);
                 if idx == result.len() - 1 {
                     head.flag.set_end_headers();
                 }
@@ -635,10 +654,10 @@ impl HeaderBlock {
         //         .map(|(name, value)| decoded_header_size(name.as_str().len(), value.len()))
         //         .sum::<usize>()
     }
-}
 
-fn decoded_header_size(name: usize, value: usize) -> usize {
-    name + value + 32
+    fn decoded_header_size(name: usize, value: usize) -> usize {
+        name + value + 32
+    }
 }
 
 // #[cfg(test)]

@@ -41,7 +41,7 @@ impl HeaderMap {
         if name.is_err() || value.is_err() {
             return None;
         }
-        self.insert_exact(name.unwrap(), value.unwrap())
+        self.headers.insert(name.unwrap(), value.unwrap())
     }
     
     pub fn remove<T>(&mut self, name: T) -> Option<HeaderValue>
