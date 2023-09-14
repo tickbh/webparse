@@ -1,6 +1,6 @@
-use std::{collections::{VecDeque, vec_deque, HashMap}, fmt, hash::Hash};
+use std::{collections::{VecDeque, vec_deque, HashMap}, fmt};
 use lazy_static::lazy_static;
-use crate::{HeaderName, HeaderValue, http::value};
+use crate::{HeaderName, HeaderValue};
 
 
 #[derive(Clone)]

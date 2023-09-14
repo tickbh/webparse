@@ -1,10 +1,8 @@
 use super::{HeaderIndex, huffman::HuffmanEncoder};
-use crate::{BinaryMut, Buf, BufMut, HeaderName, HeaderValue, MarkBuf, Serialize};
+use crate::{BinaryMut, Buf, BufMut, HeaderName, HeaderValue, MarkBuf};
 use std::{
-    cell::RefCell,
     io,
     num::Wrapping,
-    rc::Rc,
     sync::{Arc, RwLock},
 };
 

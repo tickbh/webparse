@@ -1,5 +1,5 @@
 
-use crate::{WebResult, WebError, Buf, BufMut, MarkBuf, Binary, BinaryMut};
+use crate::{WebResult, Buf, BufMut, MarkBuf, Binary, BinaryMut};
 
 static EMPTY_ARRAY: Vec<u8> = vec![];
 pub trait Serialize {
@@ -20,7 +20,7 @@ impl Serialize for String {
 }
 
 impl Serialize for () {
-    fn serialize<B: Buf+BufMut+MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Buf+BufMut+MarkBuf>(&mut self, _buffer: &mut B) -> WebResult<usize> {
         Ok(0)
     }
 }

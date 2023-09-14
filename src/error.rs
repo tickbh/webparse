@@ -1,4 +1,4 @@
-use std::{fmt::{self, Result}, result, error::Error, convert::Infallible};
+use std::{fmt::{self}, result, convert::Infallible};
 
 use crate::{http::HttpError, url::UrlError, Http2Error};
 

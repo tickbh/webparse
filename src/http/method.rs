@@ -1,6 +1,6 @@
-use std::{fmt::Display, io::Write, borrow::Cow};
+use std::{fmt::Display};
 
-use crate::{Serialize, WebError, WebResult, Buf, BufMut, MarkBuf};
+use crate::{WebError, WebResult, Buf, BufMut, MarkBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Method {

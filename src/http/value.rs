@@ -1,7 +1,7 @@
 use std::hash::Hash;
-use std::{borrow::Cow, fmt, io::Write};
+use std::{borrow::Cow, fmt};
 
-use crate::{Helper, Serialize, WebError, WebResult, Buf, BufMut, MarkBuf};
+use crate::{Helper, WebError, WebResult, Buf, BufMut, MarkBuf};
 
 #[derive(Clone, Debug)]
 pub enum HeaderValue {

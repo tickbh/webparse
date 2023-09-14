@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{WebResult, Http2Error, BufMut, MarkBuf, Buf};
+use crate::{WebResult, Http2Error};
 use lazy_static::lazy_static;
 
 #[derive(PartialEq)]

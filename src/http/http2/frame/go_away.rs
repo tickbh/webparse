@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{Binary, WebResult, Http2Error, Buf, Serialize, BufMut, MarkBuf};
+use crate::{Binary, WebResult, Http2Error, Buf, BufMut, MarkBuf};
 
 use super::{StreamIdentifier, Reason, frame, Kind, FrameHeader, Flag};
 

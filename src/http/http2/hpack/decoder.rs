@@ -1,11 +1,11 @@
 use std::borrow::Cow;
-use std::cell::RefCell;
+
 use std::num::Wrapping;
-use std::rc::Rc;
+
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    BinaryMut, Buf, BufMut, HeaderName, HeaderValue, Http2Error, MarkBuf, WebError, WebResult,
+    Buf, HeaderName, HeaderValue, Http2Error, MarkBuf, WebResult,
 };
 
 use super::huffman::{HuffmanDecoder, HuffmanDecoderError};

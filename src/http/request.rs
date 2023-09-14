@@ -614,18 +614,18 @@ impl Clone for Parts {
 }
 
 mod tests {
-    use crate::{http::request::Builder, Helper, Method, Request, Scheme, Version};
+    
 
     macro_rules! req {
         ($name:ident, $buf:expr, |$arg:ident| $body:expr) => {
             #[test]
             fn $name() {
-                let mut req = Request::new();
+                let mut req = crate::Request::new();
                 let size = req.parse($buf.as_ref()).unwrap();
                 assert_eq!(size, $buf.len());
                 assert_eq!(&req.http1_data().unwrap(), $buf);
                 closure(req);
-                fn closure($arg: Request<()>) {
+                fn closure($arg: crate::Request<()>) {
                     $body
                 }
             }
@@ -636,11 +636,11 @@ mod tests {
         urltest_001,
         b"GET /bar;par?b HTTP/1.1\r\nHost: foo\r\n\r\n",
         |req| {
-            assert_eq!(req.method(), &Method::Get);
+            assert_eq!(req.method(), &crate::Method::Get);
             assert_eq!(req.path(), "/bar;par?b");
             assert_eq!(&req.url().path, "/bar;par");
             assert_eq!(req.url().query, Some("b".to_string()));
-            assert_eq!(req.version(), &Version::Http11);
+            assert_eq!(req.version(), &crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
             assert_eq!(&req.headers()["Host"], "foo");
         }
@@ -650,11 +650,11 @@ mod tests {
         urltest_002,
         b"GET //:///// HTTP/1.1\r\nHost: \r\n\r\n",
         |req| {
-            assert_eq!(req.method(), &Method::Get);
+            assert_eq!(req.method(), &crate::Method::Get);
             assert_eq!(req.path(), "//://///");
             assert_eq!(&req.url().path, "//://///");
             assert_eq!(req.url().query, None);
-            assert_eq!(req.version(), &Version::Http11);
+            assert_eq!(req.version(), &crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
             assert_eq!(&req.headers()["Host"], "");
         }
@@ -664,11 +664,11 @@ mod tests {
         urltest_003,
         b"GET /abcd?efgh?ijkl HTTP/1.1\r\nHost: \r\n\r\n",
         |req| {
-            assert_eq!(req.method(), &Method::Get);
+            assert_eq!(req.method(), &crate::Method::Get);
             assert_eq!(req.path(), "/abcd?efgh?ijkl");
             assert_eq!(&req.url().path, "/abcd");
             assert_eq!(req.url().query, Some("efgh?ijkl".to_string()));
-            assert_eq!(req.version(), &Version::Http11);
+            assert_eq!(req.version(), &crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
             assert_eq!(&req.headers()["Host"], "");
         }
@@ -678,11 +678,11 @@ mod tests {
         urltest_004,
         b"GET /foo/[61:27]/:foo HTTP/1.1\r\nHost: \r\n\r\n",
         |req| {
-            assert_eq!(req.method(), &Method::Get);
+            assert_eq!(req.method(), &crate::Method::Get);
             assert_eq!(req.path(), "/foo/[61:27]/:foo");
             assert_eq!(&req.url().path, "/foo/[61:27]/:foo");
             assert_eq!(req.url().query, None);
-            assert_eq!(req.version(), &Version::Http11);
+            assert_eq!(req.version(), &crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
             assert_eq!(&req.headers()["Host"], "");
         }

@@ -1,18 +1,14 @@
 use std::{
-    any::{Any, TypeId},
-    borrow::Cow,
-    cell::RefCell,
-    io::Write,
+    any::{Any},
     sync::{Arc, RwLock},
 };
 
 use crate::{
-    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, MarkBuf,
-    Request, Serialize, Version, WebError, WebResult,
+    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, MarkBuf, Serialize, Version, WebError, WebResult,
 };
 
 use super::{
-    http2::{encoder::Encoder, Decoder, HeaderIndex},
+    http2::{HeaderIndex},
     StatusCode,
 };
 

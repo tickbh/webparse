@@ -1,8 +1,8 @@
 use std::fmt::Display;
-use lazy_static::lazy_static;
-use crate::{WebResult, peek, expect, next, WebError, Helper, BinaryMut, Binary, Buf, MarkBuf, Scheme, UrlError };
 
-use super::scheme;
+use crate::{WebResult, peek, expect, next, WebError, Helper, Binary, Buf, MarkBuf, Scheme, UrlError };
+
+
 
 #[derive(Clone, Debug)]
 pub struct Url {
@@ -358,16 +358,16 @@ impl Default for Url {
 
 mod tests {
     
-    use crate::{Url, Scheme};
+    
     
     macro_rules! murl {
         ($name:ident, $buf:expr, |$arg:ident| $body:expr) => (
         #[test]
         fn $name() {
-            let url = Url::try_from($buf).unwrap();
+            let url = crate::Url::try_from($buf).unwrap();
             println!("value = {:?}", url);
             closure(url);
-            fn closure($arg: Url) {
+            fn closure($arg: crate::Url) {
                 $body
             }
         }
@@ -379,11 +379,11 @@ mod tests {
         urltest_001,
         "https://%4811:!%2011@www.baidu.com:88/path?aaa=222",
         |u| {
-            assert_eq!(u.scheme, Scheme::Https);
+            assert_eq!(u.scheme, crate::Scheme::Https);
             assert_eq!(u.domain.unwrap(), "www.baidu.com");
             assert_eq!(u.username.unwrap(), "H11");
             assert_eq!(u.password.unwrap(), "! 11");
-            assert_eq!(u.port.unwrap(), 443);
+            assert_eq!(u.port.unwrap(), 88);
             assert_eq!(u.path, "/path");
             assert_eq!(u.query.unwrap(), "aaa=222");
         }
@@ -393,7 +393,7 @@ mod tests {
         urltest_002,
         "/path?aaa=222",
         |u| {
-            assert_eq!(u.scheme, Scheme::None);
+            assert_eq!(u.scheme, crate::Scheme::None);
             assert_eq!(u.domain, None);
             assert_eq!(u.username, None);
             assert_eq!(u.password, None);
@@ -406,7 +406,7 @@ mod tests {
         urltest_003,
         "http://11:11@www.baidu.com/path",
         |u| {
-            assert_eq!(u.scheme, Scheme::Http);
+            assert_eq!(u.scheme, crate::Scheme::Http);
             assert_eq!(u.domain.unwrap(), "www.baidu.com");
             assert_eq!(u.username.unwrap(), "11");
             assert_eq!(u.password.unwrap(), "11");

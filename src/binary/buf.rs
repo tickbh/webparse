@@ -1,4 +1,4 @@
-use std::{mem, ops::{Range, RangeBounds}};
+use std::{mem, ops::{RangeBounds}};
 
 macro_rules! buf_get_impl {
     ($this:ident, $typ:tt::$conv:tt) => {{

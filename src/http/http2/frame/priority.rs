@@ -53,7 +53,7 @@ impl Priority {
     }
 
     pub fn encode<B: Buf + MarkBuf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
-        let mut head = FrameHeader::new(super::Kind::Priority, Flag::zero(), self.stream_id);
+        let head = FrameHeader::new(super::Kind::Priority, Flag::zero(), self.stream_id);
         let mut size = 0;
         size += head.encode(dst)?;
         size += self.dependency.encode(dst)?;

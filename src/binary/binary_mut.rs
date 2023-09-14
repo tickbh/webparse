@@ -1,5 +1,4 @@
 use std::{
-    borrow::{Borrow, BorrowMut},
     cell::RefCell,
     cmp,
     fmt::{self, Debug},
@@ -9,12 +8,9 @@ use std::{
     ops::{Deref, DerefMut, RangeBounds},
     ptr,
     rc::Rc,
-    slice,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc,
     },
-    vec::IntoIter,
 };
 
 use crate::{Binary, Buf, MarkBuf, WebError};
@@ -496,17 +492,6 @@ impl hash::Hash for BinaryMut {
     }
 }
 
-// impl Borrow<[u8]> for BinaryMut {
-//     fn borrow(&self) -> &[u8] {
-//         self.as_ref()
-//     }
-// }
-
-// impl BorrowMut<[u8]> for BinaryMut {
-//     fn borrow_mut(&mut self) -> &mut [u8] {
-//         self.as_mut()
-//     }
-// }
 impl Iterator for BinaryMut {
     type Item = u8;
     #[inline]
@@ -531,64 +516,6 @@ impl fmt::Write for BinaryMut {
         fmt::write(self, args)
     }
 }
-
-// impl IntoIterator for BinaryMut {
-//     type Item = u8;
-//     type IntoIter = IntoIter<BinaryMut>;
-
-//     fn into_iter(self) -> Self::IntoIter {
-//         IntoIter::new(self)
-//     }
-// }
-
-// impl<'a> IntoIterator for &'a BinaryMut {
-//     type Item = &'a u8;
-//     type IntoIter = core::slice::Iter<'a, u8>;
-
-//     fn into_iter(self) -> Self::IntoIter {
-//         self.as_ref().iter()
-//     }
-// }
-
-// impl Extend<u8> for BinaryMut {
-//     fn extend<T>(&mut self, iter: T)
-//     where
-//         T: IntoIterator<Item = u8>,
-//     {
-//         let iter = iter.into_iter();
-
-//         let (lower, _) = iter.size_hint();
-//         self.reserve(lower);
-
-//         // TODO: optimize
-//         // 1. If self.kind() == KIND_VEC, use Vec::extend
-//         // 2. Make `reserve` inline-able
-//         for b in iter {
-//             self.reserve(1);
-//             self.put_u8(b);
-//         }
-//     }
-// }
-
-// impl<'a> Extend<&'a u8> for BinaryMut {
-//     fn extend<T>(&mut self, iter: T)
-//     where
-//         T: IntoIterator<Item = &'a u8>,
-//     {
-//         self.extend(iter.into_iter().copied())
-//     }
-// }
-
-// impl Extend<Bytes> for BinaryMut {
-//     fn extend<T>(&mut self, iter: T)
-//     where
-//         T: IntoIterator<Item = Bytes>,
-//     {
-//         for bytes in iter {
-//             self.extend_from_slice(&bytes)
-//         }
-//     }
-// }
 
 impl TryInto<String> for BinaryMut {
     type Error=WebError;

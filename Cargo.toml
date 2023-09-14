@@ -1,9 +1,9 @@
 [package]
 name = "webparse"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = [ "tickbh <tickdream125@hotmail.com>" ]
-description = "a web parse"
+description = "http1.1/http2 parse http解析库"
 repository = "https://github.com/tickbh/webparse"
 license = "Apache-2.0"
 keywords = []

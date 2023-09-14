@@ -1,4 +1,4 @@
-use crate::{WebResult, Http2Error, Buf, Serialize, BufMut, MarkBuf};
+use crate::{WebResult, Http2Error, Buf, BufMut, MarkBuf};
 
 use super::{StreamIdentifier, Reason, FrameHeader, frame::Frame, Kind, Flag};
 

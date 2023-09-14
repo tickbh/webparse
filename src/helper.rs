@@ -1,4 +1,4 @@
-use crate::{BinaryMut, BufMut, Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError, MarkBuf};
+use crate::{Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError, MarkBuf};
 use super::{Method, Version, HeaderMap, HeaderName, HeaderValue, Scheme};
 
 

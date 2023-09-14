@@ -14,14 +14,14 @@
 //! assert!(StatusCode::OK.is_success());
 //! ```
 
-use std::borrow::Cow;
+
 use std::error::Error;
 use std::fmt;
 use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::{convert::TryFrom, io::Write};
 
-use crate::{HttpError, Serialize, WebError, WebResult, BinaryMut, HeaderName, HeaderValue, Buf, BufMut, MarkBuf};
+use crate::{HttpError, Serialize, WebError, WebResult, HeaderName, HeaderValue, Buf, BufMut, MarkBuf};
 
 /// An HTTP status code (`status-code` in RFC 7230 et al.).
 ///

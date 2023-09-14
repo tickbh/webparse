@@ -7,7 +7,7 @@ use crate::{
 
 use super::{
     encode_u24,
-    headers::{Continuation, PushPromise},
+    headers::{PushPromise},
     read_u24, Data, Flag, GoAway, Headers, Kind, Ping, Priority, Reset, Settings, StreamIdentifier,
     WindowUpdate,
 };
@@ -182,8 +182,8 @@ impl<T: Buf + MarkBuf> Frame<T> {
 }
 
 impl<T: Buf + MarkBuf> Serialize for Frame<T> {
-    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, buffer: &mut B) -> WebResult<usize> {
-        let mut size = 0;
+    fn serialize<B: Buf + BufMut + MarkBuf>(&mut self, _buffer: &mut B) -> WebResult<usize> {
+        let size = 0;
         // if !self.no_serialize_header() {
         //     size += self.header.serialize(buffer)?;
         // }

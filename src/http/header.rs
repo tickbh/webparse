@@ -1,13 +1,9 @@
 use std::{
-    borrow::Cow,
-    collections::{hash_map::Iter, HashMap},
-    fmt,
-    hash::Hash,
-    io::Write,
+    collections::{HashMap},
     ops::{Index, IndexMut},
 };
 
-use crate::{helper, BinaryMut, HeaderName, HeaderValue, Helper, Serialize, WebError, WebResult, Buf, BufMut, MarkBuf};
+use crate::{HeaderName, HeaderValue, WebError, WebResult, Buf, BufMut, MarkBuf};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct HeaderMap {

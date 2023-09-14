@@ -7,15 +7,11 @@ use std::{
     cmp, hash,
     io::Read,
     io::Result,
-    marker::PhantomData,
-    mem,
     rc::Rc,
     slice,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc,
     },
-    vec::IntoIter,
 };
 
 use crate::MarkBuf;
@@ -23,6 +19,9 @@ use crate::MarkBuf;
 use super::Buf;
 
 static EMPTY_ARRAY: &[u8] = &[];
+const STATIC_TYPE: u8 = 1;
+const SHARED_TYPE: u8 = 2;
+
 
 /// 二进制的封装, 包括静态引用及共享引用对象, 仅支持写操作
 pub struct Binary {
@@ -47,17 +46,18 @@ unsafe impl Send for Binary {
     
 }
 
-#[derive(PartialEq, Eq)]
 pub struct Vtable {
     pub clone: unsafe fn(bin: &Binary) -> Binary,
     pub to_vec: unsafe fn(bin: &Binary) -> Vec<u8>,
     pub drop: unsafe fn(bin: &mut Binary),
+    pub vtype: fn() -> u8,
 }
 
 const STATIC_VTABLE: Vtable = Vtable {
     clone: static_clone,
     to_vec: static_to_vec,
     drop: static_drop,
+    vtype: || { STATIC_TYPE },
 };
 
 unsafe fn static_clone(bin: &Binary) -> Binary {
@@ -78,6 +78,7 @@ const SHARED_VTABLE: Vtable = Vtable {
     clone: shared_clone,
     to_vec: shared_to_vec,
     drop: shared_drop,
+    vtype: || { SHARED_TYPE },
 };
 
 unsafe fn shared_clone(bin: &Binary) -> Binary {
@@ -240,7 +241,7 @@ impl Binary {
 
     #[inline]
     pub fn into_slice_all(&self) -> Vec<u8> {
-        if self.vtable == &STATIC_VTABLE {
+        if (self.vtable.vtype)() == STATIC_TYPE {
             self.to_vec()
         } else {
             if (*self.counter).borrow().load(Ordering::SeqCst) == 1 {

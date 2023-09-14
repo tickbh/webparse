@@ -3,11 +3,10 @@ use std::fmt;
 
 use crate::{
     http::{
-        header,
         http2::{encoder::Encoder, Decoder},
         StatusCode,
     },
-    Binary, BinaryMut, Buf, HeaderMap, HeaderValue, Http2Error, MarkBuf, Method, Scheme, Url,
+    Binary, BinaryMut, Buf, HeaderMap, Http2Error, MarkBuf, Method, Scheme, Url,
     WebResult,
 };
 
@@ -115,7 +114,7 @@ impl Headers {
         &mut self,
         mut buffer: B,
         decoder: &mut Decoder,
-        max_header_list_size: usize,
+        _max_header_list_size: usize,
     ) -> WebResult<usize> {
         let headers = decoder.decode(&mut buffer)?;
         for h in headers {
@@ -243,7 +242,7 @@ impl Headers {
     }
 
     pub fn encode<B: Buf + MarkBuf + BufMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
-        let mut binary = BinaryMut::new();
+        let _binary = BinaryMut::new();
         // let mut parts = self.header_block.parts;
         // let mut fields = self.header_block.fields;
         self.header_block.parts.encode_header(&mut self.header_block.fields);
@@ -444,11 +443,11 @@ impl PushPromise {
     pub fn parse<B: Buf + MarkBuf>(
         head: FrameHeader,
         mut src: B,
-        decoder: &mut Decoder,
-        max_header_list_size: usize,
+        _decoder: &mut Decoder,
+        _max_header_list_size: usize,
     ) -> WebResult<Self> {
         let promised_id = StreamIdentifier::parse(&mut src);
-        let mut push = PushPromise::new(head, promised_id, HeaderMap::new());
+        let push = PushPromise::new(head, promised_id, HeaderMap::new());
         // push.header_block
         //     .parse(&mut src, max_header_list_size, decoder)?;
         Ok(push)
@@ -572,9 +571,9 @@ impl Continuation {
         FrameHeader::new(Kind::Continuation, Flag::end_headers(), self.stream_id)
     }
 
-    pub fn parse<B: Buf>(self, dst: &mut B) -> Option<Continuation> {
+    pub fn parse<B: Buf>(self, _dst: &mut B) -> Option<Continuation> {
         // Get the CONTINUATION frame head
-        let head = self.head();
+        let _head = self.head();
         // self.header_block.encode(&head, dst, |_| {})
         None
     }
@@ -584,7 +583,7 @@ impl Continuation {
 
 impl Parts {
     pub fn request(method: Method, uri: Url, protocol: Option<Scheme>) -> Self {
-        let mut path = uri.path;
+        let path = uri.path;
 
         let mut parts = Parts {
             method: Some(method),
@@ -668,15 +667,15 @@ impl Parts {
 
 impl EncodingHeaderBlock {
     fn encode<F, B: Buf + MarkBuf + BufMut>(
-        mut self,
+        self,
         head: &mut FrameHeader,
         dst: &mut B,
-        f: F,
+        _f: F,
     ) -> Option<Continuation>
     where
         F: FnOnce(&mut BinaryMut),
     {
-        let head_pos = dst.remaining();
+        let _head_pos = dst.remaining();
 
         // At this point, we don't know how big the h2 frame will be.
         // So, we write the head with length 0, then write the body, and
@@ -700,7 +699,7 @@ impl EncodingHeaderBlock {
         };
 
         // Compute the header block length
-        let payload_len = (dst.remaining() - payload_pos) as u64;
+        let _payload_len = (dst.remaining() - payload_pos) as u64;
 
         // Write the frame length
         // let payload_len_be = payload_len.to_be_bytes();
@@ -814,8 +813,8 @@ impl HeaderBlock {
         Ok(size)
     }
 
-    fn into_encoding(self, encoder: &mut Encoder) -> EncodingHeaderBlock {
-        let mut hpack = BinaryMut::new();
+    fn into_encoding(self, _encoder: &mut Encoder) -> EncodingHeaderBlock {
+        let hpack = BinaryMut::new();
         // let headers = Iter {
         //     parts: Some(self.parts),
         //     fields: self.fields.into_iter(),

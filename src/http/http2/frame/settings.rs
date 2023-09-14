@@ -1,6 +1,6 @@
 use crate::{
     http::http2::{frame::{Kind, StreamIdentifier}, DEFAULT_MAX_FRAME_SIZE, MAX_MAX_FRAME_SIZE, MAX_INITIAL_WINDOW_SIZE},
-    Buf, BufMut, Http2Error, MarkBuf, Serialize, WebResult,
+    Buf, BufMut, Http2Error, MarkBuf, WebResult,
 };
 
 use super::{frame::FrameHeader, Flag};

@@ -1,6 +1,6 @@
-use std::{borrow::Cow, fmt, hash::Hash, io::Write};
+use std::{fmt, hash::Hash};
 
-use crate::{Serialize, WebError, WebResult, Buf, BufMut, MarkBuf};
+use crate::{WebError, WebResult, Buf, BufMut, MarkBuf};
 
 /// 请求头的名字不区分大小写
 #[derive(Clone)]
