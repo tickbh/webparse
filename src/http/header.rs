@@ -65,9 +65,6 @@ impl HeaderMap {
     }
 
     pub fn get_host(&self) -> Option<String> {
-        for iter in &self.headers {
-            println!("name = {:?}", iter.0);
-        }
         if self.headers.contains_key(&HeaderName::HOST) {
             let value = &self.headers[&HeaderName::HOST];
             value.try_into().ok()
@@ -91,7 +88,6 @@ impl HeaderMap {
 
     pub fn is_keep_alive(&self) -> bool {
         if self.headers.contains_key(&HeaderName::CONNECTION) {
-            println!("contain!!!!");
             let value = &self.headers[&HeaderName::CONNECTION];
             Self::contains_bytes(value.as_bytes(), b"Keep-Alive")
         } else {
@@ -103,7 +99,6 @@ impl HeaderMap {
         if !self.headers.contains_key(&HeaderName::CONNECTION) || !self.headers.contains_key(&HeaderName::UPGRADE) {
             return None;
         }
-        println!("contain!!!!");
         let value = &self.headers[&HeaderName::CONNECTION];
         if !Self::contains_bytes(value.as_bytes(), b"Upgrade") {
             return None;

@@ -54,7 +54,6 @@ impl Encoder {
         header: (&HeaderName, &HeaderValue),
         writer: &mut B,
     ) -> io::Result<()> {
-        println!("header = {:?}", header);
         let value = { self.index.read().unwrap().find_header(header) };
         match value {
             None => {

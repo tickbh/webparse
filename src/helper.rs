@@ -107,7 +107,7 @@ impl Helper {
     ];
 
     #[inline]
-    pub(crate) fn is_uri_token(b: u8) -> bool {
+    pub fn is_uri_token(b: u8) -> bool {
         Self::URI_MAP[b as usize]
     }
     
@@ -266,7 +266,6 @@ impl Helper {
     #[inline]
     pub(crate) fn parse_scheme<'a, B:Buf>(buffer: &'a mut B) -> WebResult<&'a str> {
         let token = Self::parse_token_by_func(buffer, Scheme::is_scheme_token, WebError::from(HttpError::HeaderValue))?;
-        println!("token = {:?}", token);
         Ok(token)
     }
 
@@ -345,9 +344,7 @@ impl Helper {
             Self::skip_spaces(buffer)?;
             expect!(buffer.next() == b':' => Err(WebError::from(HttpError::HeaderName)));
             Self::skip_spaces(buffer)?;
-            println!("name = {:?}", name);
             let value = Helper::parse_header_value(buffer)?;
-            println!("value = {}", value);
             Self::skip_new_line(buffer)?;
             header.insert_exact(name, value);
         }

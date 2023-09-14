@@ -1,18 +1,12 @@
-use std::{collections::{VecDeque, vec_deque, HashMap}, fmt};
+use crate::{http2::DEFAULT_SETTINGS_HEADER_TABLE_SIZE, HeaderName, HeaderValue};
 use lazy_static::lazy_static;
-use crate::{HeaderName, HeaderValue, http2::DEFAULT_SETTINGS_HEADER_TABLE_SIZE};
-
-
-#[derive(Clone)]
-struct DynamicTable {
-    table: VecDeque<(HeaderName, HeaderValue)>,
-    size: usize,
-    max_size: usize,
-}
+use std::collections::{vec_deque, HashMap, VecDeque};
 
 #[derive(Debug, Clone)]
 pub struct HeaderIndex {
-    dynamic_table: DynamicTable,
+    table: VecDeque<(HeaderName, HeaderValue)>,
+    size: usize,
+    max_size: usize,
 }
 
 /// An `Iterator` through elements of the `DynamicTable`.
@@ -23,13 +17,13 @@ pub struct HeaderIndex {
 /// This iterator returns tuples of slices. The tuples themselves are
 /// constructed as new instances, containing a borrow from the `Vec`s
 /// representing the underlying Headers.
-struct DynamicTableIter<'a> {
+struct HeaderIndexIter<'a> {
     /// Stores an iterator through the underlying structure that the
     /// `DynamicTable` uses
     inner: vec_deque::Iter<'a, (HeaderName, HeaderValue)>,
 }
 
-impl<'a> Iterator for DynamicTableIter<'a> {
+impl<'a> Iterator for HeaderIndexIter<'a> {
     type Item = (&'a HeaderName, &'a HeaderValue);
 
     fn next(&mut self) -> Option<(&'a HeaderName, &'a HeaderValue)> {
@@ -40,18 +34,51 @@ impl<'a> Iterator for DynamicTableIter<'a> {
     }
 }
 
-
-impl DynamicTable {
-    /// Creates a new empty dynamic table with a default size.
-    fn new() -> DynamicTable {
-        // The default maximum size corresponds to the default HTTP/2
-        // setting
-        DynamicTable::with_size(DEFAULT_SETTINGS_HEADER_TABLE_SIZE)
+impl HeaderIndex {
+    pub fn new() -> HeaderIndex {
+        HeaderIndex::with_size(DEFAULT_SETTINGS_HEADER_TABLE_SIZE)
     }
 
-    /// Creates a new empty dynamic table with the given maximum size.
-    fn with_size(max_size: usize) -> DynamicTable {
-        DynamicTable {
+    pub fn get_from_index(&self, index: usize) -> Option<(&HeaderName, &HeaderValue)> {
+        let real_index = if index > 0 { index - 1 } else { return None };
+
+        if real_index < STATIC_TABLE.len() {
+            let v = &STATIC_TABLE[real_index];
+            Some((&v.0, &v.1))
+        } else {
+            // Maybe it's in the dynamic table then?
+            let dynamic_index = real_index - STATIC_TABLE.len();
+            if dynamic_index < self.len() {
+                match self.get(dynamic_index) {
+                    Some(&(ref name, ref value)) => Some((name, value)),
+                    None => None,
+                }
+            } else {
+                None
+            }
+        }
+    }
+
+    pub fn find_header(&self, header: (&HeaderName, &HeaderValue)) -> Option<(usize, bool)> {
+        if STATIC_HASH.contains_key(header.0) {
+            let v = &STATIC_HASH[header.0];
+            if v.contains_key(header.1) {
+                return Some((v[header.1], true));
+            } else if v.contains_key(&EMPTY_HEADER_VALUE) {
+                return Some((v[&EMPTY_HEADER_VALUE], false));
+            }
+        } else {
+            for (idx, value) in self.iter().enumerate() {
+                if value.0 == header.0 && value.1 == header.1 {
+                    return Some((idx + 1 + STATIC_TABLE.len(), true));
+                }
+            }
+        }
+        None
+    }
+
+    fn with_size(max_size: usize) -> HeaderIndex {
+        HeaderIndex {
             table: VecDeque::new(),
             size: 0,
             max_size,
@@ -60,12 +87,12 @@ impl DynamicTable {
 
     /// Returns the current size of the table in octets, as defined by the IETF
     /// HPACK spec.
-    fn get_size(&self) -> usize {
+    pub fn get_size(&self) -> usize {
         self.size
     }
 
-    fn iter(&self) -> DynamicTableIter {
-        DynamicTableIter {
+    fn iter(&self) -> HeaderIndexIter {
+        HeaderIndexIter {
             inner: self.table.iter(),
         }
     }
@@ -81,8 +108,7 @@ impl DynamicTable {
         self.max_size
     }
 
-    fn add_header(&mut self, name: HeaderName, value: HeaderValue) {
-
+    pub fn add_header(&mut self, name: HeaderName, value: HeaderValue) {
         self.size += name.bytes_len() + value.bytes_len() + 32;
         // debug!("New dynamic table size {}", self.size);
         // Now add it to the internal buffer
@@ -127,67 +153,6 @@ impl DynamicTable {
 
     fn get(&self, index: usize) -> Option<&(HeaderName, HeaderValue)> {
         self.table.get(index)
-    }
-}
-
-impl fmt::Debug for DynamicTable {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{:?}", self.table)
-    }
-}
-
-impl HeaderIndex {
-
-    pub fn new() -> HeaderIndex {
-        HeaderIndex { dynamic_table: DynamicTable::new() }
-    }
-
-    pub fn get_from_index(&self, index: usize) -> Option<(&HeaderName, &HeaderValue)> {
-        let real_index = if index > 0 {
-            index - 1
-        } else {
-            return None
-        };
-
-        if real_index < STATIC_TABLE.len() {
-            let v = &STATIC_TABLE[real_index];
-            Some((&v.0, &v.1))
-        } else {
-            // Maybe it's in the dynamic table then?
-            let dynamic_index = real_index - STATIC_TABLE.len();
-            if dynamic_index < self.dynamic_table.len() {
-                match self.dynamic_table.get(dynamic_index) {
-                    Some(&(ref name, ref value)) => {
-                        Some((name, value))
-                    },
-                    None => None
-                }
-            } else {
-                None
-            }
-        }
-    }
-
-    pub fn add_header(&mut self, name: HeaderName, value: HeaderValue) {
-        self.dynamic_table.add_header(name, value)
-    }
-
-    pub fn find_header(&self, header: (&HeaderName, &HeaderValue)) -> Option<(usize, bool)> {
-        if STATIC_HASH.contains_key(header.0) {
-            let v = &STATIC_HASH[header.0];
-            if v.contains_key(header.1) {
-                return Some((v[header.1], true))
-            } else if v.contains_key(&EMPTY_HEADER_VALUE) {
-                return Some((v[&EMPTY_HEADER_VALUE], false))
-            }
-        } else {
-            for (idx, value) in self.dynamic_table.iter().enumerate() {
-                if value.0 == header.0 && value.1 == header.1 {
-                    return Some((idx + 1 + STATIC_TABLE.len(), true))
-                }
-            }
-        }
-        None
     }
 }
 
@@ -260,11 +225,13 @@ lazy_static! {
     static ref STATIC_TABLE: Vec<(HeaderName, HeaderValue)> = {
         let mut m = Vec::<(HeaderName, HeaderValue)>::new();
         for &(code, code_val) in STATIC_TABLE_RAW.iter() {
-            m.push((HeaderName::try_from(code).unwrap(), HeaderValue::from_static(code_val)));
+            m.push((
+                HeaderName::try_from(code).unwrap(),
+                HeaderValue::from_static(code_val),
+            ));
         }
         m
     };
-
     static ref STATIC_HASH: HashMap<HeaderName, HashMap<HeaderValue, usize>> = {
         let mut h = HashMap::<HeaderName, HashMap<HeaderValue, usize>>::new();
         for (idx, &(code, code_val)) in STATIC_TABLE_RAW.iter().enumerate() {
@@ -275,11 +242,12 @@ lazy_static! {
                 v.insert(value, idx + 1);
                 h.insert(name, v);
             } else {
-                h.entry(name).and_modify(|v| { v.insert(value, idx + 1); }  );
+                h.entry(name).and_modify(|v| {
+                    v.insert(value, idx + 1);
+                });
             }
         }
         h
     };
-
     static ref EMPTY_HEADER_VALUE: HeaderValue = HeaderValue::Value(vec![]);
 }

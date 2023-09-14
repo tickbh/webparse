@@ -335,7 +335,6 @@ impl TryFrom<String> for Url {
 
 impl PartialEq<str> for Url {
     fn eq(&self, other: &str) -> bool {
-        println!("Ok === {}", format!("{}", &self));
         format!("{}", &self) == other
     }
 }
@@ -364,7 +363,6 @@ mod tests {
         #[test]
         fn $name() {
             let url = crate::Url::try_from($buf).unwrap();
-            println!("value = {:?}", url);
             closure(url);
             fn closure($arg: crate::Url) {
                 $body

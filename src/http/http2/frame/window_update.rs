@@ -60,6 +60,7 @@ impl WindowUpdate {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.size_increment);
+        log::trace!("encoding WindowUpdate; len={}", size);
         Ok(size)
     }
 

@@ -45,7 +45,6 @@ fn parse_header() {
     assert!(header.path() == &Some("/".to_string()));
     assert!(header.scheme() == &Some(Scheme::Http));
     assert!(header.authority() == &Some("www.example.com".to_string()));
-    println!("fields = {:?}", header.fields());
     assert!(header.fields()["cache-control"] == "no-cache");
 
     // C.4.3
@@ -58,7 +57,6 @@ fn parse_header() {
     assert!(header.path() == &Some("/index.html".to_string()));
     assert!(header.scheme() == &Some(Scheme::Https));
     assert!(header.authority() == &Some("www.example.com".to_string()));
-    println!("fields = {:?}", header.fields());
     assert!(header.fields()["custom-key"] == "custom-value");
 }
 ```

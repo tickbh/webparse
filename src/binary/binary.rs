@@ -172,12 +172,6 @@ impl Binary {
     /// assert!(b.get_refs() == 1);
     /// ```
     pub fn get_refs(&self) -> usize {
-        println!(
-            "value = {}",
-            (*self.counter)
-                .borrow()
-                .load(std::sync::atomic::Ordering::SeqCst)
-        );
         (*self.counter)
             .borrow()
             .load(std::sync::atomic::Ordering::SeqCst)

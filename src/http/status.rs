@@ -1,27 +1,9 @@
-//! HTTP status codes
-//!
-//! This module contains HTTP-status code related structs an errors. The main
-//! type in this module is `StatusCode` which is not intended to be used through
-//! this module but rather the `http::StatusCode` type.
-//!
-//! # Examples
-//!
-//! ```
-//! use webparse::StatusCode;
-//!
-//! assert_eq!(StatusCode::from_u16(200).unwrap(), StatusCode::OK);
-//! assert_eq!(StatusCode::NOT_FOUND, 404);
-//! assert!(StatusCode::OK.is_success());
-//! ```
-
-
-use std::error::Error;
 use std::fmt;
 use std::num::NonZeroU16;
 use std::str::FromStr;
-use std::{convert::TryFrom, io::Write};
+use std::{convert::TryFrom};
 
-use crate::{HttpError, Serialize, WebError, WebResult, HeaderName, HeaderValue, Buf, BufMut};
+use crate::{HttpError, WebError, WebResult, HeaderName, HeaderValue, Buf, BufMut};
 
 /// An HTTP status code (`status-code` in RFC 7230 et al.).
 ///

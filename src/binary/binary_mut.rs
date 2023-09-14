@@ -8,9 +8,7 @@ use std::{
     ops::{Deref, DerefMut, RangeBounds},
     ptr,
     rc::Rc,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-    },
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
 use crate::{Binary, Buf, WebError};
@@ -84,12 +82,6 @@ impl BinaryMut {
     /// assert!(b.get_refs() == 1);
     /// ```
     pub fn get_refs(&self) -> usize {
-        println!(
-            "value = {}",
-            (*self.counter)
-                .borrow()
-                .load(std::sync::atomic::Ordering::SeqCst)
-        );
         (*self.counter)
             .borrow()
             .load(std::sync::atomic::Ordering::SeqCst)
@@ -205,7 +197,7 @@ impl BinaryMut {
         }
     }
 
-    fn put<T: crate::Buf>(&mut self, mut src: T)
+    pub fn put<T: crate::Buf>(&mut self, mut src: T)
     where
         Self: Sized,
     {
@@ -278,7 +270,6 @@ impl BinaryMut {
             self.advance_mut(cnt);
         }
     }
-
 }
 
 impl From<Vec<u8>> for BinaryMut {
@@ -304,13 +295,9 @@ impl Clone for BinaryMut {
 
 impl Drop for BinaryMut {
     fn drop(&mut self) {
-        println!("drop === {:?} -----", self.counter);
-
         if (*self.counter).borrow_mut().fetch_sub(1, Ordering::Release) == 1 {
             let _vec = unsafe { Box::from_raw(self.ptr) };
         }
-
-        println!("drop end!!!!");
     }
 }
 
@@ -328,7 +315,7 @@ impl Buf for BinaryMut {
             self.inc_start(n);
         }
     }
-    
+
     fn mark_commit(&mut self) -> usize {
         self.mark = self.cursor;
         self.mark
@@ -384,7 +371,6 @@ impl Buf for BinaryMut {
         bin
     }
 }
-
 
 unsafe impl BufMut for BinaryMut {
     fn remaining_mut(&self) -> usize {
@@ -517,7 +503,7 @@ impl fmt::Write for BinaryMut {
 }
 
 impl TryInto<String> for BinaryMut {
-    type Error=WebError;
+    type Error = WebError;
 
     fn try_into(self) -> std::result::Result<String, Self::Error> {
         Ok(String::from_utf8_lossy(&self.chunk()).to_string())
@@ -564,12 +550,8 @@ impl Debug for BinaryMut {
     }
 }
 
-unsafe impl Sync for BinaryMut {
-
-}
-unsafe impl Send for BinaryMut {
-
-}
+unsafe impl Sync for BinaryMut {}
+unsafe impl Send for BinaryMut {}
 
 #[cfg(test)]
 mod tests {}

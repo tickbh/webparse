@@ -225,7 +225,7 @@ impl Headers {
     }
 
     /// Whether it has status 1xx
-    pub(crate) fn is_informational(&self) -> bool {
+    pub fn is_informational(&self) -> bool {
         self.header_block.parts.is_informational()
     }
 
@@ -262,15 +262,12 @@ impl Headers {
         encoder: &mut Encoder,
         dst: &mut B,
     ) -> WebResult<usize> {
-        let _binary = BinaryMut::new();
         self.header_block
             .parts
             .encode_header(&mut self.header_block.fields);
-        self.header_block.encode(encoder, dst, self.stream_id)
-    }
-
-    fn head(&self) -> FrameHeader {
-        FrameHeader::new(Kind::Headers, self.flags.into(), self.stream_id)
+        let size = self.header_block.encode(encoder, dst, self.stream_id)?;
+        log::trace!("encoding Header; len={}", size);
+        Ok(size)
     }
 }
 
@@ -404,7 +401,6 @@ impl PushPromise {
         &self.header_block.fields
     }
 
-    #[cfg(feature = "unstable")]
     pub fn into_fields(self) -> HeaderMap {
         self.header_block.fields
     }
@@ -461,12 +457,12 @@ impl PushPromise {
         size += self.promised_id.encode(dst).unwrap();
         size += binary.serialize(dst).unwrap();
 
-        self.header_block.encode(encoder, dst, self.promised_id)
+        size += self.header_block.encode(encoder, dst, self.promised_id)?;
+        log::trace!("encoding PushPromise; len={}", size);
+
+        Ok(size)
     }
 
-    fn head(&self) -> FrameHeader {
-        FrameHeader::new(Kind::PushPromise, self.flags, self.stream_id)
-    }
 }
 
 impl<T> From<PushPromise> for Frame<T> {
@@ -539,7 +535,6 @@ impl Parts {
     }
 
     pub fn encode_header(&mut self, header: &mut HeaderMap) {
-        println!("fields = {:?}", header);
         if let Some(method) = self.method.take() {
             header.insert(":method", method.as_str().to_string());
         }
@@ -612,40 +607,6 @@ impl HeaderBlock {
         Ok(size)
     }
 
-    /// Calculates the size of the currently decoded header list.
-    ///
-    /// According to http://httpwg.org/specs/rfc7540.html#SETTINGS_MAX_HEADER_LIST_SIZE
-    ///
-    /// > The value is based on the uncompressed size of header fields,
-    /// > including the length of the name and value in octets plus an
-    /// > overhead of 32 octets for each header field.
-    fn calculate_header_list_size(&self) -> usize {
-        macro_rules! parts_size {
-            ($name:ident) => {{
-                self.parts
-                    .$name
-                    .as_ref()
-                    .map(|m| decoded_header_size(stringify!($name).len() + 1, m.as_str().len()))
-                    .unwrap_or(0)
-            }};
-        }
-        0
-
-        // parts_size!(method)
-        //     + parts_size!(scheme)
-        //     + parts_size!(status)
-        //     + parts_size!(authority)
-        //     + parts_size!(path)
-        //     + self
-        //         .fields
-        //         .iter()
-        //         .map(|(name, value)| decoded_header_size(name.as_str().len(), value.len()))
-        //         .sum::<usize>()
-    }
-
-    fn decoded_header_size(name: usize, value: usize) -> usize {
-        name + value + 32
-    }
 }
 
 // #[cfg(test)]

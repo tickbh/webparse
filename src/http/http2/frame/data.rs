@@ -63,11 +63,7 @@ impl<T> Data<T> {
         self.data
     }
 
-    pub(crate) fn head(&self) -> FrameHeader {
-        FrameHeader::new(Kind::Data, self.flags.into(), self.stream_id)
-    }
-
-    pub(crate) fn map<F, U>(self, f: F) -> Data<U>
+    pub fn map<F, U>(self, f: F) -> Data<U>
     where
         F: FnOnce(T) -> U,
     {
@@ -82,11 +78,9 @@ impl<T> Data<T> {
 
 impl Data<Binary> {
     pub fn encode<B: Buf+BufMut>(&mut self, dst: &mut B) -> WebResult<usize> {
-        // Create & encode an appropriate frame head
+        log::trace!("encoding Data; len={}", self.data.remaining());
         let mut head = FrameHeader::new(Kind::Data, self.flags.into(), self.stream_id);
         head.length = self.data.remaining() as u32;
-
-        println!("encoding Data; len={} value = {:?} id = {:?}", head.length, String::from_utf8_lossy(self.data.chunk()), self.stream_id);
         let mut size = 0;
         size += head.encode(dst)?;
         size += self.data.serialize(dst)?;

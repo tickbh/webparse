@@ -99,8 +99,6 @@ impl Decoder {
     ) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
         let mut header_list = Vec::new();
         self.decode_with_cb(buf, |n, v| {
-            println!("name = {:?}", n);
-            println!("value = {}", v);
             header_list.push((n.into_owned(), v.into_owned()))
         })?;
         Ok(header_list)
@@ -112,7 +110,6 @@ impl Decoder {
     {
         while buf.has_remaining() {
             let initial_octet = buf.peek().unwrap();
-            println!("initial_octet === {}", initial_octet);
             let buffer_leftover = buf.chunk();
             let consumed = match FieldRepresentation::new(initial_octet) {
                 FieldRepresentation::Indexed => {

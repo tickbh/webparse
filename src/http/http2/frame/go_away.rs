@@ -71,6 +71,7 @@ impl GoAway {
         size += buffer.put_u32(self.last_stream_id.0);
         size += buffer.put_u32(self.error_code.into());
         size += buffer.put_slice(self.debug_data.chunk());
+        log::trace!("encoding GoAway; len={}", size);
         Ok(size)
     }
 }
