@@ -154,6 +154,10 @@ impl BinaryMut {
         self.cursor
     }
 
+    #[inline]
+    pub fn clear(&mut self) {
+        self.cursor = 0;
+    }
     /// 判断对象是否为空
     ///
     /// # Examples

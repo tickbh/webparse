@@ -151,6 +151,7 @@ impl Binary {
         self.len == 0
     }
 
+    #[inline]
     pub fn to_vec(&self) -> Vec<u8> {
         unsafe { (self.vtable.to_vec)(self) }
     }
@@ -208,11 +209,17 @@ impl Binary {
         if by == 0 {
             return;
         }
-        // should already be asserted, but debug assert for tests
         debug_assert!(self.len >= by, "internal: inc_start out of bounds");
         self.len -= by;
         self.ptr = self.ptr.add(by);
         self.cursor += by;
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        unsafe {
+            self.sub_start(self.cursor)
+        }
     }
 
     #[inline]
