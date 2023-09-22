@@ -333,6 +333,10 @@ impl Buf for Binary {
         debug_assert!(self.len >= len);
         self.len = len;
     }
+    
+    fn into_binary(self) -> Binary {
+        self
+    }
 
     fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized {
         let start = match range.start_bound() {

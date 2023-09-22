@@ -1,5 +1,7 @@
 use std::{mem, ops::{RangeBounds}};
 
+use crate::Binary;
+
 macro_rules! buf_get_impl {
     ($this:ident, $typ:tt::$conv:tt) => {{
         const SIZE: usize = mem::size_of::<$typ>();
@@ -58,6 +60,9 @@ pub trait Buf {
     
     /// 更改数据大小
     fn mark_len(&mut self, len: usize);
+
+    /// 将数据转成Binary
+    fn into_binary(self) -> Binary;
     
     /// 克隆当前的对象, 并限定范围
     fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized;

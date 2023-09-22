@@ -9,6 +9,8 @@ use std::{
     slice,
 };
 
+use crate::Binary;
+
 use super::Buf;
 
 static EMPTY_ARRAY: &[u8] = &[];
@@ -197,6 +199,10 @@ impl<'a> Buf for BinaryRef<'a> {
     fn mark_len(&mut self, len: usize) {
         debug_assert!(self.len >= len);
         self.len = len;
+    }
+    
+    fn into_binary(self) -> Binary {
+        Binary::from(self.chunk().to_vec())
     }
 
     fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized {

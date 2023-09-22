@@ -345,6 +345,10 @@ impl Buf for BinaryMut {
         }
     }
 
+    fn into_binary(self) -> Binary {
+        Binary::from(self.chunk().to_vec())
+    }
+    
     fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self
     where
         Self: Sized,
