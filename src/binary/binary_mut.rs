@@ -157,6 +157,9 @@ impl BinaryMut {
     #[inline]
     pub fn clear(&mut self) {
         self.cursor = 0;
+        unsafe {
+            (*self.ptr).set_len(0);    
+        }
     }
     /// 判断对象是否为空
     ///
@@ -307,7 +310,10 @@ impl Drop for BinaryMut {
 
 impl Buf for BinaryMut {
     fn remaining(&self) -> usize {
-        unsafe { std::cmp::min(self.manual_len, (*self.ptr).len()) - self.cursor }
+        unsafe {
+            println!("len = {:?}, cursor = {:?}", std::cmp::min(self.manual_len, (*self.ptr).len()), self.cursor);
+            std::cmp::min(self.manual_len, (*self.ptr).len()) - self.cursor
+        }
     }
 
     fn chunk(&self) -> &[u8] {
@@ -339,9 +345,9 @@ impl Buf for BinaryMut {
             self.manual_len = len;
         } else {
             unsafe {
-                debug_assert!((*self.ptr).len() >= len);
+                self.manual_len = std::cmp::min(self.cursor + len, (*self.ptr).len());
+                // debug_assert!((*self.ptr).len() >= self.cursor + len);
             }
-            self.manual_len = len;
         }
     }
 
