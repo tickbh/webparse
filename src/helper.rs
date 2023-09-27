@@ -281,7 +281,7 @@ impl Helper {
             },
             b' ' => {
             },
-            _ => return Err(WebError::from(HttpError::NewLine))
+            _ => return Err(WebError::from(HttpError::Partial))
         };
         Ok(())
     }

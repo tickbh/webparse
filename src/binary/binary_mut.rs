@@ -311,7 +311,7 @@ impl Drop for BinaryMut {
 impl Buf for BinaryMut {
     fn remaining(&self) -> usize {
         unsafe {
-            println!("len = {:?}, cursor = {:?}", std::cmp::min(self.manual_len, (*self.ptr).len()), self.cursor);
+            // println!("len = {:?}, cursor = {:?}", std::cmp::min(self.manual_len, (*self.ptr).len()), self.cursor);
             std::cmp::min(self.manual_len, (*self.ptr).len()) - self.cursor
         }
     }

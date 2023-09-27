@@ -34,6 +34,7 @@ macro_rules! expect {
     ($e:expr => $pat:pat_param |? $ret:expr) => {
         match $e {
             Ok(_v@$pat) => (),
+            Err(e) => return Err(e),
             _ => return $ret
         }
     };

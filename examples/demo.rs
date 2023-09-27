@@ -158,7 +158,7 @@ fn debug_request_parse() {
 fn main() {
 
     let mut req = crate::Request::new();
-    let ret = req.parse(b"GET /index.html HTTP/1.1\r\nHost");
+    let ret = req.parse(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r");
     assert!(ret.err().unwrap().is_partial());
 
     let buf = b"GET /index.html HTTP/1.1\r\nHost: example.domain\r\n\r\n";
