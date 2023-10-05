@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult,
+    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, Helper,
 };
 
 use super::{
@@ -354,6 +354,10 @@ impl<T: Serialize> Response<T> {
         }
     }
 
+    pub fn is_partial(&self) -> bool {
+        self.partial
+    }
+
     /// Returns the `StatusCode`.
     ///
     /// # Examples
@@ -610,6 +614,21 @@ impl<T: Serialize> Response<T> {
         size += self.parts.status.encode(buffer)?;
         size += self.parts.header.encode(buffer)?;
         Ok(size)
+    }
+
+
+    pub fn parse_buffer<B: Buf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+        self.partial = true;
+        Helper::skip_empty_lines(buffer)?;
+        self.parts.version = Helper::parse_version(buffer)?;
+        Helper::skip_spaces(buffer)?;
+        self.parts.status = Helper::parse_status(buffer)?;
+        Helper::skip_spaces(buffer)?;
+        let _reason = Helper::parse_token(buffer)?;
+        Helper::skip_new_line(buffer)?;
+        Helper::parse_header(buffer, &mut self.parts.header)?;
+        self.partial = false;
+        Ok(buffer.mark_commit())
     }
 }
 

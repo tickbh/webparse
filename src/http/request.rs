@@ -462,6 +462,7 @@ where
     }
 
     pub fn parse_buffer<B: Buf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+        self.partial = true;
         Helper::skip_empty_lines(buffer)?;
         self.parts.method = Helper::parse_method(buffer)?;
         Helper::skip_spaces(buffer)?;

@@ -1,4 +1,5 @@
 
+/// https://httpwg.org/specs/rfc7541.html#huffman.code
 
 pub mod encoder;
 pub mod decoder;

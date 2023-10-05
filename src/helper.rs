@@ -1,4 +1,4 @@
-use crate::{Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError};
+use crate::{Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError, http::StatusCode};
 use super::{Method, Version, HeaderMap, HeaderName, HeaderValue, Scheme};
 
 
@@ -200,6 +200,13 @@ impl Helper {
         TryFrom::try_from(token)
     }
 
+    pub(crate) fn parse_status<B:Buf>(buffer: &mut B) -> WebResult<StatusCode> {
+        let token = Self::parse_token(buffer)?;
+        let status = StatusCode::try_from(token);
+
+
+        status
+    }
 
     pub(crate) fn parse_version<B:Buf>(buffer: &mut B) -> WebResult<Version> {
         let token = Self::parse_token(buffer)?;

@@ -24,6 +24,7 @@ impl WebError {
             WebError::Extension(_) => "std error",
             WebError::Serialize(_) => "serialize error",
             WebError::Io(_) => "io error",
+            
         }
     }
 
