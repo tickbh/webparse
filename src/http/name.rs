@@ -1,4 +1,4 @@
-use std::{fmt, hash::Hash};
+use std::{fmt::{self, Display}, hash::Hash};
 
 use crate::{WebError, WebResult, Buf, BufMut};
 
@@ -113,6 +113,12 @@ impl HeaderName {
             Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
             Self::Value(name) => Ok(buffer.put_slice(name.as_bytes())),
         }
+    }
+}
+
+impl Display for HeaderName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
     }
 }
 

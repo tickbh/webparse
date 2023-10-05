@@ -66,12 +66,10 @@ impl Hash for HeaderValue {
 
 impl fmt::Display for HeaderValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut f = f.debug_struct("HeaderValue");
         match &self {
-            Self::Stand(value) => f.field("value", value),
-            Self::Value(value) => f.field("value", &String::from_utf8_lossy(value)),
-        };
-        f.finish()
+            Self::Stand(value) => f.write_str(value),
+            Self::Value(value) => f.write_str(&String::from_utf8_lossy(value)),
+        }
     }
 }
 

@@ -353,7 +353,7 @@ impl Helper {
             Self::skip_spaces(buffer)?;
             let value = Helper::parse_header_value(buffer)?;
             Self::skip_new_line(buffer)?;
-            header.insert_exact(name, value);
+            header.insert(name, value);
         }
     }
 

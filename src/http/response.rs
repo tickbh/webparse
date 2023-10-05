@@ -1,6 +1,6 @@
 use std::{
     any::{Any},
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock}, fmt::Display,
 };
 
 use crate::{
@@ -684,5 +684,17 @@ where
         size += self.parts.header.encode(buffer)?;
         size += self.body.serialize(buffer)?;
         Ok(size)
+    }
+}
+
+impl<T> Display for Response<T>
+where T: Serialize + Display {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.parts.version.fmt(f)?;
+        f.write_str(" ")?;
+        self.parts.status.fmt(f)?;
+        f.write_str("\r\n")?;
+        self.parts.header.fmt(f)?;
+        self.body.fmt(f)
     }
 }

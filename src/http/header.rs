@@ -1,32 +1,28 @@
 use std::{
     collections::{HashMap},
-    ops::{Index, IndexMut},
+    ops::{Index, IndexMut}, fmt::Display,
 };
 
 use crate::{HeaderName, HeaderValue, WebError, WebResult, Buf, BufMut};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct HeaderMap {
-    headers: HashMap<HeaderName, HeaderValue>,
+    headers: Vec<(HeaderName, HeaderValue)>,
 }
 
 impl HeaderMap {
     pub fn new() -> HeaderMap {
         HeaderMap {
-            headers: HashMap::new(),
+            headers: Vec::new(),
         }
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<HeaderName, HeaderValue> {
+    pub fn iter(&self) ->  std::slice::Iter<(HeaderName, HeaderValue)> {
         self.headers.iter()
     }
 
-    pub fn iter_mut(&mut self) -> std::collections::hash_map::IterMut<HeaderName, HeaderValue> {
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<(HeaderName, HeaderValue)> {
         self.headers.iter_mut()
-    }
-
-    pub fn insert_exact(&mut self, name: HeaderName, value: HeaderValue) -> Option<HeaderValue> {
-        self.headers.insert(name, value)
     }
 
     pub fn insert<T, V>(&mut self, name: T, value: V) -> Option<HeaderValue>
@@ -41,7 +37,15 @@ impl HeaderMap {
         if name.is_err() || value.is_err() {
             return None;
         }
-        self.headers.insert(name.unwrap(), value.unwrap())
+        let (name, value) = (name.unwrap(), value.unwrap());
+        for v in self.headers.iter_mut() {
+            if v.0 == name {
+                v.1 = value;
+                return None;
+            }
+        }
+        self.headers.push((name, value));
+        None
     }
     
     pub fn remove<T>(&mut self, name: T) -> Option<HeaderValue>
@@ -53,7 +57,15 @@ impl HeaderMap {
         if name.is_err() {
             return None;
         }
-        self.headers.remove(&name.unwrap())
+        let name = name.unwrap();
+        for i in 0..self.headers.len() {
+            let v = &self.headers[i];
+            if v.0 == name {
+                self.headers.remove(i);
+                return None
+            }
+        }
+        None
     }
 
     pub fn clear(&mut self) {
@@ -61,12 +73,53 @@ impl HeaderMap {
     }
 
     pub fn contains(&self, name: &HeaderName) -> bool {
-        self.headers.contains_key(name)
+        for i in 0..self.headers.len() {
+            let v = &self.headers[i];
+            if &v.0 == name {
+                return true
+            }
+        }
+        false
+    }
+
+    pub fn get_value(&self, name: &HeaderName) -> &HeaderValue {
+        for i in 0..self.headers.len() {
+            let v = &self.headers[i];
+            if &v.0 == name {
+                return &v.1
+            }
+        }
+        unreachable!()
+    }
+
+    pub fn get_mut_value<'a>(&'a mut self, name: &HeaderName) -> &'a mut HeaderValue {
+        for v in self.headers.iter_mut() {
+            if &v.0 == name {
+                return &mut v.1
+            }
+        }
+        // for i in 0..self.headers.len() {
+        //     let v = &mut self.headers[i];
+        //     if &v.0 == name {
+        //         return &mut v.1
+        //     }
+        // }
+        unreachable!()
+    }
+
+
+    pub fn get_option_value(&self, name: &HeaderName) -> Option<&HeaderValue> {
+        for i in 0..self.headers.len() {
+            let v = &self.headers[i];
+            if &v.0 == name {
+                return Some(&v.1)
+            }
+        }
+        None
     }
 
     pub fn get_host(&self) -> Option<String> {
-        if self.headers.contains_key(&HeaderName::HOST) {
-            let value = &self.headers[&HeaderName::HOST];
+        if let Some(value) = self.get_option_value(&HeaderName::HOST) {
             value.try_into().ok()
         } else {
             None
@@ -78,8 +131,8 @@ impl HeaderMap {
         //     let value = &self.headers[&HeaderName::CONTENT_LENGTH];
         //     value.try_into().unwrap_or(0)
         // } else
-        if self.headers.contains_key(&HeaderName::CONTENT_LENGTH) {
-            let value = &self.headers[&HeaderName::CONTENT_LENGTH];
+
+        if let Some(value) = self.get_option_value(&HeaderName::CONTENT_LENGTH) {
             value.try_into().unwrap_or(0)
         } else {
             0
@@ -87,8 +140,8 @@ impl HeaderMap {
     }
 
     pub fn is_keep_alive(&self) -> bool {
-        if self.headers.contains_key(&HeaderName::CONNECTION) {
-            let value = &self.headers[&HeaderName::CONNECTION];
+
+        if let Some(value) = self.get_option_value(&HeaderName::CONNECTION) {
             Self::contains_bytes(value.as_bytes(), b"Keep-Alive")
         } else {
             false
@@ -96,15 +149,20 @@ impl HeaderMap {
     }
 
     pub fn get_upgrade_protocol(&self) -> Option<String> {
-        if !self.headers.contains_key(&HeaderName::CONNECTION) || !self.headers.contains_key(&HeaderName::UPGRADE) {
-            return None;
+
+        if let Some(value) = self.get_option_value(&HeaderName::CONNECTION) {
+            if !Self::contains_bytes(value.as_bytes(), b"Upgrade") {
+                return None
+            }
+        } else {
+            return None
         }
-        let value = &self.headers[&HeaderName::CONNECTION];
-        if !Self::contains_bytes(value.as_bytes(), b"Upgrade") {
-            return None;
+
+        if let Some(value) = self.get_option_value(&HeaderName::UPGRADE) {
+            return value.as_string()
+        } else {
+            return None
         }
-        let value = &self.headers[&HeaderName::UPGRADE];
-        value.as_string()
     }
 
     pub fn len(&self) -> usize {
@@ -145,18 +203,18 @@ impl Index<&'static str> for HeaderMap {
 
     fn index(&self, index: &'static str) -> &Self::Output {
         let name = HeaderName::Stand(index);
-        &self.headers[&name]
+        self.get_value(&name)
     }
 }
 
 impl IndexMut<&'static str> for HeaderMap {
     fn index_mut(&mut self, index: &'static str) -> &mut Self::Output {
         let name = HeaderName::Stand(index);
-        if self.headers.contains_key(&name) {
-            self.headers.get_mut(&name).unwrap()
+        if self.contains(&name) {
+            self.get_mut_value(&name)
         } else {
-            self.headers.insert(name, HeaderValue::Stand(""));
-            self.headers.get_mut(&HeaderName::Stand(index)).unwrap()
+            self.insert(name, HeaderValue::Stand(""));
+            self.get_mut_value(&HeaderName::Stand(index))
         }
     }
 }
@@ -178,7 +236,7 @@ impl IndexMut<&'static str> for HeaderMap {
 
 impl IntoIterator for HeaderMap {
     type Item = (HeaderName, HeaderValue);
-    type IntoIter = std::collections::hash_map::IntoIter<HeaderName, HeaderValue>;
+    type IntoIter = std::vec::IntoIter<(HeaderName, HeaderValue)>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.headers.into_iter()
@@ -190,5 +248,17 @@ impl Clone for HeaderMap {
         Self {
             headers: self.headers.clone(),
         }
+    }
+}
+
+impl Display for HeaderMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for v in &self.headers {
+            v.0.fmt(f)?;
+            f.write_str(": ")?;
+            v.1.fmt(f)?;
+            f.write_str("\r\n")?;
+        }
+        f.write_str("\r\n")
     }
 }

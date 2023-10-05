@@ -138,11 +138,11 @@ impl Headers {
                         self.header_block.parts.scheme = Some(Scheme::try_from(&*value)?);
                     }
                     _ => {
-                        self.header_block.fields.insert_exact(h.0, h.1);
+                        self.header_block.fields.insert(h.0, h.1);
                     }
                 }
             } else {
-                self.header_block.fields.insert_exact(h.0, h.1);
+                self.header_block.fields.insert(h.0, h.1);
             }
         }
         Ok(buffer.mark_commit())
