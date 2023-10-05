@@ -288,6 +288,16 @@ impl Builder {
         )
     }
 
+
+    /// 获取返回的body长度, 如果为0则表示未写入信息
+    pub fn get_body_len(&self) -> usize {
+        if let Ok(inner) = &self.inner {
+            inner.header.get_body_len()
+        } else {
+            0
+        }
+    }
+
     // private
 
     fn and_then<F>(self, func: F) -> Self
