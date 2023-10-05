@@ -20,6 +20,12 @@ impl Helper {
     pub fn is_token(b: u8) -> bool {
         b > 0x1F && b < 0x7F && b != b' '
     }
+
+
+    #[inline]
+    pub fn is_status_token(b: u8) -> bool {
+        b > 0x1F && b < 0x7F
+    }
     
     #[inline]
     pub fn is_alpha(b: u8) -> bool {
@@ -253,6 +259,11 @@ impl Helper {
     #[inline]
     pub(crate) fn parse_token<'a, B:Buf>(buffer: &'a mut B) -> WebResult<&'a str> {
         Self::parse_token_by_func(buffer, Self::is_token, WebError::from(HttpError::Token))
+    }
+
+    #[inline]
+    pub(crate) fn parse_status_token<'a, B:Buf>(buffer: &'a mut B) -> WebResult<&'a str> {
+        Self::parse_token_by_func(buffer, Self::is_status_token, WebError::from(HttpError::Token))
     }
 
     #[inline]

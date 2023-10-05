@@ -1,6 +1,6 @@
 use crate::{
     http::http2::{frame::{Kind, StreamIdentifier}, DEFAULT_MAX_FRAME_SIZE, MAX_MAX_FRAME_SIZE, MAX_INITIAL_WINDOW_SIZE},
-    Buf, BufMut, Http2Error, WebResult,
+    Buf, BufMut, Http2Error, WebResult, BinaryMut, Binary,
 };
 
 use super::{frame::FrameHeader, Flag};
@@ -179,27 +179,8 @@ impl Settings {
     }
     */
 
-    pub fn parse<T: Buf>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
+    fn parse_setting<T: Buf>(payload: &mut T) -> WebResult<Settings> {
         use self::Setting::*;
-
-        debug_assert_eq!(head.kind(), &Kind::Settings);
-
-        if !head.stream_id().is_zero() {
-            return Err(Http2Error::into(Http2Error::InvalidStreamId));
-        }
-
-        // Load the flag
-        let flag = head.flag();
-
-        if flag.is_ack() {
-            // Ensure that the payload is empty
-            if payload.has_remaining() {
-                return Err(Http2Error::into(Http2Error::InvalidPayloadLength));
-            }
-
-            // Return the ACK frame
-            return Ok(Settings::ack());
-        }
 
         // Ensure the payload length is correct, each setting is 6 bytes long.
         if payload.remaining() % 6 != 0 {
@@ -257,10 +238,58 @@ impl Settings {
         Ok(settings)
     }
 
+    pub fn parse<T: Buf>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
+
+        debug_assert_eq!(head.kind(), &Kind::Settings);
+
+        if !head.stream_id().is_zero() {
+            return Err(Http2Error::into(Http2Error::InvalidStreamId));
+        }
+
+        // Load the flag
+        let flag = head.flag();
+
+        if flag.is_ack() {
+            // Ensure that the payload is empty
+            if payload.has_remaining() {
+                return Err(Http2Error::into(Http2Error::InvalidPayloadLength));
+            }
+
+            // Return the ACK frame
+            return Ok(Settings::ack());
+        }
+
+        Self::parse_setting(payload)
+    }
+
     pub fn payload_len(&self) -> usize {
         let mut len = 0;
         self.for_each(|_| len += 6);
         len
+    }
+
+
+    pub fn parse_http_settings(&self, value: &str) -> WebResult<Settings> {
+        use base64::Engine;
+        match base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(value.as_bytes()) {
+            Err(e) => {
+                return Err(crate::WebError::Http2(Http2Error::InvalidSettingValue));
+            }
+            Ok(v) => {
+                let mut binary = Binary::from(v);
+                return Self::parse_setting(&mut binary)
+            }
+        }
+    }
+
+    pub fn encode_http_settings(&self) -> WebResult<String> {
+        use base64::Engine;
+        let mut dst = BinaryMut::new();
+        self.for_each(|setting| {
+            log::trace!("encoding setting; val={:?}", setting);
+            setting.encode(&mut dst).unwrap();
+        });
+        Ok(base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(dst.chunk()))
     }
 
     pub fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {

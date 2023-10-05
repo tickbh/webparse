@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, Helper,
+    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, Helper, Method,
 };
 
 use super::{
@@ -79,6 +79,14 @@ impl Builder {
         })
     }
 
+    pub fn method(self, method: String) -> Builder
+    {
+        self.and_then(move |mut head| {
+            head.header.insert(":method", method.to_string());
+            Ok(head)
+        })
+    }
+
     /// Set the HTTP version for this response.
     ///
     /// By default this is HTTP/1.1
@@ -128,6 +136,16 @@ impl Builder {
     {
         self.and_then(move |mut head| {
             head.header.insert(key, value);
+            Ok(head)
+        })
+    }
+
+    /// 从另一个HeaderMap中进行header构建
+    pub fn headers(self, header: HeaderMap) -> Builder {
+        self.and_then(move |mut head| {
+            for iter in header {
+                head.header.insert(iter.0, iter.1);
+            }
             Ok(head)
         })
     }
@@ -256,11 +274,18 @@ impl Builder {
     ///     .unwrap();
     /// ```
     pub fn body<T: Serialize>(self, body: T) -> WebResult<Response<T>> {
-        self.inner.map(move |parts: Parts| Response {
-            parts,
-            body,
-            partial: false,
-        })
+        self.inner.map(move |mut parts: Parts| {
+            let server = HeaderName::from_static("Server");
+            if !parts.header.contains(&server) {
+                parts.header.insert(server, "wenmeng");
+            };
+            Response {
+                parts,
+                body,
+                partial: false,
+            }
+        }
+        )
     }
 
     // private
@@ -619,12 +644,13 @@ impl<T: Serialize> Response<T> {
 
     pub fn parse_buffer<B: Buf>(&mut self, buffer: &mut B) -> WebResult<usize> {
         self.partial = true;
+        println!("===={:?}", String::from_utf8_lossy(buffer.chunk()));
         Helper::skip_empty_lines(buffer)?;
         self.parts.version = Helper::parse_version(buffer)?;
         Helper::skip_spaces(buffer)?;
         self.parts.status = Helper::parse_status(buffer)?;
         Helper::skip_spaces(buffer)?;
-        let _reason = Helper::parse_token(buffer)?;
+        let _reason = Helper::parse_status_token(buffer)?;
         Helper::skip_new_line(buffer)?;
         Helper::parse_header(buffer, &mut self.parts.header)?;
         self.partial = false;
@@ -686,6 +712,17 @@ where
         Ok(size)
     }
 }
+
+// impl Display for Response<()> {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         self.parts.version.fmt(f)?;
+//         f.write_str(" ")?;
+//         self.parts.status.fmt(f)?;
+//         f.write_str("\r\n")?;
+//         self.parts.header.fmt(f)?;
+//         self.body.fmt(f)
+//     }
+// }
 
 impl<T> Display for Response<T>
 where T: Serialize + Display {

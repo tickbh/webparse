@@ -1,9 +1,9 @@
-use std::sync::{Arc, RwLock};
+use std::{sync::{Arc, RwLock}, fmt::Display};
 
 use super::{http2::HeaderIndex, HeaderMap, Method, Version};
 use crate::{
     BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, Scheme, Serialize, Url,
-    WebError, WebResult,
+    WebError, WebResult, http2::frame::Settings,
 };
 
 #[derive(Debug)]
@@ -136,6 +136,9 @@ impl Builder {
     {
         self.and_then(move |mut head| {
             head.url = TryFrom::try_from(url).map_err(Into::into)?;
+            if let Some(domain) = &head.url.domain {
+                head.header.insert("Host", domain.clone());
+            }
             Ok(head)
         })
     }
@@ -285,6 +288,10 @@ impl Builder {
             if head.path.len() == 0 {
                 head.path = head.url.path.clone();
             }
+            let server = HeaderName::from_static("User-Agent");
+            if !head.header.contains(&server) {
+                head.header.insert(server, "wenmeng");
+            }
             Request {
                 parts: head,
                 body,
@@ -301,6 +308,18 @@ impl Builder {
         } else {
             0
         }
+    }
+
+    pub fn upgrade_http2(self, settings: Settings) -> Self {
+        self.and_then(move |mut head| {
+            if head.path.len() == 0 {
+                head.path = head.url.path.clone();
+            }
+            head.header.insert("Connection", "Upgrade, HTTP2-Settings");
+            head.header.insert("Upgrade", "h2c");
+            head.header.insert("HTTP2-Settings", settings.encode_http_settings().unwrap());
+            Ok(head)
+        })
     }
 
     fn and_then<F>(self, func: F) -> Self
@@ -581,6 +600,20 @@ impl Default for Request<()> {
             body: Default::default(),
             partial: Default::default(),
         }
+    }
+}
+
+impl<T> Display for Request<T>
+where T: Serialize + Display {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.parts.method.fmt(f)?;
+        f.write_str(" ")?;
+        self.parts.path.fmt(f)?;
+        f.write_str(" ")?;
+        self.parts.version.fmt(f)?;
+        f.write_str("\r\n")?;
+        self.parts.header.fmt(f)?;
+        self.body.fmt(f)
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{http::request, http2::DecoderError, BufMut, HeaderName, Request, Serialize};
+use crate::{http::{request, response}, http2::DecoderError, BufMut, HeaderName, Request, Serialize};
 use std::fmt;
 
 use crate::{
@@ -252,6 +252,15 @@ impl Headers {
                 url.domain = Some(authority);
             }
             builder = builder.url(url);
+        }
+        builder = builder.headers(header);
+        Ok(builder)
+    }
+
+    pub fn into_response(self, mut builder: response::Builder) -> WebResult<response::Builder> {
+        let (parts, header) = self.into_parts();
+        if let Some(m) = parts.method {
+            builder = builder.method(m.as_str().to_string());
         }
         builder = builder.headers(header);
         Ok(builder)
