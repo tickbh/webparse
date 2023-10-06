@@ -36,7 +36,7 @@ impl<'a> Iterator for HeaderIndexIter<'a> {
 
 impl HeaderIndex {
     pub fn new() -> HeaderIndex {
-        HeaderIndex::with_size(DEFAULT_SETTINGS_HEADER_TABLE_SIZE)
+        HeaderIndex::with_size(DEFAULT_SETTINGS_HEADER_TABLE_SIZE as usize)
     }
 
     pub fn get_from_index(&self, index: usize) -> Option<(&HeaderName, &HeaderValue)> {

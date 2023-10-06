@@ -114,6 +114,7 @@ impl Frame<Binary> {
         buf: &mut B,
         encoder: &mut Encoder,
     ) -> WebResult<usize> {
+        println!("buf remain!!! {}", buf.remaining());
         let size = match self {
             Frame::Data(mut s) => s.encode(buf)?,
             Frame::Headers(s) => s.encode(encoder, buf)?,
@@ -125,6 +126,7 @@ impl Frame<Binary> {
             Frame::WindowUpdate(v) => v.encode(buf)?,
             Frame::Reset(v) => v.encode(buf)?,
         };
+        println!("buf remain {} write!!! {}, datas = {:?}", buf.remaining(), size, buf.chunk());
         Ok(size)
     }
 }

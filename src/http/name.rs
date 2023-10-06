@@ -9,23 +9,34 @@ pub enum HeaderName {
     Value(String),
 }
 
+fn eq_bytes(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    for i in 0..a.len() {
+        if a[i] == b[i] {
+            continue;
+        }
+        let wrap = a[i].wrapping_sub(b[i]);
+        if wrap != 32 && wrap != 224 {
+            return false;
+        }
+    }
+    true
+}
+
+
+impl PartialEq<&str> for HeaderName {
+    fn eq(&self, other: &&str) -> bool {
+        eq_bytes(self.as_bytes(), other.as_bytes())
+    }
+}
+
 impl PartialEq for HeaderName {
     fn eq(&self, other: &Self) -> bool {
         let a = self.as_bytes();
         let b = other.as_bytes();
-        if a.len() != b.len() {
-            return false;
-        }
-        for i in 0..a.len() {
-            if a[i] == b[i] {
-                continue;
-            }
-            let wrap = a[i].wrapping_sub(b[i]);
-            if wrap != 32 && wrap != 224 {
-                return false;
-            }
-        }
-        true
+        eq_bytes(a, b)
     }
 }
 

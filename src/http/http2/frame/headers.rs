@@ -271,9 +271,9 @@ impl Headers {
         encoder: &mut Encoder,
         dst: &mut B,
     ) -> WebResult<usize> {
-        self.header_block
-            .parts
-            .encode_header(&mut self.header_block.fields);
+        // self.header_block
+        //     .parts
+        //     .encode_header(&mut self.header_block.fields);
         let size = self.header_block.encode(encoder, dst, self.stream_id)?;
         log::trace!("encoding Header; len={}", size);
         Ok(size)
@@ -573,12 +573,12 @@ impl HeaderBlock {
     ) -> WebResult<usize> {
         let mut result = vec![];
         let mut binary = BinaryMut::new();
-        for key in Self::FIRST {
-            if let Some(v) = self.fields.remove(key) {
-                let _ =
-                    encoder.encode_header_into((&HeaderName::from_static(key), &v), &mut binary);
-            }
-        }
+        // for key in Self::FIRST {
+        //     if let Some(v) = self.fields.remove(key) {
+        //         let _ =
+        //             encoder.encode_header_into((&HeaderName::from_static(key), &v), &mut binary);
+        //     }
+        // }
         for value in self.fields.iter() {
             if value.0.bytes_len() + value.1.bytes_len() + binary.remaining()
                 > encoder.max_frame_size as usize

@@ -1,11 +1,14 @@
 use crate::{
-    http::http2::{frame::{Kind, StreamIdentifier}, DEFAULT_MAX_FRAME_SIZE, MAX_MAX_FRAME_SIZE, MAX_INITIAL_WINDOW_SIZE},
-    Buf, BufMut, Http2Error, WebResult, BinaryMut, Binary,
+    http::http2::{
+        frame::{Kind, StreamIdentifier},
+        DEFAULT_MAX_FRAME_SIZE, MAX_INITIAL_WINDOW_SIZE, MAX_MAX_FRAME_SIZE,
+    },
+    Binary, BinaryMut, Buf, BufMut, Http2Error, WebResult, http2::{DEFAULT_SETTINGS_HEADER_TABLE_SIZE, DEFAULT_INITIAL_WINDOW_SIZE},
 };
 
 use super::{frame::FrameHeader, Flag};
 
-#[derive(Clone, Default, Eq, PartialEq, Debug, Hash)]
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub struct Settings {
     flags: Flag,
     // Fields
@@ -26,7 +29,7 @@ pub enum Setting {
     HeaderTableSize(u32),
     /// 此设置可用于禁用服务器推送（第8.2节）。
     /// 如果一个端点接收到这个参数设置为0的值，它不应该发送一个PUSH_PROMISE帧。
-    /// 一个端点既将这个参数设置为0，并且确认它也必须将PUSH_PROMISE帧的接收视为连接错误（见5.4节）。 
+    /// 一个端点既将这个参数设置为0，并且确认它也必须将PUSH_PROMISE帧的接收视为连接错误（见5.4节）。
     /// 类型PROTOCOL_ERROR。初始值为1，表示允许服务器推送。
     /// 除0或1以外的任何值必须视为PROTOCOL_ERROR类型的连接错误
     EnablePush(u32),
@@ -53,6 +56,31 @@ pub enum Setting {
     /// 对于任何给定的请求，可能会强制实施一个比所宣传的更低的限制。
     MaxHeaderListSize(u32),
     EnableConnectProtocol(u32),
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        // Self {
+        //     flags: Default::default(),
+        //     header_table_size: Some(DEFAULT_SETTINGS_HEADER_TABLE_SIZE as u32),
+        //     enable_push: Default::default(),
+        //     max_concurrent_streams: Default::default(),
+        //     initial_window_size: Some(DEFAULT_INITIAL_WINDOW_SIZE),
+        //     max_frame_size: Some(DEFAULT_MAX_FRAME_SIZE),
+        //     max_header_list_size: Default::default(),
+        //     enable_connect_protocol: Default::default(),
+        // }
+        Self {
+            flags: Default::default(),
+            header_table_size: Default::default(),
+            enable_push: Default::default(),
+            max_concurrent_streams: Default::default(),
+            initial_window_size: Default::default(),
+            max_frame_size: Default::default(),
+            max_header_list_size: Default::default(),
+            enable_connect_protocol: Default::default(),
+        }
+    }
 }
 
 // ===== impl Setting =====
@@ -239,7 +267,6 @@ impl Settings {
     }
 
     pub fn parse<T: Buf>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
-
         debug_assert_eq!(head.kind(), &Kind::Settings);
 
         if !head.stream_id().is_zero() {
@@ -268,7 +295,6 @@ impl Settings {
         len
     }
 
-
     pub fn parse_http_settings(&self, value: &str) -> WebResult<Settings> {
         use base64::Engine;
         match base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(value.as_bytes()) {
@@ -277,7 +303,7 @@ impl Settings {
             }
             Ok(v) => {
                 let mut binary = Binary::from(v);
-                return Self::parse_setting(&mut binary)
+                return Self::parse_setting(&mut binary);
             }
         }
     }

@@ -58,8 +58,9 @@ impl StreamIdentifier {
     }
 
     pub fn next_id(&mut self) -> StreamIdentifier {
+        let now = self.0;
         self.0 = self.0 + 2;
-        self.clone()
+        StreamIdentifier(now)
     }
 
     pub fn is_zero(&self) -> bool {
