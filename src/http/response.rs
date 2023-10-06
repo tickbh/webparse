@@ -743,5 +743,6 @@ where T: Serialize + Display {
         f.write_str("\r\n")?;
         self.parts.header.fmt(f)?;
         self.body.fmt(f)
+        // "".fmt(f)
     }
 }

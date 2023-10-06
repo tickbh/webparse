@@ -9,7 +9,7 @@ use crate::{
     BinaryMut, Buf, HeaderMap, Http2Error, Method, Scheme, Url, WebResult,
 };
 
-use super::{frame::Frame, Flag, FrameHeader, Kind, StreamDependency, StreamIdentifier};
+use super::{frame::Frame, Flag, FrameHeader, Kind, StreamDependency, StreamIdentifier, flag};
 
 ///
 /// This could be either a request or a response.
@@ -274,7 +274,7 @@ impl Headers {
         // self.header_block
         //     .parts
         //     .encode_header(&mut self.header_block.fields);
-        let size = self.header_block.encode(encoder, dst, self.stream_id)?;
+        let size = self.header_block.encode(encoder, dst, self.flags, self.stream_id)?;
         log::trace!("encoding Header; len={}", size);
         Ok(size)
     }
@@ -466,7 +466,7 @@ impl PushPromise {
         size += self.promised_id.encode(dst).unwrap();
         size += binary.serialize(dst).unwrap();
 
-        size += self.header_block.encode(encoder, dst, self.promised_id)?;
+        size += self.header_block.encode(encoder, dst, self.flags, self.promised_id)?;
         log::trace!("encoding PushPromise; len={}", size);
 
         Ok(size)
@@ -569,6 +569,7 @@ impl HeaderBlock {
         &mut self,
         encoder: &mut Encoder,
         dst: &mut B,
+        mut flags: Flag,
         stream_id: StreamIdentifier,
     ) -> WebResult<usize> {
         let mut result = vec![];
@@ -592,8 +593,8 @@ impl HeaderBlock {
         result.push(binary);
         let mut size = 0;
         if result.len() == 1 {
-            let flag = Flag::end_headers();
-            let mut head = FrameHeader::new(Kind::Headers, flag, stream_id);
+            flags.set_end_headers();
+            let mut head = FrameHeader::new(Kind::Headers, flags, stream_id);
             head.length = result[0].remaining() as u32;
             size += head.encode(dst).unwrap();
             size += result[0].serialize(dst).unwrap();
@@ -606,7 +607,8 @@ impl HeaderBlock {
             for idx in 1..result.len() {
                 let mut head = FrameHeader::new(Kind::Continuation, Flag::zero(), stream_id);
                 if idx == result.len() - 1 {
-                    head.flag.set_end_headers();
+                    flags.set_end_headers();
+                    head.flag = flags;
                 }
                 head.length = result[idx].remaining() as u32;
                 size += head.encode(dst).unwrap();
