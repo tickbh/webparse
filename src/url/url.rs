@@ -283,6 +283,18 @@ impl Url {
     pub fn get_scheme(&self) -> String {
         self.scheme.as_str().to_string()
     }
+
+    pub fn get_connect_url(&self) -> Option<String> {
+        if self.domain.is_some() && self.port.is_some() {
+            Some(format!(
+                "{}:{}",
+                self.domain.as_ref().unwrap(),
+                self.port.as_ref().unwrap()
+            ))
+        } else {
+            None
+        }
+    }
 }
 
 impl Display for Url {

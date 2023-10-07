@@ -581,15 +581,7 @@ impl Parts {
 
     // like wwww.baidu.com:80, wwww.google.com:443
     pub fn get_connect_url(&self) -> Option<String> {
-        if self.url.domain.is_some() && self.url.port.is_some() {
-            Some(format!(
-                "{}:{}",
-                self.url.domain.as_ref().unwrap(),
-                self.url.port.as_ref().unwrap()
-            ))
-        } else {
-            None
-        }
+        self.url.get_connect_url()
     }
 }
 
