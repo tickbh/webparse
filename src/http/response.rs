@@ -290,7 +290,7 @@ impl Builder {
 
 
     /// 获取返回的body长度, 如果为0则表示未写入信息
-    pub fn get_body_len(&self) -> usize {
+    pub fn get_body_len(&self) -> isize {
         if let Ok(inner) = &self.inner {
             inner.header.get_body_len()
         } else {
@@ -638,7 +638,7 @@ impl<T: Serialize> Response<T> {
 
     
     /// 获取返回的body长度, 如果为0则表示未写入信息
-    pub fn get_body_len(&self) -> usize {
+    pub fn get_body_len(&self) -> isize {
         self.parts.header.get_body_len()
     }
 
@@ -653,8 +653,9 @@ impl<T: Serialize> Response<T> {
 
 
     pub fn parse_buffer<B: Buf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+        let first = buffer.mark_commit();
         self.partial = true;
-        println!("===={:?}", String::from_utf8_lossy(buffer.chunk()));
+        // println!("===={:?}", String::from_utf8_lossy(buffer.chunk()));
         Helper::skip_empty_lines(buffer)?;
         self.parts.version = Helper::parse_version(buffer)?;
         Helper::skip_spaces(buffer)?;
@@ -664,7 +665,7 @@ impl<T: Serialize> Response<T> {
         Helper::skip_new_line(buffer)?;
         Helper::parse_header(buffer, &mut self.parts.header)?;
         self.partial = false;
-        Ok(buffer.mark_commit())
+        Ok(buffer.mark_commit() - first)
     }
 }
 
@@ -722,17 +723,6 @@ where
         Ok(size)
     }
 }
-
-// impl Display for Response<()> {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         self.parts.version.fmt(f)?;
-//         f.write_str(" ")?;
-//         self.parts.status.fmt(f)?;
-//         f.write_str("\r\n")?;
-//         self.parts.header.fmt(f)?;
-//         self.body.fmt(f)
-//     }
-// }
 
 impl<T> Display for Response<T>
 where T: Serialize + Display {

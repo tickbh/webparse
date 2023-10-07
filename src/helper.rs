@@ -255,6 +255,10 @@ impl Helper {
         Self::parse_token_by_func_empty(buffer, func, err, false)
     }
 
+    #[inline]
+    pub(crate) fn parse_hex<'a, B: Buf>(buffer: &'a mut B) -> WebResult<&'a str> {
+        Self::parse_token_by_func(buffer, Self::is_hex, WebError::from(HttpError::Token))
+    }
 
     #[inline]
     pub(crate) fn parse_token<'a, B:Buf>(buffer: &'a mut B) -> WebResult<&'a str> {
@@ -366,6 +370,21 @@ impl Helper {
             Self::skip_new_line(buffer)?;
             header.insert(name, value);
         }
+    }
+
+    pub fn parse_chunk_data<B:Buf>(buffer: &mut B) -> WebResult<(Vec<u8>, usize, bool)> {
+        let first = buffer.mark_commit();
+        let num = Helper::parse_hex(buffer)?;
+        let num = usize::from_str_radix(num, 16).unwrap();
+        Helper::skip_new_line(buffer)?;
+        if num + 2 > buffer.remaining() {
+            return Err(WebError::Http(HttpError::Partial));
+        }
+
+        let ret = buffer.chunk()[..num].to_vec();
+        buffer.advance(num);
+        Helper::skip_new_line(buffer)?;
+        Ok((ret, buffer.mark_commit() - first, num == 0))
     }
 
     #[inline]

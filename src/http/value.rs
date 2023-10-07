@@ -98,6 +98,41 @@ impl TryInto<usize> for &HeaderValue {
     }
 }
 
+
+impl TryInto<isize> for &HeaderValue {
+    type Error = WebError;
+
+    fn try_into(self) -> Result<isize, WebError> {
+        match self {
+            HeaderValue::Stand(s) => s.parse().map_err(WebError::from),
+            HeaderValue::Value(v) => {
+                let mut result = 0isize;
+                let mut is_neg = false;
+                for b in v {
+                    if !Helper::is_digit(*b) {
+                        if b == &b'-' && result == 0 {
+                            is_neg = true;
+                            continue;
+                        }
+                        return Err(WebError::IntoError);
+                    }
+                    match result.overflowing_mul(10) {
+                        (u, false) => {
+                            result = u + (b - Helper::DIGIT_0) as isize;
+                        }
+                        (_u, true) => return Err(WebError::IntoError),
+                    }
+                }
+                if is_neg {
+                    Ok(-result)
+                } else {
+                    Ok(result)
+                }
+            }
+        }
+    }
+}
+
 impl TryInto<String> for &HeaderValue {
     type Error = WebError;
 
@@ -130,6 +165,14 @@ impl TryFrom<usize> for HeaderValue {
         Ok(HeaderValue::Value(format!("{}", value).into_bytes()))
     }
 }
+
+impl TryFrom<isize> for HeaderValue {
+    type Error = WebError;
+    fn try_from(value: isize) -> Result<Self, Self::Error> {
+        Ok(HeaderValue::Value(format!("{}", value).into_bytes()))
+    }
+}
+
 
 impl Eq for HeaderValue {}
 

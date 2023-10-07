@@ -302,7 +302,7 @@ impl Builder {
 
     /// 获取请求的body长度, 如果为0则表示不存在长度信息,
     /// 直到收到关闭信息则表示结束, http/1.1为关闭链接, http/2则是end_stream
-    pub fn get_body_len(&self) -> usize {
+    pub fn get_body_len(&self) -> isize {
         if let Ok(inner) = &self.inner {
             inner.header.get_body_len()
         } else {
@@ -317,7 +317,7 @@ impl Builder {
             }
             head.header.insert("Connection", "Upgrade, HTTP2-Settings");
             head.header.insert("Upgrade", "h2c");
-            head.header.insert("HTTP2-Settings", settings.encode_http_settings().unwrap());
+            head.header.insert("HTTP2-Settings", settings.encode_http_settings());
             Ok(head)
         })
     }
@@ -419,7 +419,7 @@ where
 
     /// 获取请求的body长度, 如果为0则表示不存在长度信息,
     /// 直到收到关闭信息则表示结束, http/1.1为关闭链接, http/2则是end_stream
-    pub fn get_body_len(&self) -> usize {
+    pub fn get_body_len(&self) -> isize {
         self.parts.header.get_body_len()
     }
 
@@ -481,6 +481,7 @@ where
     }
 
     pub fn parse_buffer<B: Buf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+        let first = buffer.mark_commit();
         self.partial = true;
         Helper::skip_empty_lines(buffer)?;
         self.parts.method = Helper::parse_method(buffer)?;
@@ -511,7 +512,7 @@ where
                 url
             }
         };
-        Ok(buffer.mark_commit())
+        Ok(buffer.mark_commit() - first)
     }
 
     pub fn parse(&mut self, buf: &[u8]) -> WebResult<usize> {

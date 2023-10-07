@@ -308,14 +308,14 @@ impl Settings {
         }
     }
 
-    pub fn encode_http_settings(&self) -> WebResult<String> {
+    pub fn encode_http_settings(&self) -> String {
         use base64::Engine;
         let mut dst = BinaryMut::new();
         self.for_each(|setting| {
             log::trace!("encoding setting; val={:?}", setting);
             setting.encode(&mut dst).unwrap();
         });
-        Ok(base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(dst.chunk()))
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(dst.chunk())
     }
 
     pub fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {

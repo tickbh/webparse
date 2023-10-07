@@ -115,6 +115,7 @@ impl Headers {
         decoder: &mut Decoder,
         max_header_list_size: usize,
     ) -> WebResult<usize> {
+        let first = buffer.mark_commit();;
         let headers = decoder.decode(&mut buffer)?;
         let mut header_size = 0;
         for h in headers {
@@ -145,7 +146,7 @@ impl Headers {
                 self.header_block.fields.insert(h.0, h.1);
             }
         }
-        Ok(buffer.mark_commit())
+        Ok(buffer.mark_commit() - first)
     }
 
     pub fn stream_id(&self) -> StreamIdentifier {

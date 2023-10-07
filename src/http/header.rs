@@ -126,7 +126,7 @@ impl HeaderMap {
         }
     }
 
-    pub fn get_body_len(&self) -> usize {
+    pub fn get_body_len(&self) -> isize {
         // if self.headers.contains_key(&HeaderName::TRANSFER_ENCODING) {
         //     let value = &self.headers[&HeaderName::CONTENT_LENGTH];
         //     value.try_into().unwrap_or(0)
@@ -143,6 +143,14 @@ impl HeaderMap {
 
         if let Some(value) = self.get_option_value(&HeaderName::CONNECTION) {
             Self::contains_bytes(value.as_bytes(), b"Keep-Alive")
+        } else {
+            false
+        }
+    }
+    
+    pub fn is_chunk(&self) -> bool {
+        if let Some(value) = self.get_option_value(&HeaderName::TRANSFER_ENCODING) {
+            Self::contains_bytes(value.as_bytes(), b"chunked")
         } else {
             false
         }
@@ -189,7 +197,7 @@ impl HeaderMap {
         if dst.len() > src.len() {
             return false;
         }
-        for i in 0..(src.len() - dst.len()) {
+        for i in 0..(src.len() - dst.len() + 1) {
             if &src[i..(i + dst.len())] == dst {
                 return true;
             }
