@@ -3,7 +3,7 @@ use crate::{
         frame::{Kind, StreamIdentifier},
         DEFAULT_MAX_FRAME_SIZE, MAX_INITIAL_WINDOW_SIZE, MAX_MAX_FRAME_SIZE,
     },
-    Binary, BinaryMut, Buf, BufMut, Http2Error, WebResult, http2::{DEFAULT_SETTINGS_HEADER_TABLE_SIZE, DEFAULT_INITIAL_WINDOW_SIZE},
+    Binary, BinaryMut, Buf, BufMut, Http2Error, WebResult,
 };
 
 use super::{frame::FrameHeader, Flag};
@@ -298,7 +298,7 @@ impl Settings {
     pub fn parse_http_settings(&self, value: &str) -> WebResult<Settings> {
         use base64::Engine;
         match base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(value.as_bytes()) {
-            Err(e) => {
+            Err(_e) => {
                 return Err(crate::WebError::Http2(Http2Error::InvalidSettingValue));
             }
             Ok(v) => {

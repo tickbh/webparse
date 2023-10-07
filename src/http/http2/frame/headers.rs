@@ -9,7 +9,7 @@ use crate::{
     BinaryMut, Buf, HeaderMap, Http2Error, Method, Scheme, Url, WebResult,
 };
 
-use super::{frame::Frame, Flag, FrameHeader, Kind, StreamDependency, StreamIdentifier, flag};
+use super::{frame::Frame, Flag, FrameHeader, Kind, StreamDependency, StreamIdentifier};
 
 ///
 /// This could be either a request or a response.

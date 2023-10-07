@@ -614,7 +614,7 @@ impl Default for Binary {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Binary, Buf};
+    use crate::{Binary};
 
     #[test]
     fn binary_refs() {

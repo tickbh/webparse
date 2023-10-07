@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, Helper, Method,
+    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, Helper,
 };
 
 use super::{
