@@ -1,4 +1,4 @@
-use crate::{Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError, http::StatusCode};
+use crate::{Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError, http::StatusCode, BufMut};
 use super::{Method, Version, HeaderMap, HeaderName, HeaderValue, Scheme};
 
 
@@ -375,7 +375,11 @@ impl Helper {
     pub fn parse_chunk_data<B:Buf>(buffer: &mut B) -> WebResult<(Vec<u8>, usize, bool)> {
         let first = buffer.mark_commit();
         let num = Helper::parse_hex(buffer)?;
+        
         let num = usize::from_str_radix(num, 16).unwrap();
+        if num == 0 {
+            println!("receiver end message");
+        }
         Helper::skip_new_line(buffer)?;
         if num + 2 > buffer.remaining() {
             return Err(WebError::Http(HttpError::Partial));
@@ -384,7 +388,18 @@ impl Helper {
         let ret = buffer.chunk()[..num].to_vec();
         buffer.advance(num);
         Helper::skip_new_line(buffer)?;
+        println!("chunks = {}, is_end = {}", buffer.mark_commit() - first, num == 0);
         Ok((ret, buffer.mark_commit() - first, num == 0))
+    }
+
+    pub fn encode_chunk_data<B:Buf+BufMut>(buffer: &mut B, data: &[u8]) -> WebResult<usize> {
+        let len_str = format!("{:x}", data.len());
+        println!("write chunk len = {}", len_str);
+        let mut size = buffer.put_slice(len_str.as_bytes());
+        size += buffer.put_slice("\r\n".as_bytes());
+        size += buffer.put_slice(data);
+        size += buffer.put_slice("\r\n".as_bytes());
+        Ok(size)
     }
 
     #[inline]
