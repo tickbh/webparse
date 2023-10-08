@@ -10,10 +10,22 @@ macro_rules! next {
     ($bytes:ident) => ({
         match $bytes.get_next() {
             Some(b) => Ok(b),
-            None => Err(WebError::from(crate::HttpError::Partial))
+            None => Err(crate::WebError::from(crate::HttpError::Partial))
         }
     })
 }
+
+#[macro_export]
+macro_rules! must_have {
+    ($bytes:ident, $num:expr) => ({
+        if $bytes.remaining() < $num {
+            Ok(())
+        } else {
+            Err(webparse::WebError::from(webparse::HttpError::Partial))
+        }
+    })
+}
+
 
 #[macro_export]
 macro_rules! peek {

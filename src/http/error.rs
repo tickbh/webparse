@@ -4,6 +4,8 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum HttpError {
+    /// 数据太小不足以支持读
+    BufTooShort,
     /// Invalid byte in header name.
     HeaderName,
     /// Invalid byte in header value.
@@ -31,6 +33,7 @@ impl HttpError {
     #[inline]
     pub fn description_str(&self) -> &'static str {
         match *self {
+            HttpError::BufTooShort => "buf too short",
             HttpError::HeaderName => "invalid header name",
             HttpError::HeaderValue => "invalid header value",
             HttpError::NewLine => "invalid new line",
