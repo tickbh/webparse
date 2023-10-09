@@ -244,15 +244,10 @@ impl Headers {
 
     pub fn into_request(self, mut builder: request::Builder) -> WebResult<request::Builder> {
         let (parts, header) = self.into_parts();
+        let url = parts.build_url()?;
+        builder = builder.url(url);
         if let Some(m) = parts.method {
             builder = builder.method(m);
-        }
-        if let Some(path) = parts.path {
-            let mut url = Url::parse(path.into_bytes())?;
-            if let Some(authority) = parts.authority {
-                url.domain = Some(authority);
-            }
-            builder = builder.url(url);
         }
         builder = builder.headers(header);
         Ok(builder)
@@ -560,6 +555,16 @@ impl Parts {
         if let Some(status) = self.status.take() {
             header.insert(":status", status.as_str());
         }
+    }
+
+    pub fn build_url(&self) -> WebResult<Url> {
+        
+        if self.scheme.is_none() || self.authority.is_none() {
+            return Err(crate::WebError::Http2(Http2Error::InvalidRequesetUrl));
+        }
+        let url = format!("{}://{}{}", self.scheme.as_ref().unwrap(), self.authority.as_ref().unwrap(), self.path.clone().unwrap_or("/".to_string()));
+        let url = Url::parse(url.into_bytes().to_vec())?;
+        Ok(url)
     }
 }
 

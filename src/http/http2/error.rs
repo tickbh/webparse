@@ -48,6 +48,8 @@ pub enum Http2Error {
     InvalidDependencyId,
     /// 无效的报文信息
     MalformedMessage,
+    /// 请求的头信息不全
+    InvalidRequesetUrl,
 }
 
 

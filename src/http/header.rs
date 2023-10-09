@@ -4,6 +4,8 @@ use std::{
 
 use crate::{HeaderName, HeaderValue, WebError, WebResult, Buf, BufMut};
 
+
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct HeaderMap {
     headers: Vec<(HeaderName, HeaderValue)>,
@@ -124,10 +126,10 @@ impl HeaderMap {
     }
 
 
-    pub fn get_option_value(&self, name: &HeaderName) -> Option<&HeaderValue> {
+    pub fn get_option_value<T: AsRef<[u8]>>(&self, name: &T) -> Option<&HeaderValue> {
         for i in 0..self.headers.len() {
             let v = &self.headers[i];
-            if &v.0 == name {
+            if v.0 == name.as_ref() {
                 return Some(&v.1)
             }
         }
@@ -137,6 +139,15 @@ impl HeaderMap {
     pub fn get_host(&self) -> Option<String> {
         if let Some(value) = self.get_option_value(&HeaderName::HOST) {
             value.try_into().ok()
+        } else if let Some(value) = self.get_option_value(&":authority") {
+            let value = TryInto::<String>::try_into(value).ok().unwrap();
+            // host 信息只取前缀
+            if value.contains(":") {
+                let v: Vec<&str> = value.split(':').collect();
+                return Some(v[0].to_string())
+            } else {
+                return Some(value)
+            }
         } else {
             None
         }
