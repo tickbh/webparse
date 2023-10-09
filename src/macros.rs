@@ -18,7 +18,7 @@ macro_rules! next {
 #[macro_export]
 macro_rules! must_have {
     ($bytes:ident, $num:expr) => ({
-        if $bytes.remaining() < $num {
+        if $bytes.remaining() >= $num {
             Ok(())
         } else {
             Err(webparse::WebError::from(webparse::HttpError::Partial))

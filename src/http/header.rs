@@ -1,5 +1,5 @@
 use std::{
-    ops::{Index, IndexMut}, fmt::Display,
+    ops::{Index, IndexMut}, fmt::Display, collections::HashMap,
 };
 
 use crate::{HeaderName, HeaderValue, WebError, WebResult, Buf, BufMut};
@@ -7,12 +7,14 @@ use crate::{HeaderName, HeaderValue, WebError, WebResult, Buf, BufMut};
 #[derive(Debug, PartialEq, Eq)]
 pub struct HeaderMap {
     headers: Vec<(HeaderName, HeaderValue)>,
+    systems: HashMap<String, String>,
 }
 
 impl HeaderMap {
     pub fn new() -> HeaderMap {
         HeaderMap {
             headers: Vec::new(),
+            systems: HashMap::new(),
         }
     }
 
@@ -22,6 +24,29 @@ impl HeaderMap {
 
     pub fn iter_mut(&mut self) -> std::slice::IterMut<(HeaderName, HeaderValue)> {
         self.headers.iter_mut()
+    }
+
+    pub fn push<T, V>(&mut self, name: T, value: V) -> Option<HeaderValue>
+    where
+        HeaderName: TryFrom<T>,
+        <HeaderName as TryFrom<T>>::Error: Into<WebError>,
+        HeaderValue: TryFrom<V>,
+        <HeaderValue as TryFrom<V>>::Error: Into<WebError>,
+    {
+        let name = HeaderName::try_from(name).map_err(Into::into);
+        let value = HeaderValue::try_from(value).map_err(Into::into);
+        if name.is_err() || value.is_err() {
+            return None;
+        }
+        let (name, value) = (name.unwrap(), value.unwrap());
+        for v in self.headers.iter_mut() {
+            if v.0 == name {
+                v.1.push(value);
+                return None;
+            }
+        }
+        self.headers.push((name, value));
+        None
     }
 
     pub fn insert<T, V>(&mut self, name: T, value: V) -> Option<HeaderValue>
@@ -47,19 +72,11 @@ impl HeaderMap {
         None
     }
     
-    pub fn remove<T>(&mut self, name: T) -> Option<HeaderValue>
-    where
-        HeaderName: TryFrom<T>,
-        <HeaderName as TryFrom<T>>::Error: Into<WebError>,
+    pub fn remove<T: AsRef<[u8]>>(&mut self, name: &T) -> Option<HeaderValue>
     {
-        let name = HeaderName::try_from(name).map_err(Into::into);
-        if name.is_err() {
-            return None;
-        }
-        let name = name.unwrap();
         for i in 0..self.headers.len() {
             let v = &self.headers[i];
-            if v.0 == name {
+            if v.0 == name.as_ref() {
                 self.headers.remove(i);
                 return None
             }
@@ -70,11 +87,11 @@ impl HeaderMap {
     pub fn clear(&mut self) {
         self.headers.clear()
     }
-
-    pub fn contains(&self, name: &HeaderName) -> bool {
+    
+    pub fn contains<T: AsRef<[u8]>>(&self, name: &T) -> bool {
         for i in 0..self.headers.len() {
             let v = &self.headers[i];
-            if &v.0 == name {
+            if &v.0 == &name.as_ref() {
                 return true
             }
         }
@@ -179,6 +196,14 @@ impl HeaderMap {
     pub fn is_empty(&self) -> bool {
         self.headers.len() == 0
     }
+
+    pub fn system_insert(&mut self, key: String, value: String) {
+        self.systems.insert(key, value);
+    }
+
+    pub fn system_get(&self, key: &String) -> Option<&String> {
+        self.systems.get(key)
+    }
     
     pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
@@ -254,6 +279,7 @@ impl Clone for HeaderMap {
     fn clone(&self) -> Self {
         Self {
             headers: self.headers.clone(),
+            systems: self.systems.clone(),
         }
     }
 }

@@ -25,6 +25,17 @@ fn eq_bytes(a: &[u8], b: &[u8]) -> bool {
     true
 }
 
+impl PartialEq<HeaderName> for &[u8] {
+    fn eq(&self, other: &HeaderName) -> bool {
+        other == self
+    }
+}
+
+impl PartialEq<&[u8]> for HeaderName {
+    fn eq(&self, other: &&[u8]) -> bool {
+        eq_bytes(self.as_bytes(), other)
+    }
+}
 
 impl PartialEq<&str> for HeaderName {
     fn eq(&self, other: &&str) -> bool {
@@ -124,6 +135,12 @@ impl HeaderName {
             Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
             Self::Value(name) => Ok(buffer.put_slice(name.as_bytes())),
         }
+    }
+}
+
+impl AsRef<[u8]> for HeaderName {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
     }
 }
 

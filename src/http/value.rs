@@ -43,6 +43,20 @@ impl HeaderValue {
         }
     }
 
+    pub fn push(&mut self, value: HeaderValue) {
+        match self {
+            Self::Stand(s) => *self = Self::Value(s.as_bytes().to_vec()),
+            _ => {}
+        }
+        match self {
+            Self::Value(s) => {
+                s.push(b';');
+                s.append(&mut value.as_bytes().to_vec());
+            },
+            _ => unreachable!()
+        }
+    }
+
     pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),

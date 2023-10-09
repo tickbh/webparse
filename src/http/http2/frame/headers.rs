@@ -442,19 +442,19 @@ impl PushPromise {
             .parts
             .encode_header(&mut self.header_block.fields);
 
-        if let Some(v) = self.header_block.fields.remove(":method") {
+        if let Some(v) = self.header_block.fields.remove(&":method") {
             let _ =
                 encoder.encode_header_into((&HeaderName::from_static(":method"), &v), &mut binary);
         }
-        if let Some(v) = self.header_block.fields.remove(":authority") {
+        if let Some(v) = self.header_block.fields.remove(&":authority") {
             let _ = encoder
                 .encode_header_into((&HeaderName::from_static(":authority"), &v), &mut binary);
         }
-        if let Some(v) = self.header_block.fields.remove(":scheme") {
+        if let Some(v) = self.header_block.fields.remove(&":scheme") {
             let _ =
                 encoder.encode_header_into((&HeaderName::from_static(":scheme"), &v), &mut binary);
         }
-        if let Some(v) = self.header_block.fields.remove(":path") {
+        if let Some(v) = self.header_block.fields.remove(&":path") {
             let _ =
                 encoder.encode_header_into((&HeaderName::from_static(":path"), &v), &mut binary);
         }
