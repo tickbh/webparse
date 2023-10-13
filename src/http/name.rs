@@ -1,6 +1,6 @@
 use std::{fmt::{self, Display}, hash::Hash};
 
-use crate::{WebError, WebResult, Buf, BufMut};
+use crate::{WebError, WebResult, Buf, BufMut, Helper};
 
 /// 请求头的名字不区分大小写
 #[derive(Clone)]
@@ -9,21 +9,6 @@ pub enum HeaderName {
     Value(String),
 }
 
-fn eq_bytes(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    for i in 0..a.len() {
-        if a[i] == b[i] {
-            continue;
-        }
-        let wrap = a[i].wrapping_sub(b[i]);
-        if wrap != 32 && wrap != 224 {
-            return false;
-        }
-    }
-    true
-}
 
 impl PartialEq<HeaderName> for &[u8] {
     fn eq(&self, other: &HeaderName) -> bool {
@@ -33,13 +18,13 @@ impl PartialEq<HeaderName> for &[u8] {
 
 impl PartialEq<&[u8]> for HeaderName {
     fn eq(&self, other: &&[u8]) -> bool {
-        eq_bytes(self.as_bytes(), other)
+        Helper::eq_bytes_ignore_ascii_case(self.as_bytes(), other)
     }
 }
 
 impl PartialEq<&str> for HeaderName {
     fn eq(&self, other: &&str) -> bool {
-        eq_bytes(self.as_bytes(), other.as_bytes())
+        Helper::eq_bytes_ignore_ascii_case(self.as_bytes(), other.as_bytes())
     }
 }
 
@@ -47,7 +32,7 @@ impl PartialEq for HeaderName {
     fn eq(&self, other: &Self) -> bool {
         let a = self.as_bytes();
         let b = other.as_bytes();
-        eq_bytes(a, b)
+        Helper::eq_bytes_ignore_ascii_case(a, b)
     }
 }
 

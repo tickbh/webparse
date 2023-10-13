@@ -63,6 +63,10 @@ impl HeaderValue {
             Self::Value(vec) => Ok(buffer.put_slice(&**vec)),
         }
     }
+
+    pub fn contains(&self, bytes: &[u8]) -> bool {
+        Helper::contains_bytes(self.as_bytes(), bytes)
+    }
 }
 
 impl Hash for HeaderValue {

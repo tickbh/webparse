@@ -424,4 +424,39 @@ impl Helper {
         result
     }
 
+
+    pub fn eq_bytes_ignore_ascii_case(a: &[u8], b: &[u8]) -> bool {
+        if a.len() != b.len() {
+            return false;
+        }
+        for i in 0..a.len() {
+            if a[i] == b[i] {
+                continue;
+            }
+            let wrap = a[i].wrapping_sub(b[i]);
+            if wrap != 32 && wrap != 224 {
+                return false;
+            }
+        }
+        true
+    }
+    
+    pub fn eq_bytes(a: &[u8], b: &[u8]) -> bool {
+        if a.len() != b.len() {
+            return false;
+        }
+        a == b
+    }
+    
+    pub fn contains_bytes(a: &[u8], b: &[u8]) -> bool {
+        if a.len() < b.len() {
+            return false;
+        }
+        for i in 0..(a.len() - b.len() + 1) {
+            if &a[i..(i + b.len())] == b {
+                return true;
+            }
+        }
+        false
+    }
 }
