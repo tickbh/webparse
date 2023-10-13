@@ -175,7 +175,7 @@ impl HeaderMap {
         }
     }
     
-    pub fn is_chunk(&self) -> bool {
+    pub fn is_chunked(&self) -> bool {
         if let Some(value) = self.get_option_value(&HeaderName::TRANSFER_ENCODING) {
             Self::contains_bytes(value.as_bytes(), b"chunked")
         } else {
