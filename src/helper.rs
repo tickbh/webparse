@@ -392,7 +392,7 @@ impl Helper {
         Ok((ret, buffer.mark_commit() - first, num == 0))
     }
 
-    pub fn encode_chunk_data<B:Buf+BufMut>(buffer: &mut B, data: &[u8]) -> WebResult<usize> {
+    pub fn encode_chunk_data<B:Buf+BufMut>(buffer: &mut B, data: &[u8]) -> std::io::Result<usize> {
         let len_str = format!("{:x}", data.len());
         println!("write chunk len = {}", len_str);
         let mut size = buffer.put_slice(len_str.as_bytes());

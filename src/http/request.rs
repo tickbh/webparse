@@ -403,6 +403,14 @@ where
         &mut self.parts.header
     }
 
+    pub fn headers_body(&mut self) -> (&HeaderMap, &T) {
+        (&self.parts.header, &self.body)
+    }
+
+    pub fn headers_body_mut(&mut self) -> (&mut HeaderMap, &mut T) {
+        (&mut self.parts.header, &mut self.body)
+    }
+
     pub fn url(&self) -> &Url {
         &self.parts.url
     }
