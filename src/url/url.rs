@@ -114,7 +114,11 @@ impl Url {
                     if path.is_some() {
                         query = Some(buffer.clone_slice());
                     } else if domain.is_some() {
-                        path = Some(buffer.clone_slice());
+                        if !is_first_slash {
+                            port = Some(buffer.clone_slice());
+                        } else {
+                            path = Some(buffer.clone_slice());
+                        }
                     } else if domain.is_none() {
                         if has_domain {
                             domain = Some(buffer.clone_slice());
@@ -421,6 +425,19 @@ mod tests {
             assert_eq!(u.password.unwrap(), "11");
             assert_eq!(u.port.unwrap(), 80);
             assert_eq!(u.path, "/path");
+            assert_eq!(u.query, None);
+        }
+    }
+
+
+    murl! {
+        urltest_003,
+        "http://127.0.0.1:8080",
+        |u| {
+            assert_eq!(u.scheme, crate::Scheme::Http);
+            assert_eq!(u.domain.unwrap(), "127.0.0.1");
+            assert_eq!(u.port.unwrap(), 8080);
+            assert_eq!(u.path, "/");
             assert_eq!(u.query, None);
         }
     }

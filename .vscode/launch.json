@@ -1,0 +1,157 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'webparse'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=webparse"
+                ],
+                "filter": {
+                    "name": "webparse",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'demo'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=demo",
+                    "--package=webparse"
+                ],
+                "filter": {
+                    "name": "demo",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'demo'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=demo",
+                    "--package=webparse"
+                ],
+                "filter": {
+                    "name": "demo",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'http1'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=http1",
+                    "--package=webparse"
+                ],
+                "filter": {
+                    "name": "http1",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'http1'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=http1",
+                    "--package=webparse"
+                ],
+                "filter": {
+                    "name": "http1",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'http2'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=http2",
+                    "--package=webparse"
+                ],
+                "filter": {
+                    "name": "http2",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'http2'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=http2",
+                    "--package=webparse"
+                ],
+                "filter": {
+                    "name": "http2",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'http1'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=http1",
+                    "--package=webparse"
+                ],
+                "filter": {
+                    "name": "http1",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

@@ -10,4 +10,7 @@ fn main() {
     
     assert!(ret == buf.len());
     assert!(req.is_complete());
+
+    // let url = webparse::Url::try_from("http://127.0.0.1:8080").unwrap();
+    // println!("url = {:?}", url);
 }

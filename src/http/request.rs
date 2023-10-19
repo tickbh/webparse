@@ -376,9 +376,19 @@ where
     pub fn parts(&self) -> &Parts {
         &self.parts
     }
+    
+    /// 返回parts信息
+    pub fn parts_mut(&mut self) -> &mut Parts {
+        &mut self.parts
+    }
 
     pub fn method(&self) -> &Method {
         &self.parts.method
+    }
+
+    #[inline]
+    pub fn set_method(&mut self, method: Method) {
+        self.parts.method = method;
     }
 
     #[inline]
@@ -387,17 +397,33 @@ where
     }
 
     #[inline]
+    pub fn set_version(&mut self, version: Version) {
+        self.parts.version = version;
+    }
+
+    #[inline]
     pub fn path(&self) -> &String {
         &self.parts.path
+    }
+    
+    #[inline]
+    pub fn set_path(&mut self, path: String) {
+        self.parts.path = path;
+    }
+
+    pub fn scheme(&self) -> &Scheme {
+        &self.parts.url.scheme
+    }
+
+    #[inline]
+    pub fn set_scheme(&mut self, scheme: Scheme) {
+        self.parts.url.scheme = scheme;
     }
 
     pub fn headers(&self) -> &HeaderMap {
         &self.parts.header
     }
 
-    pub fn scheme(&self) -> &Scheme {
-        &self.parts.url.scheme
-    }
 
     pub fn headers_mut(&mut self) -> &mut HeaderMap {
         &mut self.parts.header

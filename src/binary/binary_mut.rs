@@ -543,7 +543,6 @@ impl Read for BinaryMut {
 impl Write for BinaryMut {
     #[inline(always)]
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
-        println!("write!!!!!!! buf {:?}", buf);
         self.put_slice(buf);
         Ok(buf.len())
     }
