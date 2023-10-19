@@ -66,6 +66,20 @@ impl Scheme {
             Scheme::None => "",
         }
     }
+
+    pub fn is_http(&self) -> bool {
+        match self {
+            Scheme::Http => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_https(&self) -> bool {
+        match self {
+            Scheme::Https => true,
+            _ => false,
+        }
+    }
 }
 
 impl Display for Scheme {
