@@ -377,9 +377,6 @@ impl Helper {
         let num = Helper::parse_hex(buffer)?;
         
         let num = usize::from_str_radix(num, 16).unwrap();
-        if num == 0 {
-            println!("receiver end message");
-        }
         Helper::skip_new_line(buffer)?;
         if num + 2 > buffer.remaining() {
             return Err(WebError::Http(HttpError::Partial));
@@ -388,13 +385,11 @@ impl Helper {
         let ret = buffer.chunk()[..num].to_vec();
         buffer.advance(num);
         Helper::skip_new_line(buffer)?;
-        println!("chunks = {}, is_end = {}", buffer.mark_commit() - first, num == 0);
         Ok((ret, buffer.mark_commit() - first, num == 0))
     }
 
     pub fn encode_chunk_data<B:Buf+BufMut>(buffer: &mut B, data: &[u8]) -> std::io::Result<usize> {
         let len_str = format!("{:x}", data.len());
-        println!("write chunk len = {}", len_str);
         let mut size = buffer.put_slice(len_str.as_bytes());
         size += buffer.put_slice("\r\n".as_bytes());
         size += buffer.put_slice(data);
