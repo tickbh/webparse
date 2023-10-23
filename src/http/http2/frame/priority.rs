@@ -81,7 +81,7 @@ impl StreamDependency {
     }
 
     pub fn load<B: Buf>(src: &mut B) -> WebResult<Self> {
-        if src.remaining() != 5 {
+        if src.remaining() < 5 {
             return Err(Http2Error::InvalidPayloadLength.into());
         }
 

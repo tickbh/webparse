@@ -115,7 +115,12 @@ impl Headers {
         decoder: &mut Decoder,
         max_header_list_size: usize,
     ) -> WebResult<usize> {
-        let first = buffer.mark_commit();;
+        if self.flags.is_priority() {
+            let depency = StreamDependency::load(&mut buffer)?;
+            self.stream_dep = Some(depency);
+        }
+
+        let first = buffer.mark_commit();
         let headers = decoder.decode(&mut buffer)?;
         let mut header_size = 0;
         for h in headers {

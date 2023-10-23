@@ -210,11 +210,12 @@ impl FrameHeader {
         let length = read_u24(buffer);
         let kind = Kind::new(buffer.get_u8());
         let flag = buffer.get_u8();
+        let flag = Flag::new(flag).map_err(|()| Http2Error::into(Http2Error::BadFlag(flag)))?;
         let id = StreamIdentifier::parse(buffer);
         Ok(FrameHeader {
             length,
             kind,
-            flag: Flag::new(flag).map_err(|()| Http2Error::into(Http2Error::BadFlag(flag)))?,
+            flag,
             id,
         })
     }
