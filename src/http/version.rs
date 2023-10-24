@@ -44,6 +44,21 @@ impl Version {
             _ => Ok(buffer.put_slice(&self.as_str().as_bytes()))
         }
     }
+
+    pub fn is_http1(&self) -> bool {
+        match self {
+            Version::Http10 => true,
+            Version::Http11 => true,
+            _ => false,
+        }
+    }
+    
+    pub fn is_http2(&self) -> bool {
+        match self {
+            Version::Http2 => true,
+            _ => false,
+        }
+    }
 }
 
 impl Display for Version {

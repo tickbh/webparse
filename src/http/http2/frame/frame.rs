@@ -49,6 +49,20 @@ impl Frame<Binary> {
         }
         Ok(())
     }
+    
+    pub fn display_name(&self) -> String {
+        match self {
+            Frame::Data(f) => format!("Data({})", f.stream_id()),
+            Frame::Headers(f) => format!("Headers({})", f.stream_id()),
+            Frame::Priority(f) => format!("Priority({})", f.stream_id()),
+            Frame::PushPromise(f) => format!("PushPromise({})", f.stream_id()),
+            Frame::Settings(_f) => format!("Settings({})", 0),
+            Frame::Ping(_f) => format!("Ping({})", 0),
+            Frame::GoAway(_f) => format!("GoAway({})", 0),
+            Frame::WindowUpdate(f) => format!("WindowUpdate({})", f.stream_id()),
+            Frame::Reset(f) => format!("Reset({})", f.stream_id()),
+        }
+    }
 
     pub fn stream_id(&self) -> StreamIdentifier {
         match self {
@@ -77,6 +91,8 @@ impl Frame<Binary> {
             Frame::Reset(_f) => Flag::zero(),
         }
     }
+
+
 
     pub fn is_header(&self) -> bool {
         match self {
@@ -114,8 +130,9 @@ impl Frame<Binary> {
         buf: &mut B,
         encoder: &mut Encoder,
     ) -> WebResult<usize> {
+        let name = self.display_name();
         let size = match self {
-            Frame::Data(mut s) => s.encode(buf)?,
+            Frame::Data(mut s) => s.encode(encoder, buf)?,
             Frame::Headers(s) => s.encode(encoder, buf)?,
             Frame::Priority(v) => v.encode(buf)?,
             Frame::PushPromise(p) => p.encode(encoder, buf)?,
@@ -125,7 +142,7 @@ impl Frame<Binary> {
             Frame::WindowUpdate(v) => v.encode(buf)?,
             Frame::Reset(v) => v.encode(buf)?,
         };
-        log::trace!("编码http二进制Frame 大小 {}", size);
+        log::trace!("编码http2二进制Frame({}) 大小 {}", name, size);
         Ok(size)
     }
 }
@@ -230,6 +247,10 @@ impl FrameHeader {
 
     pub fn flag(&self) -> Flag {
         self.flag
+    }
+
+    pub fn flags_mut(&mut self) -> &mut Flag {
+        &mut self.flag
     }
 
     pub fn encode<B: Buf + BufMut>(&self, buffer: &mut B) -> WebResult<usize> {

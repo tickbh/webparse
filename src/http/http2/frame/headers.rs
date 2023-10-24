@@ -161,6 +161,10 @@ impl Headers {
     pub fn flags(&self) -> Flag {
         self.flags
     }
+    
+    pub fn flags_mut(&mut self) -> &mut Flag {
+        &mut self.flags
+    }
 
     pub fn is_end_headers(&self) -> bool {
         self.flags.is_end_headers()
@@ -325,6 +329,10 @@ impl PushPromise {
 
     pub fn flags(&self) -> Flag {
         self.flags
+    }
+
+    pub fn flags_mut(&mut self) -> &mut Flag {
+        &mut self.flags
     }
 
     pub fn is_end_headers(&self) -> bool {
@@ -574,8 +582,6 @@ impl Parts {
 }
 
 impl HeaderBlock {
-    pub const FIRST: [&'static str; 5] = [":status", ":path", ":method", ":authority", ":scheme"];
-
     pub fn encode<B: Buf + BufMut>(
         &mut self,
         encoder: &mut Encoder,
@@ -585,12 +591,7 @@ impl HeaderBlock {
     ) -> WebResult<usize> {
         let mut result = vec![];
         let mut binary = BinaryMut::new();
-        // for key in Self::FIRST {
-        //     if let Some(v) = self.fields.remove(key) {
-        //         let _ =
-        //             encoder.encode_header_into((&HeaderName::from_static(key), &v), &mut binary);
-        //     }
-        // }
+
         for value in self.fields.iter() {
             if value.0.bytes_len() + value.1.bytes_len() + binary.remaining()
                 > encoder.max_frame_size as usize

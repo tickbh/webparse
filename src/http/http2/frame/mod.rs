@@ -13,7 +13,7 @@ mod ping;
 mod reset;
 mod window_update;
 
-use std::cmp::Ordering;
+use std::{cmp::Ordering, fmt::{Display, Write}};
 
 pub use priority::{Priority, StreamDependency};
 pub use headers::{Headers, PushPromise};
@@ -89,6 +89,12 @@ impl Ord for StreamIdentifier {
 impl PartialOrd for StreamIdentifier {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl Display for StreamIdentifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{}", self.0))
     }
 }
 

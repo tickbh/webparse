@@ -1,5 +1,5 @@
 
-use crate::{Binary, Serialize, Buf, BufMut, WebResult};
+use crate::{Binary, Serialize, Buf, BufMut, WebResult, http2::encoder::Encoder};
 
 use super::{Flag, FrameHeader, Kind, StreamIdentifier};
 
@@ -77,13 +77,25 @@ impl<T> Data<T> {
 }
 
 impl Data<Binary> {
-    pub fn encode<B: Buf+BufMut>(&mut self, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Buf+BufMut>(&mut self,
+        encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
         log::trace!("encoding Data; len={}", self.data.remaining());
-        let mut head = FrameHeader::new(Kind::Data, self.flags.into(), self.stream_id);
-        head.length = self.data.remaining() as u32;
         let mut size = 0;
-        size += head.encode(dst)?;
-        size += self.data.serialize(dst)?;
+        loop {
+            let now_len = std::cmp::min(self.data.remaining(), encoder.max_frame_size); 
+            let mut head = FrameHeader::new(Kind::Data, self.flags.into(), self.stream_id);
+            head.length = now_len as u32;
+            if now_len < self.data.remaining() {
+                head.flags_mut().unset_end_stream();
+                size += head.encode(dst)?;
+                size += dst.put_slice(&self.data.chunk()[..now_len]);
+                self.data.advance(now_len);
+            } else {
+                size += head.encode(dst)?;
+                size += self.data.serialize(dst)?;
+                break;
+            }
+        }
         Ok(size)
     }
 }

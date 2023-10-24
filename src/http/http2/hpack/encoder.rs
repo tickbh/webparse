@@ -55,6 +55,7 @@ impl Encoder {
         writer: &mut B,
     ) -> io::Result<()> {
         let value = { self.index.read().unwrap().find_header(header) };
+        
         match value {
             None => {
                 self.encode_literal(header, true, writer)?;
@@ -65,6 +66,10 @@ impl Encoder {
             }
             Some((index, false)) => {
                 self.encode_indexed_name((index, &header.1), true, writer)?;
+                self.index
+                    .write()
+                    .unwrap()
+                    .add_header(header.0.clone(), header.1.clone());
             }
             Some((index, true)) => {
                 self.encode_indexed(index, writer)?;
