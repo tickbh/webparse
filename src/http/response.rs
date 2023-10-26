@@ -339,6 +339,36 @@ impl Response<()> {
     pub fn builder() -> Builder {
         Builder::new()
     }
+
+    pub fn text() -> Builder {
+        Response::builder()
+        .status(200)
+        .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
+    }
+    
+    pub fn status404() -> Builder {
+        Response::builder()
+        .status(404)
+        .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
+    }
+    
+    pub fn status503() -> Builder {
+        Response::builder()
+        .status(503)
+        .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
+    }
+
+    pub fn status502() -> Builder {
+        Response::builder()
+        .status(502)
+        .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
+    }
+
+    pub fn status500() -> Builder {
+        Response::builder()
+        .status(500)
+        .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
+    }
 }
 
 impl<T: Serialize> Response<T> {
