@@ -1,6 +1,6 @@
 [package]
 name = "webparse"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 authors = [ "tickbh <tickdream125@hotmail.com>" ]
 description = "http1.1/http2 parse http解析库"
