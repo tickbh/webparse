@@ -454,6 +454,13 @@ impl From<BinaryMut> for Binary {
     }
 }
 
+impl From<Binary> for BinaryMut {
+    fn from(src: Binary) -> BinaryMut {
+        BinaryMut::from(src.into_slice())
+    }
+}
+
+
 impl PartialEq for BinaryMut {
     fn eq(&self, other: &BinaryMut) -> bool {
         self.as_slice() == other.as_slice()

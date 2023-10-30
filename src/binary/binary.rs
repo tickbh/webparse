@@ -249,6 +249,20 @@ impl Binary {
             }
         }
     }
+
+    #[inline]
+    pub fn into_slice(&self) -> Vec<u8> {
+        if (self.vtable.vtype)() == STATIC_TYPE {
+            self.to_vec()[self.cursor..(self.cursor + self.len)].to_vec()
+        } else {
+            if (*self.counter).borrow().load(Ordering::SeqCst) == 1 {
+                (*self.counter).borrow().fetch_add(1, Ordering::Relaxed);
+                self.to_vec()[self.cursor..(self.cursor + self.len)].to_vec()
+            } else {
+                self.to_vec()[self.cursor..(self.cursor + self.len)].to_vec()
+            }
+        }
+    }
 }
 
 impl Clone for Binary {
