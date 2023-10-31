@@ -97,7 +97,7 @@ impl Builder {
     /// # use webparse::*;
     ///
     /// let response = Response::builder()
-    ///     .version(Version::HTTP_2)
+    ///     .version(Version::Http2)
     ///     .body(())
     ///     .unwrap();
     /// ```

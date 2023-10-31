@@ -143,6 +143,9 @@ impl Headers {
                     ":scheme" => {
                         self.header_block.parts.scheme = Some(Scheme::try_from(&*value)?);
                     }
+                    ":status" => {
+                        self.header_block.parts.status = Some(StatusCode::try_from(&*value)?);
+                    }
                     _ => {
                         self.header_block.fields.insert(h.0, h.1);
                     }
@@ -266,6 +269,9 @@ impl Headers {
         let (parts, header) = self.into_parts();
         if let Some(m) = parts.method {
             builder = builder.method(m.as_str().to_string());
+        }
+        if let Some(status) = parts.status {
+            builder = builder.status(status);
         }
         builder = builder.headers(header);
         Ok(builder)
