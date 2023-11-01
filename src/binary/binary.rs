@@ -1,4 +1,6 @@
+use std::io::Error;
 use std::fmt::Debug;
+use std::io;
 use std::ops::{Deref, RangeBounds};
 use std::{
     alloc::{dealloc, Layout},
@@ -395,7 +397,7 @@ impl Read for Binary {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         let left = self.remaining();
         if left == 0 || buf.len() == 0 {
-            return Ok(0);
+            return Err(Error::new(io::ErrorKind::WouldBlock, ""));
         }
         let read = std::cmp::min(left, buf.len());
         unsafe {

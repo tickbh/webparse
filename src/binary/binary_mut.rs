@@ -3,7 +3,7 @@ use std::{
     cmp,
     fmt::{self, Debug},
     hash,
-    io::{Read, Result, Write},
+    io::{self, Error, Read, Result, Write},
     mem::MaybeUninit,
     ops::{Deref, DerefMut, RangeBounds},
     ptr,
@@ -15,6 +15,8 @@ use crate::{Binary, Buf, WebError};
 
 use super::BufMut;
 
+/// 100k，当数据大于100k时，可以尝试重排当前的结构
+static RESORT_MEMORY_SIZE: usize = 102400;
 /// 二进制的封装, 可写可读
 pub struct BinaryMut {
     ptr: *mut Vec<u8>,
@@ -26,6 +28,8 @@ pub struct BinaryMut {
     manual_len: usize,
     // 标记值, 从上一次标记到现在的游标值, 可以得出偏移的对象
     mark: usize,
+    // 尝试重排的大小
+    resort: usize,
 }
 
 impl BinaryMut {
@@ -62,6 +66,7 @@ impl BinaryMut {
             manual_len: usize::MAX,
             mark: 0,
             counter: Rc::new(RefCell::new(AtomicUsize::new(1))),
+            resort: RESORT_MEMORY_SIZE,
         }
     }
 
@@ -158,7 +163,7 @@ impl BinaryMut {
     pub fn clear(&mut self) {
         self.cursor = 0;
         unsafe {
-            (*self.ptr).set_len(0);    
+            (*self.ptr).set_len(0);
         }
     }
     /// 判断对象是否为空
@@ -277,6 +282,36 @@ impl BinaryMut {
             self.advance_mut(cnt);
         }
     }
+
+    pub fn get_resort(&self) -> usize {
+        self.resort
+    }
+    
+    pub fn set_resort(&mut self, resort: usize) {
+        self.resort = resort;
+    }
+
+    #[inline]
+    pub unsafe fn try_resort_memory(&mut self) {
+        if (*self.ptr).len() < self.resort || self.cursor < self.resort / 2 {
+            return;
+        }
+        let left = self.remaining();
+        // 只有当前只有一个引用的时候尝试做数据迁移，否则会影响另外的数据
+        if (*self.counter).borrow().load(Ordering::SeqCst) == 1 {
+            if left == 0 {
+                (*self.ptr).set_len(0);
+            } else {
+                std::ptr::copy((*self.ptr).as_ptr().add(self.cursor), (*self.ptr).as_mut_ptr(), left);
+                (*self.ptr).set_len(left);
+            }
+
+            self.cursor = 0;
+            if self.manual_len != usize::MAX {
+                self.manual_len = left;
+            }
+        }
+    }
 }
 
 impl From<Vec<u8>> for BinaryMut {
@@ -296,6 +331,7 @@ impl Clone for BinaryMut {
             manual_len: self.manual_len,
             mark: self.mark.clone(),
             counter: self.counter.clone(),
+            resort: self.resort,
         }
     }
 }
@@ -311,7 +347,6 @@ impl Drop for BinaryMut {
 impl Buf for BinaryMut {
     fn remaining(&self) -> usize {
         unsafe {
-            // println!("len = {:?}, cursor = {:?}", std::cmp::min(self.manual_len, (*self.ptr).len()), self.cursor);
             std::cmp::min(self.manual_len, (*self.ptr).len()) - self.cursor
         }
     }
@@ -323,6 +358,7 @@ impl Buf for BinaryMut {
     fn advance(&mut self, n: usize) {
         unsafe {
             self.inc_start(n);
+            self.try_resort_memory();
         }
     }
 
@@ -354,7 +390,7 @@ impl Buf for BinaryMut {
     fn into_binary(self) -> Binary {
         Binary::from(self.chunk().to_vec())
     }
-    
+
     fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self
     where
         Self: Sized,
@@ -460,7 +496,6 @@ impl From<Binary> for BinaryMut {
     }
 }
 
-
 impl PartialEq for BinaryMut {
     fn eq(&self, other: &BinaryMut) -> bool {
         self.as_slice() == other.as_slice()
@@ -536,7 +571,7 @@ impl Read for BinaryMut {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         let left = self.remaining();
         if left == 0 || buf.len() == 0 {
-            return Ok(0);
+            return Err(Error::new(io::ErrorKind::WouldBlock, ""));
         }
         let read = std::cmp::min(left, buf.len());
         unsafe {
