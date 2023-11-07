@@ -578,10 +578,10 @@ impl Parts {
 
     pub fn build_url(&self) -> WebResult<Url> {
         
-        if self.scheme.is_none() || self.authority.is_none() {
+        if self.authority.is_none() {
             return Err(crate::WebError::Http2(Http2Error::InvalidRequesetUrl));
         }
-        let url = format!("{}://{}{}", self.scheme.as_ref().unwrap(), self.authority.as_ref().unwrap(), self.path.clone().unwrap_or("/".to_string()));
+        let url = format!("{}://{}{}", self.scheme.as_ref().unwrap_or(&Scheme::Http), self.authority.as_ref().unwrap(), self.path.clone().unwrap_or("/".to_string()));
         let url = Url::parse(url.into_bytes().to_vec())?;
         Ok(url)
     }
