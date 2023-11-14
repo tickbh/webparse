@@ -67,6 +67,13 @@ impl Scheme {
         }
     }
 
+    pub fn is_none(&self) -> bool {
+        match self {
+            Scheme::None => true,
+            _ => false,
+        }
+    }
+
     pub fn is_http(&self) -> bool {
         match self {
             Scheme::Http => true,

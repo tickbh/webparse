@@ -445,6 +445,18 @@ where
         self.parts.get_host()
     }
 
+    pub fn get_referer(&self) -> Option<String> {
+        self.parts.get_referer()
+    }
+    
+    pub fn get_user_agent(&self) -> Option<String> {
+        self.parts.get_user_agent()
+    }
+
+    pub fn get_cookie(&self) -> Option<String> {
+        self.parts.get_cookie()
+    }
+
     /// 返回完整的域名加上端口号信息
     /// 如wwww.baidu.com:80, wwww.google.com:443
     pub fn get_connect_url(&self) -> Option<String> {
@@ -543,6 +555,17 @@ where
                         _ => (),
                     }
                 }
+                
+                if url.scheme.is_none() {
+                    match self.parts.header.get_option_value(&":scheme") {
+                        Some(h) => {
+                            url.scheme = TryFrom::try_from(&*h.to_string()).ok().unwrap_or(Scheme::Http);
+                        }
+                        _ => {
+                            url.scheme = Scheme::Http;
+                        },
+                    }
+                }
                 url
             }
         };
@@ -612,6 +635,18 @@ impl Parts {
             return self.url.domain.clone();
         }
         self.header.get_host()
+    }
+
+    pub fn get_referer(&self) -> Option<String> {
+        self.header.get_referer()
+    }
+    
+    pub fn get_user_agent(&self) -> Option<String> {
+        self.header.get_user_agent()
+    }
+
+    pub fn get_cookie(&self) -> Option<String> {
+        self.header.get_cookie()
     }
 
     // like wwww.baidu.com:80, wwww.google.com:443

@@ -143,7 +143,7 @@ impl HeaderMap {
             let value = TryInto::<String>::try_into(value).ok().unwrap();
             // host 信息只取前缀
             if value.contains(":") {
-                let v: Vec<&str> = value.split(':').collect();
+                let v: Vec<&str> = value.splitn(1, ':').collect();
                 return Some(v[0].to_string())
             } else {
                 return Some(value)
@@ -152,6 +152,31 @@ impl HeaderMap {
             None
         }
     }
+
+    pub fn get_referer(&self) -> Option<String> {
+        if let Some(value) = self.get_option_value(&HeaderName::REFERER) {
+            value.try_into().ok()
+        } else {
+            None
+        }
+    }
+
+    pub fn get_user_agent(&self) -> Option<String> {
+        if let Some(value) = self.get_option_value(&HeaderName::USER_AGENT) {
+            value.try_into().ok()
+        } else {
+            None
+        }
+    }
+
+    pub fn get_cookie(&self) -> Option<String> {
+        if let Some(value) = self.get_option_value(&HeaderName::COOKIE) {
+            value.try_into().ok()
+        } else {
+            None
+        }
+    }
+
 
     pub fn get_body_len(&self) -> isize {
         // if self.headers.contains_key(&HeaderName::TRANSFER_ENCODING) {
