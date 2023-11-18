@@ -1,9 +1,12 @@
-use std::{sync::{Arc, RwLock}, fmt::Display};
+use std::{
+    fmt::Display,
+    sync::{Arc, RwLock},
+};
 
 use super::{http2::HeaderIndex, HeaderMap, Method, Version};
 use crate::{
-    BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper, Scheme, Serialize, Url,
-    WebError, WebResult, http2::frame::Settings,
+    http2::frame::Settings, BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper,
+    Scheme, Serialize, Url, WebError, WebResult,
 };
 
 #[derive(Debug)]
@@ -317,7 +320,8 @@ impl Builder {
             }
             head.header.insert("Connection", "Upgrade, HTTP2-Settings");
             head.header.insert("Upgrade", "h2c");
-            head.header.insert("HTTP2-Settings", settings.encode_http_settings());
+            head.header
+                .insert("HTTP2-Settings", settings.encode_http_settings());
             Ok(head)
         })
     }
@@ -376,7 +380,7 @@ where
     pub fn parts(&self) -> &Parts {
         &self.parts
     }
-    
+
     /// 返回parts信息
     pub fn parts_mut(&mut self) -> &mut Parts {
         &mut self.parts
@@ -405,7 +409,7 @@ where
     pub fn path(&self) -> &String {
         &self.parts.path
     }
-    
+
     #[inline]
     pub fn set_path(&mut self, path: String) {
         self.parts.path = path;
@@ -423,7 +427,6 @@ where
     pub fn headers(&self) -> &HeaderMap {
         &self.parts.header
     }
-
 
     pub fn headers_mut(&mut self) -> &mut HeaderMap {
         &mut self.parts.header
@@ -448,7 +451,7 @@ where
     pub fn get_referer(&self) -> Option<String> {
         self.parts.get_referer()
     }
-    
+
     pub fn get_user_agent(&self) -> Option<String> {
         self.parts.get_user_agent()
     }
@@ -555,15 +558,17 @@ where
                         _ => (),
                     }
                 }
-                
+
                 if url.scheme.is_none() {
                     match self.parts.header.get_option_value(&":scheme") {
                         Some(h) => {
-                            url.scheme = TryFrom::try_from(&*h.to_string()).ok().unwrap_or(Scheme::Http);
+                            url.scheme = TryFrom::try_from(&*h.to_string())
+                                .ok()
+                                .unwrap_or(Scheme::Http);
                         }
                         _ => {
                             url.scheme = Scheme::Http;
-                        },
+                        }
                     }
                 }
                 url
@@ -623,6 +628,17 @@ where
         size += self.parts.header.encode(buffer)?;
         Ok(size)
     }
+
+    pub fn replace_clone(&mut self, mut body: T) -> Request<T> {
+        let parts = self.parts.clone();
+        let partial = self.partial;
+        std::mem::swap(&mut self.body, &mut body);
+        Request {
+            parts,
+            body,
+            partial,
+        }
+    }
 }
 
 impl Parts {
@@ -640,7 +656,7 @@ impl Parts {
     pub fn get_referer(&self) -> Option<String> {
         self.header.get_referer()
     }
-    
+
     pub fn get_user_agent(&self) -> Option<String> {
         self.header.get_user_agent()
     }
@@ -666,7 +682,9 @@ impl Default for Request<()> {
 }
 
 impl<T> Display for Request<T>
-where T: Serialize + Display {
+where
+    T: Serialize + Display,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.parts.method.fmt(f)?;
         f.write_str(" ")?;

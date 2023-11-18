@@ -705,6 +705,17 @@ impl<T: Serialize> Response<T> {
         self.partial = false;
         Ok(buffer.mark_commit() - first)
     }
+
+    pub fn replace_clone(&mut self, mut body: T) -> Response<T> {
+        let parts = self.parts.clone();
+        let partial = self.partial;
+        std::mem::swap(&mut self.body, &mut body);
+        Response {
+            parts,
+            body,
+            partial,
+        }
+    }
 }
 
 impl<T: Default + Serialize> Default for Response<T> {
