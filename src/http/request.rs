@@ -59,7 +59,7 @@ impl Builder {
                 head.method = req.method().clone();
             });
         }
-        if req.version() != &Version::None {
+        if req.version() != Version::None {
             let _ = build.inner.as_mut().map(|head| {
                 head.version = req.version().clone();
             });
@@ -396,8 +396,8 @@ where
     }
 
     #[inline]
-    pub fn version(&self) -> &Version {
-        &self.parts.version
+    pub fn version(&self) -> Version {
+        self.parts.version
     }
 
     #[inline]
