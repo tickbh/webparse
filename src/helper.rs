@@ -1,3 +1,15 @@
+// Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
+// file at the top-level directory of this distribution.
+// 
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+// 
+// Author: tickbh
+// -----
+// Created Date: 2023/08/15 11:30:53
+
 use crate::{Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError, http::StatusCode, BufMut};
 use super::{Method, Version, HeaderMap, HeaderName, HeaderValue, Scheme};
 
