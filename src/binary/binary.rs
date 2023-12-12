@@ -1,18 +1,18 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/28 09:38:10
 
-use std::io::Error;
 use std::fmt::Debug;
 use std::io;
+use std::io::Error;
 use std::ops::{Deref, RangeBounds};
 use std::{
     alloc::{dealloc, Layout},
@@ -23,9 +23,7 @@ use std::{
     io::Result,
     rc::Rc,
     slice,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-    },
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
 use super::Buf;
@@ -33,7 +31,6 @@ use super::Buf;
 static EMPTY_ARRAY: &[u8] = &[];
 const STATIC_TYPE: u8 = 1;
 const SHARED_TYPE: u8 = 2;
-
 
 /// 二进制的封装, 包括静态引用及共享引用对象, 仅支持写操作
 pub struct Binary {
@@ -50,13 +47,9 @@ pub struct Binary {
     vtable: &'static Vtable,
 }
 
-unsafe impl Sync for Binary {
-    
-}
+unsafe impl Sync for Binary {}
 
-unsafe impl Send for Binary {
-    
-}
+unsafe impl Send for Binary {}
 
 pub struct Vtable {
     pub clone: unsafe fn(bin: &Binary) -> Binary,
@@ -69,7 +62,7 @@ const STATIC_VTABLE: Vtable = Vtable {
     clone: static_clone,
     to_vec: static_to_vec,
     drop: static_drop,
-    vtype: || { STATIC_TYPE },
+    vtype: || STATIC_TYPE,
 };
 
 unsafe fn static_clone(bin: &Binary) -> Binary {
@@ -90,7 +83,7 @@ const SHARED_VTABLE: Vtable = Vtable {
     clone: shared_clone,
     to_vec: shared_to_vec,
     drop: shared_drop,
-    vtype: || { SHARED_TYPE },
+    vtype: || SHARED_TYPE,
 };
 
 unsafe fn shared_clone(bin: &Binary) -> Binary {
@@ -231,9 +224,7 @@ impl Binary {
 
     #[inline]
     pub fn clear(&mut self) {
-        unsafe {
-            self.sub_start(self.cursor)
-        }
+        unsafe { self.sub_start(self.cursor) }
     }
 
     #[inline]
@@ -341,7 +332,7 @@ impl Buf for Binary {
             self.inc_start(n);
         }
     }
-    
+
     fn mark_slice_skip(&mut self, skip: usize) -> &[u8] {
         debug_assert!(self.cursor - skip >= self.mark);
         let cursor = self.cursor;
@@ -356,17 +347,19 @@ impl Buf for Binary {
         self.mark
     }
 
-    
     fn mark_len(&mut self, len: usize) {
         debug_assert!(self.len >= len);
         self.len = len;
     }
-    
+
     fn into_binary(self) -> Binary {
         self
     }
 
-    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized {
+    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self
+    where
+        Self: Sized,
+    {
         let start = match range.start_bound() {
             std::ops::Bound::Included(x) => x + 0,
             std::ops::Bound::Excluded(x) => x + 1,
@@ -402,7 +395,6 @@ impl Buf for Binary {
     //     bin
     // }
 }
-
 
 impl Read for Binary {
     #[inline(always)]
@@ -629,8 +621,6 @@ where
     }
 }
 
-
-
 // impl From
 
 impl Default for Binary {
@@ -642,7 +632,7 @@ impl Default for Binary {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Binary};
+    use crate::Binary;
 
     #[test]
     fn binary_refs() {

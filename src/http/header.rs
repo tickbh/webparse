@@ -112,19 +112,19 @@ impl HeaderMap {
         false
     }
 
-    pub fn get_value(&self, name: &HeaderName) -> &HeaderValue {
+    pub fn get_value<T: AsRef<[u8]>>(&self, name: &T) -> &HeaderValue {
         for i in 0..self.headers.len() {
             let v = &self.headers[i];
-            if &v.0 == name {
+            if &v.0 == &name.as_ref() {
                 return &v.1
             }
         }
         unreachable!()
     }
 
-    pub fn get_mut_value<'a>(&'a mut self, name: &HeaderName) -> &'a mut HeaderValue {
+    pub fn get_mut_value<'a, T: AsRef<[u8]>>(&'a mut self, name: &T) -> &'a mut HeaderValue {
         for v in self.headers.iter_mut() {
-            if &v.0 == name {
+            if &v.0 == &name.as_ref() {
                 return &mut v.1
             }
         }
