@@ -91,8 +91,7 @@ impl HeaderMap {
         for i in 0..self.headers.len() {
             let v = &self.headers[i];
             if v.0 == name.as_ref() {
-                self.headers.remove(i);
-                return None
+                return Some(self.headers.remove(i).1);
             }
         }
         None
