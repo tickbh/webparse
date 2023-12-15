@@ -496,6 +496,12 @@ impl<'a> From<&'a str> for BinaryMut {
     }
 }
 
+impl From<String> for BinaryMut {
+    fn from(src: String) -> BinaryMut {
+        BinaryMut::from_vec(src.into_bytes())
+    }
+}
+
 impl From<BinaryMut> for Binary {
     fn from(src: BinaryMut) -> Binary {
         src.freeze()
