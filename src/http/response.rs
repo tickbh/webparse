@@ -54,9 +54,9 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
-    /// let response = response::Builder::new()
+    /// let response = Response::builder()
     ///     .status(200)
     ///     .body(())
     ///     .unwrap();
@@ -73,7 +73,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let response = Response::builder()
     ///     .status(200)
@@ -106,7 +106,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let response = Response::builder()
     ///     .version(Version::Http2)
@@ -129,13 +129,11 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
-    /// # use webparse::header::HeaderValue;
-    ///
+    /// use webparse::*;
     /// let response = Response::builder()
     ///     .header("Content-Type", "text/html")
     ///     .header("X-Custom-Foo", "bar")
-    ///     .header("content-length", 0)
+    ///     .header("content-length", 0usize)
     ///     .body(())
     ///     .unwrap();
     /// ```
@@ -169,14 +167,14 @@ impl Builder {
     /// # Example
     ///
     /// ```
-    /// # use webparse::Response;
-    /// # use webparse::HeaderValue;
+    /// use webparse::Response;
+    /// use webparse::HeaderValue;
     /// let res = Response::builder()
     ///     .header("Accept", "text/html")
     ///     .header("X-Custom-Foo", "bar");
     /// let headers = res.headers_ref().unwrap();
-    /// assert_eq!( &headers["Accept"], "text/html" );
-    /// assert_eq!( &headers["X-Custom-Foo"], "bar" );
+    /// assert_eq!( &headers["Accept"], &"text/html" );
+    /// assert_eq!( &headers["X-Custom-Foo"], &"bar" );
     /// ```
     pub fn headers_ref(&self) -> Option<&HeaderMap> {
         self.inner.as_ref().ok().map(|h| &h.header)
@@ -188,9 +186,7 @@ impl Builder {
     /// # Example
     ///
     /// ```
-    /// # use webparse::*;
-    /// # use webparse::header::HeaderValue;
-    /// # use webparse::response::Builder;
+    /// use webparse::*;
     /// let mut res = Response::builder();
     /// {
     ///   let headers = res.headers_mut().unwrap();
@@ -198,8 +194,8 @@ impl Builder {
     ///   headers.insert("X-Custom-Foo", HeaderValue::from_static("bar"));
     /// }
     /// let headers = res.headers_ref().unwrap();
-    /// assert_eq!( headers["Accept"], "text/html" );
-    /// assert_eq!( headers["X-Custom-Foo"], "bar" );
+    /// assert_eq!( &headers["Accept"], &"text/html" );
+    /// assert_eq!( &headers["X-Custom-Foo"], &"bar" );
     /// ```
     pub fn headers_mut(&mut self) -> Option<&mut HeaderMap> {
         self.inner.as_mut().ok().map(|h| &mut h.header)
@@ -210,7 +206,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let response = Response::builder()
     ///     .extension("My Extension")
@@ -237,7 +233,7 @@ impl Builder {
     /// # Example
     ///
     /// ```
-    /// # use webparse::Response;
+    /// use webparse::Response;
     /// let res = Response::builder().extension("My Extension").extension(5u32);
     /// let extensions = res.extensions_ref().unwrap();
     /// assert_eq!(extensions.get::<&'static str>(), Some(&"My Extension"));
@@ -254,7 +250,7 @@ impl Builder {
     // /// # Example
     // ///
     // /// ```
-    // /// # use webparse::Response;
+    // /// use webparse::Response;
     // /// let mut res = Response::builder().extension("My Extension");
     // /// let mut extensions = res.extensions_mut().unwrap();
     // /// assert_eq!(extensions.get::<&'static str>(), Some(&"My Extension"));
@@ -279,7 +275,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let response = Response::builder()
     ///     .body(())
@@ -340,7 +336,7 @@ impl Response<()> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let response = Response::builder()
     ///     .status(200)
     ///     .header("X-Custom-Foo", "Bar")
@@ -392,7 +388,7 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let response = Response::new("hello world");
     ///
     /// assert_eq!(response.status(), StatusCode::OK);
@@ -412,7 +408,7 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let response = Response::new("hello world");
     /// let (mut parts, body) = response.into_parts();
     ///
@@ -440,7 +436,7 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let response: Response<()> = Response::default();
     /// assert_eq!(response.status(), StatusCode::OK);
     /// ```
@@ -454,7 +450,7 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let mut response: Response<()> = Response::default();
     /// *response.status_mut() = StatusCode::CREATED;
     /// assert_eq!(response.status(), StatusCode::CREATED);
@@ -469,9 +465,9 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let response: Response<()> = Response::default();
-    /// assert_eq!(response.version(), Version::HTTP_11);
+    /// assert_eq!(response.version(), Version::HTTP11);
     /// ```
     #[inline]
     pub fn version(&self) -> Version {
@@ -483,10 +479,10 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let mut response: Response<()> = Response::default();
-    /// *response.version_mut() = Version::HTTP_2;
-    /// assert_eq!(response.version(), Version::HTTP_2);
+    /// *response.version_mut() = Version::HTTP2;
+    /// assert_eq!(response.version(), Version::HTTP2);
     /// ```
     #[inline]
     pub fn version_mut(&mut self) -> &mut Version {
@@ -498,7 +494,7 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let response: Response<()> = Response::default();
     /// assert!(response.headers().is_empty());
     /// ```
@@ -512,10 +508,9 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
-    /// # use webparse::header::*;
+    /// use webparse::*;
     /// let mut response: Response<()> = Response::default();
-    /// response.headers_mut().insert(HOST, HeaderValue::from_static("world"));
+    /// response.headers_mut().insert(HeaderName::HOST, HeaderValue::from_static("world"));
     /// assert!(!response.headers().is_empty());
     /// ```
     #[inline]
@@ -528,7 +523,7 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let response: Response<()> = Response::default();
     /// assert!(response.extensions().get::<i32>().is_none());
     /// ```
@@ -547,8 +542,8 @@ impl<T: Serialize> Response<T> {
     // /// # Examples
     // ///
     // /// ```
-    // /// # use webparse::*;
-    // /// # use webparse::header::*;
+    // /// use webparse::*;
+    // /// use webparse::header::*;
     // /// let mut response: Response<()> = Response::default();
     // /// response.extensions_mut().insert("hello");
     // /// assert_eq!(response.extensions().get(), Some(&"hello"));
@@ -563,7 +558,7 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let response: Response<String> = Response::default();
     /// assert!(response.body().is_empty());
     /// ```
@@ -577,7 +572,7 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let mut response: Response<String> = Response::default();
     /// response.body_mut().push_str("hello world");
     /// assert!(!response.body().is_empty());
@@ -600,10 +595,10 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::Response;
-    /// let response = Response::new(10);
+    /// use webparse::Response;
+    /// let response = Response::new("hello");
     /// let body = response.into_body();
-    /// assert_eq!(body, 10);
+    /// assert_eq!(body, "hello");
     /// ```
     #[inline]
     pub fn into_body(self) -> T {
@@ -615,7 +610,7 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let response: Response<()> = Response::default();
     /// let (parts, body) = response.into_parts();
     /// assert_eq!(parts.status, StatusCode::OK);
@@ -631,7 +626,7 @@ impl<T: Serialize> Response<T> {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let response = Response::builder().body("some string").unwrap();
     /// let mapped_response: Response<&[u8]> = response.map(|b| {
     ///   assert_eq!(b, "some string");

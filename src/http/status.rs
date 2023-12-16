@@ -50,7 +50,7 @@ impl StatusCode {
     /// # Example
     ///
     /// ```
-    /// use http::StatusCode;
+    /// use webparse::StatusCode;
     ///
     /// let ok = StatusCode::from_u16(200).unwrap();
     /// assert_eq!(ok, StatusCode::OK);
@@ -101,7 +101,7 @@ impl StatusCode {
     /// # Example
     ///
     /// ```
-    /// let status = http::StatusCode::OK;
+    /// let status = webparse::StatusCode::OK;
     /// assert_eq!(status.as_u16(), 200);
     /// ```
     #[inline]
@@ -117,7 +117,7 @@ impl StatusCode {
     /// # Example
     ///
     /// ```
-    /// let status = http::StatusCode::OK;
+    /// let status = webparse::StatusCode::OK;
     /// assert_eq!(status.as_str(), "200");
     /// ```
     #[inline]
@@ -154,7 +154,7 @@ impl StatusCode {
     /// # Example
     ///
     /// ```
-    /// let status = http::StatusCode::OK;
+    /// let status = webparse::StatusCode::OK;
     /// assert_eq!(status.canonical_reason(), Some("OK"));
     /// ```
     pub fn canonical_reason(&self) -> Option<&'static str> {
@@ -219,7 +219,7 @@ impl fmt::Debug for StatusCode {
 /// # Example
 ///
 /// ```
-/// # use http::StatusCode;
+/// # use webparse::StatusCode;
 /// assert_eq!(format!("{}", StatusCode::OK), "200 OK");
 /// ```
 impl fmt::Display for StatusCode {

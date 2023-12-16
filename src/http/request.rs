@@ -52,7 +52,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::http::request::Builder;
+    /// use webparse::http::request::Builder;
     ///
     /// let req = Builder::new()
     ///     .method("POST")
@@ -94,7 +94,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let req = Request::builder()
     ///     .method("POST")
@@ -118,7 +118,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let mut req = Request::builder();
     /// assert_eq!(req.method_ref(),Some(&Method::Get));
@@ -137,7 +137,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let req = Request::builder()
     ///     .url("https://www.rust-lang.org/")
@@ -163,7 +163,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let mut req = Request::builder();
     /// assert_eq!(req.url_ref().unwrap(), "/" );
@@ -180,7 +180,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let req = Request::builder()
     ///     .version(Version::Http2)
@@ -199,7 +199,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let mut req = Request::builder();
     /// assert_eq!(req.version_ref().unwrap(), &Version::Http11 );
@@ -216,7 +216,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let req = Request::builder()
     ///     .header("Accept", "text/html")
@@ -252,13 +252,13 @@ impl Builder {
     /// # Example
     ///
     /// ```
-    /// # use webparse::Request;
+    /// use webparse::Request;
     /// let req = Request::builder()
     ///     .header("Accept", "text/html")
     ///     .header("X-Custom-Foo", "bar");
     /// let headers = req.headers_ref().unwrap();
-    /// assert_eq!( &headers["Accept"], "text/html" );
-    /// assert_eq!( &headers["X-Custom-Foo"], "bar" );
+    /// assert_eq!( &headers["Accept"], &"text/html" );
+    /// assert_eq!( &headers["X-Custom-Foo"], &"bar" );
     /// ```
     pub fn headers_ref(&self) -> Option<&HeaderMap> {
         self.inner.as_ref().ok().map(|h| &h.header)
@@ -269,7 +269,7 @@ impl Builder {
     /// # Example
     ///
     /// ```
-    /// # use webparse::{HeaderValue, Request};
+    /// use webparse::{HeaderValue, Request};
     /// let mut req = Request::builder();
     /// {
     ///   let headers = req.headers_mut().unwrap();
@@ -277,8 +277,8 @@ impl Builder {
     ///   headers.insert("X-Custom-Foo", "bar");
     /// }
     /// let headers = req.headers_ref().unwrap();
-    /// assert_eq!( &headers["Accept"], "text/html" );
-    /// assert_eq!( &headers["X-Custom-Foo"], "bar" );
+    /// assert_eq!( &headers["Accept"], &"text/html" );
+    /// assert_eq!( &headers["X-Custom-Foo"], &"bar" );
     /// ```
     pub fn headers_mut(&mut self) -> Option<&mut HeaderMap> {
         self.inner.as_mut().ok().map(|h| &mut h.header)
@@ -289,7 +289,7 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     ///
     /// let request = Request::builder()
     ///     .body(())
@@ -600,7 +600,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use webparse::*;
+    /// use webparse::*;
     /// let request: Request<()> = Request::default();
     /// assert!(request.extensions().get::<i32>().is_none());
     /// ```
@@ -769,7 +769,7 @@ mod tests {
             assert_eq!(req.path(), "/bar;par?b");
             assert_eq!(&req.url().path, "/bar;par");
             assert_eq!(req.url().query, Some("b".to_string()));
-            assert_eq!(req.version(), &crate::Version::Http11);
+            assert_eq!(req.version(), crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
             assert_eq!(&req.headers()["Host"], &"foo");
         }
@@ -783,7 +783,7 @@ mod tests {
             assert_eq!(req.path(), "//://///");
             assert_eq!(&req.url().path, "//://///");
             assert_eq!(req.url().query, None);
-            assert_eq!(req.version(), &crate::Version::Http11);
+            assert_eq!(req.version(), crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
             assert_eq!(&req.headers()["Host"], &"");
         }
@@ -797,7 +797,7 @@ mod tests {
             assert_eq!(req.path(), "/abcd?efgh?ijkl");
             assert_eq!(&req.url().path, "/abcd");
             assert_eq!(req.url().query, Some("efgh?ijkl".to_string()));
-            assert_eq!(req.version(), &crate::Version::Http11);
+            assert_eq!(req.version(), crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
             assert_eq!(&req.headers()["Host"], &"");
         }
@@ -811,7 +811,7 @@ mod tests {
             assert_eq!(req.path(), "/foo/[61:27]/:foo");
             assert_eq!(&req.url().path, "/foo/[61:27]/:foo");
             assert_eq!(req.url().query, None);
-            assert_eq!(req.version(), &crate::Version::Http11);
+            assert_eq!(req.version(), crate::Version::Http11);
             assert_eq!(req.headers().len(), 1);
             assert_eq!(&req.headers()["Host"], &"");
         }
@@ -842,7 +842,7 @@ mod tests {
     //     assert_eq!(req.path(), "/");
     //     assert_eq!(&req.url().path, "/");
     //     assert_eq!(req.url().query, None);
-    //     assert_eq!(req.version(), &Version::Http2);
+    //     assert_eq!(req.version(), Version::Http2);
     //     assert_eq!(req.headers().len(), 1);
     //     assert_eq!(&req.headers()[":authority"], "www.example.com");
 
@@ -856,7 +856,7 @@ mod tests {
     //     assert_eq!(req.path(), "/");
     //     assert_eq!(&req.url().path, "/");
     //     assert_eq!(req.url().query, None);
-    //     assert_eq!(req.version(), &Version::Http2);
+    //     assert_eq!(req.version(), Version::Http2);
     //     assert_eq!(req.headers().len(), 2);
     //     assert_eq!(&req.headers()[":authority"], "www.example.com");
     //     assert_eq!(&req.headers()["cache-control"], "no-cache");
@@ -872,7 +872,7 @@ mod tests {
     //     assert_eq!(req.path(), "/index.html");
     //     assert_eq!(&req.url().path, "/index.html");
     //     assert_eq!(req.url().query, None);
-    //     assert_eq!(req.version(), &Version::Http2);
+    //     assert_eq!(req.version(), Version::Http2);
     //     assert_eq!(req.headers().len(), 2);
     //     assert_eq!(&req.headers()[":authority"], "www.example.com");
     //     assert_eq!(&req.headers()["custom-key"], "custom-value");

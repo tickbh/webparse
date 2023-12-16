@@ -12,8 +12,6 @@
 
 use crate::{WebResult, Url, Scheme, WebError};
 
-
-
 pub struct Builder {
     inner: WebResult<Url>
 }
@@ -30,7 +28,7 @@ impl Builder {
     /// ```
     /// # use webparse::*;
     ///
-    /// let mut builder = Builder::new();
+    /// let mut builder = Url::builder();
     /// builder.scheme("https");
     /// ```
     pub fn scheme<T>(self, scheme: T) -> Self

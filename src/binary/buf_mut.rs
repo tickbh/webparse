@@ -13,8 +13,10 @@
 use std::{
     cmp,
     mem::{self, MaybeUninit},
-    ptr,
+    ptr, slice,
 };
+
+use super::panic_advance;
 
 pub unsafe trait BufMut {
     fn remaining_mut(&self) -> usize;
@@ -105,7 +107,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u16(0x0809);
@@ -128,7 +130,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u16_le(0x0809);
@@ -151,7 +153,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u16_ne(0x0809);
@@ -178,7 +180,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i16(0x0809);
@@ -201,7 +203,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i16_le(0x0809);
@@ -224,7 +226,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i16_ne(0x0809);
@@ -251,7 +253,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u32(0x0809A0A1);
@@ -274,7 +276,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u32_le(0x0809A0A1);
@@ -297,7 +299,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u32_ne(0x0809A0A1);
@@ -324,7 +326,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i32(0x0809A0A1);
@@ -347,7 +349,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i32_le(0x0809A0A1);
@@ -370,7 +372,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i32_ne(0x0809A0A1);
@@ -397,7 +399,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u64(0x0102030405060708);
@@ -420,7 +422,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u64_le(0x0102030405060708);
@@ -443,7 +445,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u64_ne(0x0102030405060708);
@@ -470,7 +472,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i64(0x0102030405060708);
@@ -493,7 +495,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i64_le(0x0102030405060708);
@@ -516,7 +518,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i64_ne(0x0102030405060708);
@@ -543,7 +545,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u128(0x01020304050607080910111213141516);
@@ -566,7 +568,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u128_le(0x01020304050607080910111213141516);
@@ -589,7 +591,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_u128_ne(0x01020304050607080910111213141516);
@@ -616,7 +618,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i128(0x01020304050607080910111213141516);
@@ -639,7 +641,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i128_le(0x01020304050607080910111213141516);
@@ -662,7 +664,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_i128_ne(0x01020304050607080910111213141516);
@@ -689,7 +691,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_uint(0x010203, 3);
@@ -712,7 +714,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_uint_le(0x010203, 3);
@@ -735,7 +737,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_uint_ne(0x010203, 3);
@@ -765,7 +767,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_int(0x0504010203, 3);
@@ -788,7 +790,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_int_le(0x0504010203, 3);
@@ -811,7 +813,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_int_ne(0x010203, 3);
@@ -842,7 +844,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_f32(1.2f32);
@@ -865,7 +867,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_f32_le(1.2f32);
@@ -889,7 +891,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_f32_ne(1.2f32);
@@ -917,7 +919,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_f64(1.2f64);
@@ -941,7 +943,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_f64_le(1.2f64);
@@ -965,7 +967,7 @@ pub unsafe trait BufMut {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::BufMut;
+    /// use webparse::BufMut;
     ///
     /// let mut buf = vec![];
     /// buf.put_f64_ne(1.2f64);
@@ -984,4 +986,78 @@ pub unsafe trait BufMut {
         self.put_u64_ne(n.to_bits());
         8
     }
+}
+
+
+
+unsafe impl BufMut for Vec<u8> {
+    #[inline]
+    fn remaining_mut(&self) -> usize {
+        // A vector can never have more than isize::MAX bytes
+        core::isize::MAX as usize - self.len()
+    }
+
+    #[inline]
+    unsafe fn advance_mut(&mut self, cnt: usize) {
+        let len = self.len();
+        let remaining = self.capacity() - len;
+
+        if remaining < cnt {
+            panic_advance(cnt, remaining);
+        }
+
+        // Addition will not overflow since the sum is at most the capacity.
+        self.set_len(len + cnt);
+    }
+
+    #[inline]
+    fn chunk_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+        if self.capacity() == self.len() {
+            self.reserve(64); // Grow the vec
+        }
+
+        let cap = self.capacity();
+        let len = self.len();
+
+        let ptr = self.as_mut_ptr();
+        // SAFETY: Since `ptr` is valid for `cap` bytes, `ptr.add(len)` must be
+        // valid for `cap - len` bytes. The subtraction will not underflow since
+        // `len <= cap`.
+        unsafe {
+            slice::from_raw_parts_mut(
+                ptr.add(len) as *mut MaybeUninit<u8>,
+                cap - len,
+            )
+        }
+    }
+
+    // // Specialize these methods so they can skip checking `remaining_mut`
+    // // and `advance_mut`.
+    // #[inline]
+    // fn put<T: super::Buf>(&mut self, mut src: &mut T)
+    // where
+    //     Self: Sized,
+    // {
+    //     // In case the src isn't contiguous, reserve upfront.
+    //     self.reserve(src.remaining());
+
+    //     while src.has_remaining() {
+    //         let s = src.chunk();
+    //         let l = s.len();
+    //         self.extend_from_slice(s);
+    //         src.advance(l);
+    //     }
+    // }
+
+    // #[inline]
+    // fn put_slice(&mut self, src: &[u8]) {
+    //     self.extend_from_slice(src);
+    // }
+
+    // #[inline]
+    // fn put_bytes(&mut self, val: u8, cnt: usize) {
+    //     // If the addition overflows, then the `resize` will fail.
+    //     let new_len = self.len().saturating_add(cnt);
+    //     self.resize(new_len, val);
+    // }
 }

@@ -14,6 +14,8 @@ use std::fmt::Display;
 
 use crate::{WebResult, peek, expect, next, WebError, Helper, Binary, Buf, Scheme, UrlError };
 
+use super::Builder;
+
 
 
 #[derive(Clone, Debug)]
@@ -33,6 +35,10 @@ impl Url {
 
     pub fn new() -> Url {
         Url { scheme: Scheme::None, path: Self::DEFAULT_PATH.to_string(), username: None, password: None, domain: None, port: None, query: None }
+    }
+    
+    pub fn builder() -> Builder {
+        Builder::new()
     }
 
     #[inline]
@@ -443,7 +449,7 @@ mod tests {
 
 
     murl! {
-        urltest_003,
+        urltest_004,
         "http://127.0.0.1:8080",
         |u| {
             assert_eq!(u.scheme, crate::Scheme::Http);

@@ -23,3 +23,7 @@ pub use binary_mut::BinaryMut;
 pub use binary_ref::BinaryRef;
 pub use buf::Buf;
 pub use buf_mut::BufMut;
+
+fn panic_advance(cnt: usize, left: usize) {
+    panic!("当前只剩余:{},无法消耗:{}", left, cnt);
+}

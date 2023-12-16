@@ -14,6 +14,8 @@ use std::{mem, ops::{RangeBounds}};
 
 use crate::Binary;
 
+use super::panic_advance;
+
 macro_rules! buf_get_impl {
     ($this:ident, $typ:tt::$conv:tt) => {{
         const SIZE: usize = mem::size_of::<$typ>();
@@ -176,7 +178,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x08\x09 hello"[..];
     /// assert_eq!(0x0809, buf.get_u16());
@@ -196,7 +198,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x09\x08 hello"[..];
     /// assert_eq!(0x0809, buf.get_u16_le());
@@ -216,7 +218,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x08\x09 hello",
@@ -239,7 +241,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x08\x09 hello"[..];
     /// assert_eq!(0x0809, buf.get_i16());
@@ -259,7 +261,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x09\x08 hello"[..];
     /// assert_eq!(0x0809, buf.get_i16_le());
@@ -279,7 +281,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x08\x09 hello",
@@ -302,7 +304,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x08\x09\xA0\xA1 hello"[..];
     /// assert_eq!(0x0809A0A1, buf.get_u32());
@@ -322,7 +324,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\xA1\xA0\x09\x08 hello"[..];
     /// assert_eq!(0x0809A0A1, buf.get_u32_le());
@@ -342,7 +344,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x08\x09\xA0\xA1 hello",
@@ -365,7 +367,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x08\x09\xA0\xA1 hello"[..];
     /// assert_eq!(0x0809A0A1, buf.get_i32());
@@ -385,7 +387,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\xA1\xA0\x09\x08 hello"[..];
     /// assert_eq!(0x0809A0A1, buf.get_i32_le());
@@ -405,7 +407,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x08\x09\xA0\xA1 hello",
@@ -428,7 +430,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x01\x02\x03\x04\x05\x06\x07\x08 hello"[..];
     /// assert_eq!(0x0102030405060708, buf.get_u64());
@@ -448,7 +450,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x08\x07\x06\x05\x04\x03\x02\x01 hello"[..];
     /// assert_eq!(0x0102030405060708, buf.get_u64_le());
@@ -468,7 +470,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x01\x02\x03\x04\x05\x06\x07\x08 hello",
@@ -491,7 +493,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x01\x02\x03\x04\x05\x06\x07\x08 hello"[..];
     /// assert_eq!(0x0102030405060708, buf.get_i64());
@@ -511,7 +513,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x08\x07\x06\x05\x04\x03\x02\x01 hello"[..];
     /// assert_eq!(0x0102030405060708, buf.get_i64_le());
@@ -531,7 +533,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x01\x02\x03\x04\x05\x06\x07\x08 hello",
@@ -554,7 +556,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x13\x14\x15\x16 hello"[..];
     /// assert_eq!(0x01020304050607080910111213141516, buf.get_u128());
@@ -574,7 +576,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x16\x15\x14\x13\x12\x11\x10\x09\x08\x07\x06\x05\x04\x03\x02\x01 hello"[..];
     /// assert_eq!(0x01020304050607080910111213141516, buf.get_u128_le());
@@ -594,7 +596,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x13\x14\x15\x16 hello",
@@ -617,7 +619,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x13\x14\x15\x16 hello"[..];
     /// assert_eq!(0x01020304050607080910111213141516, buf.get_i128());
@@ -637,7 +639,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x16\x15\x14\x13\x12\x11\x10\x09\x08\x07\x06\x05\x04\x03\x02\x01 hello"[..];
     /// assert_eq!(0x01020304050607080910111213141516, buf.get_i128_le());
@@ -657,7 +659,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x13\x14\x15\x16 hello",
@@ -680,7 +682,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x01\x02\x03 hello"[..];
     /// assert_eq!(0x010203, buf.get_uint(3));
@@ -700,7 +702,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x03\x02\x01 hello"[..];
     /// assert_eq!(0x010203, buf.get_uint_le(3));
@@ -720,7 +722,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x01\x02\x03 hello",
@@ -747,7 +749,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x01\x02\x03 hello"[..];
     /// assert_eq!(0x010203, buf.get_int(3));
@@ -767,7 +769,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x03\x02\x01 hello"[..];
     /// assert_eq!(0x010203, buf.get_int_le(3));
@@ -787,7 +789,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x01\x02\x03 hello",
@@ -815,7 +817,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x3F\x99\x99\x9A hello"[..];
     /// assert_eq!(1.2f32, buf.get_f32());
@@ -836,7 +838,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x9A\x99\x99\x3F hello"[..];
     /// assert_eq!(1.2f32, buf.get_f32_le());
@@ -857,7 +859,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x3F\x99\x99\x9A hello",
@@ -881,7 +883,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x3F\xF3\x33\x33\x33\x33\x33\x33 hello"[..];
     /// assert_eq!(1.2f64, buf.get_f64());
@@ -902,7 +904,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf = &b"\x33\x33\x33\x33\x33\x33\xF3\x3F hello"[..];
     /// assert_eq!(1.2f64, buf.get_f64_le());
@@ -923,7 +925,7 @@ pub trait Buf {
     /// # Examples
     ///
     /// ```
-    /// use webparse::binary::Buf;
+    /// use webparse::Buf;
     ///
     /// let mut buf: &[u8] = match cfg!(target_endian = "big") {
     ///     true => b"\x3F\xF3\x33\x33\x33\x33\x33\x33 hello",
@@ -940,3 +942,45 @@ pub trait Buf {
     }
 }
 
+
+
+impl Buf for &[u8] {
+    #[inline]
+    fn remaining(&self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    fn chunk(&self) -> &[u8] {
+        self
+    }
+
+    #[inline]
+    fn advance(&mut self, cnt: usize) {
+        if self.len() < cnt {
+            panic_advance(cnt, self.len());
+        }
+
+        *self = &self[cnt..];
+    }
+
+    fn mark_slice_skip(&mut self, skip: usize) -> &[u8] {
+        &self[skip..]
+    }
+
+    fn mark_commit(&mut self) -> usize {
+        0
+    }
+
+    fn mark_len(&mut self, _len: usize) {
+        
+    }
+
+    fn into_binary(self) -> Binary {
+        todo!()
+    }
+
+    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized {
+        todo!()
+    }
+}
