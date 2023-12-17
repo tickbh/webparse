@@ -151,8 +151,8 @@ impl Builder {
     {
         self.and_then(move |mut head| {
             head.url = TryFrom::try_from(url).map_err(Into::into)?;
-            if let Some(domain) = &head.url.domain {
-                head.header.insert("Host", domain.clone());
+            if let Some(connect) = &head.url.get_connect_url() {
+                head.header.insert("Host", connect.clone());
             }
             Ok(head)
         })
