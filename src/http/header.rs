@@ -11,9 +11,8 @@
 // Created Date: 2023/08/14 05:20:35
 
 use std::{
-    ops::{Index, IndexMut}, fmt::Display, collections::HashMap,
+    ops::{Index, IndexMut}, fmt::Display, collections::HashMap, borrow::Borrow, hash::Hash
 };
-
 use crate::{HeaderName, HeaderValue, WebError, WebResult, Buf, BufMut};
 
 
@@ -259,7 +258,10 @@ impl HeaderMap {
         self.systems.insert(key, value);
     }
 
-    pub fn system_get(&self, key: &String) -> Option<&String> {
+    pub fn system_get<Q: ?Sized>(&self, key: &Q) -> Option<&String>
+    where
+    String: Borrow<Q>,
+    Q: Hash + Eq, {
         self.systems.get(key)
     }
     
