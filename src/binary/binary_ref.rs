@@ -95,22 +95,6 @@ impl<'a> BinaryRef<'a> {
     }
 
     #[inline]
-    pub fn clone_slice(&mut self) -> BinaryRef {
-        self.clone_slice_skip(0)
-    }
-
-    #[inline]
-    pub fn clone_slice_skip(&mut self, skip: usize) -> BinaryRef {
-        let mut new = self.clone();
-        unsafe {
-            new.sub_start(self.cursor - self.mark);
-        }
-        new.len = self.cursor - skip - self.mark;
-        self.mark_commit();
-        new
-    }
-
-    #[inline]
     unsafe fn inc_start(&mut self, by: usize) {
         if by == 0 {
             return;
@@ -201,65 +185,10 @@ impl<'a> Buf for BinaryRef<'a> {
         }
     }
     
-    fn mark_slice_skip(&mut self, skip: usize) -> &[u8] {
-        debug_assert!(self.cursor - skip >= self.mark);
-        let cursor = self.cursor;
-        let start = self.mark;
-        self.mark_commit();
-        let head = &self.as_slice_all()[start..(cursor - skip)];
-        head
-    }
-
-    fn mark_commit(&mut self) -> usize {
-        self.mark = self.cursor;
-        self.mark
-    }
-
-    
-    fn mark_len(&mut self, len: usize) {
-        debug_assert!(self.len >= len);
-        self.len = len;
-    }
-    
     fn into_binary(self) -> Binary {
         Binary::from(self.chunk().to_vec())
     }
 
-    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized {
-        let start = match range.start_bound() {
-            std::ops::Bound::Included(x) => x + 0,
-            std::ops::Bound::Excluded(x) => x + 1,
-            std::ops::Bound::Unbounded => 0,
-        };
-        let len = match range.start_bound() {
-            std::ops::Bound::Included(x) => x - start,
-            std::ops::Bound::Excluded(x) => x - 1 - start,
-            std::ops::Bound::Unbounded => self.remaining() as isize - start,
-        };
-        debug_assert!(self.remaining() as isize >= start + len as isize);
-        let mut bin = self.clone();
-        if start > 0 {
-            unsafe { bin.inc_start(start as usize) };
-        } else {
-            unsafe { bin.sub_start(start as usize) }
-        }
-        bin.len = len as usize;
-        bin
-    }
-    // fn mark_clone_slice_range(&self, offset: isize, len: usize) -> Self
-    // where
-    //     Self: Sized,
-    // {
-    //     debug_assert!(self.remaining() as isize >= offset + len as isize);
-    //     let mut bin = self.clone();
-    //     if offset > 0 {
-    //         unsafe { bin.inc_start(offset as usize) };
-    //     } else {
-    //         unsafe { bin.sub_start(offset as usize) }
-    //     }
-    //     bin.len = len;
-    //     bin
-    // }
 }
 
 

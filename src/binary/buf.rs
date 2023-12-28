@@ -69,34 +69,8 @@ pub trait Buf {
     /// 消耗掉多少字节的数据并返回消耗的数据
     fn advance_chunk(&mut self, n: usize) -> &[u8];
     
-    /// 获取从起始值到当前值的slice引用
-    fn mark_slice_skip(&mut self, skip: usize) -> &[u8];
-
-    /// 把当前值赋值给起始值
-    fn mark_commit(&mut self) -> usize;
-    
-    /// 更改数据大小
-    fn mark_len(&mut self, len: usize);
-
     /// 将数据转成Binary
     fn into_binary(self) -> Binary;
-    
-    /// 克隆当前的对象, 并限定范围
-    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized;
-    
-    /// 克隆当前的对象, 取当前余下的
-    fn mark_clone_slice(&self) -> Self where Self: Sized {
-        self.mark_clone_slice_range( 0isize .. )
-    }
-
-    fn mark_slice(&mut self) -> &[u8] {
-        self.mark_slice_skip(0)
-    }
-
-    fn mark_bump(&mut self) {
-        self.advance(1);
-        self.mark_commit();
-    }
 
     /// 消耗所有的字节
     fn advance_all(&mut self) {
@@ -972,23 +946,39 @@ impl Buf for &[u8] {
         *self = &self[cnt..];
     }
 
-    fn mark_slice_skip(&mut self, skip: usize) -> &[u8] {
-        &self[skip..]
+    fn into_binary(self) -> Binary {
+        Binary::from(self.to_vec())
+    }
+}
+
+
+impl<T: AsRef<[u8]>> Buf for std::io::Cursor<T> {
+    #[inline]
+    fn remaining(&self) -> usize {
+        self.get_ref().as_ref().len() - self.position() as usize
     }
 
-    fn mark_commit(&mut self) -> usize {
-        0
+    #[inline]
+    fn chunk(&self) -> &[u8] {
+        &self.get_ref().as_ref()[(self.position() as usize)..]
+    }
+    
+    fn advance_chunk(&mut self, n: usize) -> &[u8] {
+        let position = self.position() as usize;
+        self.set_position(self.position() + n as u64);
+        let ret = &self.get_ref().as_ref()[position..(position + n)];
+        ret
     }
 
-    fn mark_len(&mut self, _len: usize) {
-        
+    #[inline]
+    fn advance(&mut self, cnt: usize) {
+        if self.remaining() < cnt {
+            panic_advance(cnt, self.remaining());
+        }
+        self.set_position(self.position() + cnt as u64);
     }
 
     fn into_binary(self) -> Binary {
-        todo!()
-    }
-
-    fn mark_clone_slice_range<R: RangeBounds<isize>>(&self, range: R) -> Self where Self: Sized {
-        todo!()
+        Binary::from(self.get_ref().as_ref()[(self.position() as usize)..].to_vec())
     }
 }
