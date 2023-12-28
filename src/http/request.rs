@@ -542,7 +542,7 @@ where
     }
 
     pub fn parse_buffer<B: Buf>(&mut self, buffer: &mut B) -> WebResult<usize> {
-        let first = buffer.mark_commit();
+        let len = buffer.remaining();
         self.partial = true;
         Helper::skip_empty_lines(buffer)?;
         self.parts.method = Helper::parse_method(buffer)?;
@@ -586,7 +586,7 @@ where
                 url
             }
         };
-        Ok(buffer.mark_commit() - first)
+        Ok(len - buffer.remaining())
     }
 
     pub fn parse(&mut self, buf: &[u8]) -> WebResult<usize> {

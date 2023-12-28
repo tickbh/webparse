@@ -317,10 +317,8 @@ impl Helper {
         match next!(buffer)? {
             b'\r' => {
                 expect!(buffer.next() == b'\n' => Err(WebError::from(HttpError::NewLine)));
-                buffer.mark_slice();
             },
             b'\n' => {
-                buffer.mark_slice();
             },
             b' ' => {
             },
@@ -335,14 +333,13 @@ impl Helper {
             let b = buffer.peek();
             match b {
                 Some(b'\r') => {
-                    buffer.mark_bump();
+                    next!(buffer)?;
                     expect!(buffer.next() == b'\n' => Err(WebError::from(HttpError::NewLine)));
                 }
                 Some(b'\n') => {
-                    buffer.mark_bump();
+                    next!(buffer)?;
                 }
                 Some(..) => {
-                    buffer.mark_slice();
                     return Ok(());
                 }
                 None => return Err(WebError::from(HttpError::Partial)),
@@ -356,10 +353,9 @@ impl Helper {
             let b = buffer.peek();
             match b {
                 Some(b' ') => {
-                    buffer.mark_bump();
+                    next!(buffer)?;
                 }
                 Some(..) => {
-                    buffer.mark_slice();
                     return Ok(());
                 }
                 None => return Err(WebError::from(HttpError::Partial)),
@@ -394,15 +390,15 @@ impl Helper {
     }
 
     pub fn parse_chunk_data<'a, B:Buf>(buffer: &'a mut B) -> WebResult<(usize, usize)> {
-        let first = buffer.mark_commit();
-        let num = Helper::parse_hex(buffer)?;
-        
+        let len = buffer.remaining();
+        let mut val = BinaryRef::from(buffer.chunk());
+        let num = Helper::parse_hex(&mut val)?;
         let num = usize::from_str_radix(num, 16).unwrap();
-        Helper::skip_new_line(buffer)?;
-        if num + 2 > buffer.remaining() {
+        Helper::skip_new_line(&mut val)?;
+        if num + 2 > val.remaining() {
             return Err(WebError::Http(HttpError::Partial));
         }
-        return Ok((buffer.mark_commit() - first, num));
+        return Ok((len - val.remaining(), num));
 
         // let ret = buffer.chunk()[..num].to_vec();
         // buffer.advance(num);

@@ -115,7 +115,7 @@ impl Url {
             expect!(buffer.next() == b':' => Err(WebError::from(UrlError::UrlInvalid)));
             expect!(buffer.next() == b'/' => Err(WebError::from(UrlError::UrlInvalid)));
             expect!(buffer.next() == b'/' => Err(WebError::from(UrlError::UrlInvalid)));
-            buffer.mark_commit();
+            // buffer.mark_commit();
         } else if b == b'/' {
             is_first_slash = true;
             has_domain = false;
@@ -125,28 +125,35 @@ impl Url {
         
         let check_func = Helper::is_token;
 
+        let mut val = vec![];
+        fn build_binary(vec: &mut Vec<u8>) -> Binary {
+            let b = Binary::from(vec.clone());
+            vec.clear();
+            b
+        }
         loop {
             b = match peek!(buffer) {
                 Ok(v) => v,
                 Err(_) => {
                     if path.is_some() {
-                        query = Some(buffer.clone_slice());
+                        query = Some(build_binary(&mut val));
                     } else if domain.is_some() {
                         if !is_first_slash {
-                            port = Some(buffer.clone_slice());
+                            port = Some(build_binary(&mut val));
                         } else {
-                            path = Some(buffer.clone_slice());
+                            path = Some(build_binary(&mut val));
                         }
                     } else if domain.is_none() {
                         if has_domain {
-                            domain = Some(buffer.clone_slice());
+                            domain = Some(build_binary(&mut val));
                         } else {
-                            path = Some(buffer.clone_slice());
+                            path = Some(build_binary(&mut val));
                         }
                     }
                     break;
                 }
             };
+
 
             // 存在用户名, 解析用户名
             if b == b':' {
@@ -154,11 +161,12 @@ impl Url {
                 if !is_first_slash {
                     // 匹配域名, 如果在存在期间检测到@则把当前当作用户结尾
                     if domain.is_none() {
-                        domain = Some(buffer.clone_slice());
+                        domain = Some(build_binary(&mut val));
                     } else {
                         return Err(WebError::from(UrlError::UrlInvalid));
                     }
-                    buffer.mark_bump();
+                } else {
+                    val.push(b);
                 }
             } else if b == b'@' {
                 //一开始的冒泡匹配域名,把域名结束当前username结束, 不存在用户密码, 不允许存在'@'
@@ -167,31 +175,34 @@ impl Url {
                 }
                 username = domain;
                 domain = None;
-                password = Some(buffer.clone_slice());
-                buffer.mark_bump();
+                password = Some(build_binary(&mut val));
+                // buffer.advance(1);
             } else if b == b'/' {
                 if !is_first_slash {
                     //反斜杠仅存在第一次域名不解析时获取
                     if domain.is_none() {
-                        domain = Some(buffer.clone_slice());
+                        domain = Some(build_binary(&mut val));
                     } else {
-                        port = Some(buffer.clone_slice());
+                        port = Some(build_binary(&mut val));
                     }
                     is_first_slash = true;
                 }
+                val.push(b);
             } else if b == b'?' {
                 if !is_first_slash {
                     if domain.is_none() && has_domain {
-                        domain = Some(buffer.clone_slice());
+                        domain = Some(build_binary(&mut val));
                     }
-                }
                 // 多个'?'忽略当作query
-                if path.is_none() {
-                    path = Some(buffer.clone_slice());
-                    buffer.mark_bump();
+                } else if path.is_none() {
+                    path = Some(build_binary(&mut val));
+                } else {
+                    val.push(b);
                 }
             } else if !check_func(b) {
                 return Err(WebError::from(UrlError::UrlInvalid));
+            } else {
+                val.push(b);
             }
 
             next!(buffer)?;

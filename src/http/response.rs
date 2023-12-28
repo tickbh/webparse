@@ -698,7 +698,7 @@ impl<T: Serialize> Response<T> {
 
 
     pub fn parse_buffer<B: Buf>(&mut self, buffer: &mut B) -> WebResult<usize> {
-        let first = buffer.mark_commit();
+        let len = buffer.remaining();
         self.partial = true;
         // println!("===={:?}", String::from_utf8_lossy(buffer.chunk()));
         Helper::skip_empty_lines(buffer)?;
@@ -710,7 +710,7 @@ impl<T: Serialize> Response<T> {
         Helper::skip_new_line(buffer)?;
         Helper::parse_header(buffer, &mut self.parts.header)?;
         self.partial = false;
-        Ok(buffer.mark_commit() - first)
+        Ok(len - buffer.remaining())
     }
 
     pub fn replace_clone(&mut self, mut body: T) -> Response<T> {

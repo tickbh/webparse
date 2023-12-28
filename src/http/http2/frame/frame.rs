@@ -56,7 +56,7 @@ impl Frame<Binary> {
                 return Err(Http2Error::into(Http2Error::TooMuchPadding(pad_length)));
             } else {
                 buf.advance(1);
-                buf.mark_len(header.length as usize - pad_length as usize - 1);
+                // buf.mark_len(header.length as usize - pad_length as usize - 1);
             }
         }
         Ok(())

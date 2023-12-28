@@ -132,7 +132,7 @@ impl Headers {
             self.stream_dep = Some(depency);
         }
 
-        let first = buffer.mark_commit();
+        let len = buffer.remaining();
         let headers = decoder.decode(&mut buffer)?;
         let mut header_size = 0;
         for h in headers {
@@ -166,7 +166,7 @@ impl Headers {
                 self.header_block.fields.insert(h.0, h.1);
             }
         }
-        Ok(buffer.mark_commit() - first)
+        Ok(len - buffer.remaining())
     }
 
     pub fn stream_id(&self) -> StreamIdentifier {
