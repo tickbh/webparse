@@ -367,6 +367,15 @@ impl Buf for BinaryMut {
         self.as_slice()
     }
 
+    fn advance_chunk(&mut self, n: usize) -> &[u8] {
+        let ret = &unsafe {
+            let end = std::cmp::min(self.manual_len, (*self.ptr).len());
+            &(*self.ptr)[self.cursor..end]
+        }[..n];
+        self.advance(n);
+        ret
+    }
+    
     fn advance(&mut self, n: usize) {
         unsafe {
             self.inc_start(n);

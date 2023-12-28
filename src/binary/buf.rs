@@ -10,7 +10,7 @@
 // -----
 // Created Date: 2023/08/28 09:38:10
 
-use std::{mem, ops::{RangeBounds}};
+use std::{mem, ops::{RangeBounds}, io::Cursor};
 
 use crate::Binary;
 
@@ -65,6 +65,9 @@ pub trait Buf {
 
     /// 消耗掉多少字节的数据, 做指针偏移
     fn advance(&mut self, n: usize);
+
+    /// 消耗掉多少字节的数据并返回消耗的数据
+    fn advance_chunk(&mut self, n: usize) -> &[u8];
     
     /// 获取从起始值到当前值的slice引用
     fn mark_slice_skip(&mut self, skip: usize) -> &[u8];
@@ -943,7 +946,6 @@ pub trait Buf {
 }
 
 
-
 impl Buf for &[u8] {
     #[inline]
     fn remaining(&self) -> usize {
@@ -953,6 +955,12 @@ impl Buf for &[u8] {
     #[inline]
     fn chunk(&self) -> &[u8] {
         self
+    }
+    
+    fn advance_chunk(&mut self, n: usize) -> &[u8] {
+        let ret = &self[..n];
+        *self = &self[n..];
+        ret
     }
 
     #[inline]

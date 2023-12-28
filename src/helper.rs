@@ -10,7 +10,9 @@
 // -----
 // Created Date: 2023/08/15 11:30:53
 
-use crate::{Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError, StatusCode, BufMut};
+use std::io::Cursor;
+
+use crate::{Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError, StatusCode, BufMut, BinaryRef};
 use super::{Method, Version, HeaderMap, HeaderName, HeaderValue, Scheme};
 
 
@@ -242,24 +244,31 @@ impl Helper {
     
     #[inline]
     pub(crate) fn parse_token_by_func_empty<'a, B: Buf>(buffer: &'a mut B, func: fn(u8)->bool, err: WebError, empty: bool) -> WebResult<&'a str> {
-        let mut b = next!(buffer)?;
-        if !func(b) {
+        let position = {
+            let mut postion = 0;
+            let mut cur = BinaryRef::from(buffer.chunk());
+            loop {
+                if !func(peek!(cur)?) {
+                    break;
+                }
+                next!(cur)?;
+                postion += 1;
+            }
+            postion
+        };
+        if position == 0 {
             if empty {
+                next!(buffer)?;
                 return Ok("");
             }
             return Err(err);
+        } else {
+            let val = unsafe {
+                std::str::from_utf8_unchecked(&buffer.advance_chunk(position))
+            };
+            return Ok(val);
         }
 
-        loop {
-            b = peek!(buffer)?;
-            if !func(b) {
-                return Ok(
-                    unsafe {
-                        std::str::from_utf8_unchecked(buffer.mark_slice())
-                    })
-            }
-            next!(buffer)?;
-        }
     }
 
     #[inline]

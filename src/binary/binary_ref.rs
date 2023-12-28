@@ -188,6 +188,13 @@ impl<'a> Buf for BinaryRef<'a> {
         self.as_slice()
     }
 
+    
+    fn advance_chunk(&mut self, n: usize) -> &[u8] {
+        let ret = &unsafe { slice::from_raw_parts(self.ptr, self.len) }[..n];
+        self.advance(n);
+        ret
+    }
+
     fn advance(&mut self, n: usize) {
         unsafe {
             self.inc_start(n);
