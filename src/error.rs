@@ -12,12 +12,13 @@
 
 use std::{fmt::{self}, result, convert::Infallible};
 
-use crate::{http::HttpError, url::UrlError, Http2Error};
+use crate::{http::HttpError, url::UrlError, Http2Error, WsError};
 
 #[derive(Debug)]
 pub enum WebError {
     Http(HttpError),
     Http2(Http2Error),
+    Ws(WsError),
     Url(UrlError),
     IntoError,
     Extension(&'static str),
@@ -32,6 +33,7 @@ impl WebError {
             WebError::Url(e) => e.description_str(),
             WebError::Http(e) => e.description_str(),
             WebError::Http2(e) => e.description_str(),
+            WebError::Ws(e) => e.description_str(),
             WebError::IntoError => "into value error",
             WebError::Extension(_) => "std error",
             WebError::Serialize(_) => "serialize error",

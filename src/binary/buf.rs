@@ -10,9 +10,9 @@
 // -----
 // Created Date: 2023/08/28 09:38:10
 
-use std::{mem, ops::{RangeBounds}, io::Cursor};
+use std::{mem, ops::{RangeBounds}, io::{Cursor, self}};
 
-use crate::Binary;
+use crate::{Binary, try_advance};
 
 use super::panic_advance;
 
@@ -139,6 +139,11 @@ pub trait Buf {
         self.advance(1);
         ret
     }
+    
+    fn try_get_u8(&mut self) -> io::Result<u8>  {
+        try_advance!(self.remaining() >= 1);
+        Ok(self.get_u8())
+    }
 
     fn get_i8(&mut self) -> i8 {
         assert!(self.remaining() >= 1);
@@ -147,6 +152,10 @@ pub trait Buf {
         ret
     }
 
+    fn try_get_i8(&mut self) -> io::Result<i8>  {
+        try_advance!(self.remaining() >= 1);
+        Ok(self.get_i8())
+    }
 
     /// Gets an unsigned 16 bit integer from `self` in big-endian byte order.
     ///
@@ -168,6 +177,11 @@ pub trait Buf {
         buf_get_impl!(self, u16::from_be_bytes);
     }
 
+    fn try_get_u16(&mut self) -> io::Result<u16>  {
+        try_advance!(self.remaining() >= 2);
+        Ok(self.get_u16())
+    }
+
     /// Gets an unsigned 16 bit integer from `self` in little-endian byte order.
     ///
     /// The current position is advanced by 2.
@@ -186,6 +200,12 @@ pub trait Buf {
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u16_le(&mut self) -> u16 {
         buf_get_impl!(self, u16::from_le_bytes);
+    }
+
+    
+    fn try_get_u16_le(&mut self) -> io::Result<u16>  {
+        try_advance!(self.remaining() >= 2);
+        Ok(self.get_u16_le())
     }
 
     /// Gets an unsigned 16 bit integer from `self` in native-endian byte order.
@@ -211,6 +231,12 @@ pub trait Buf {
         buf_get_impl!(self, u16::from_ne_bytes);
     }
 
+    
+    fn try_get_u16_ne(&mut self) -> io::Result<u16>  {
+        try_advance!(self.remaining() >= 2);
+        Ok(self.get_u16_ne())
+    }
+
     /// Gets a signed 16 bit integer from `self` in big-endian byte order.
     ///
     /// The current position is advanced by 2.
@@ -231,6 +257,11 @@ pub trait Buf {
         buf_get_impl!(self, i16::from_be_bytes);
     }
 
+    fn try_get_i16(&mut self) -> io::Result<i16>  {
+        try_advance!(self.remaining() >= 2);
+        Ok(self.get_i16())
+    }
+    
     /// Gets a signed 16 bit integer from `self` in little-endian byte order.
     ///
     /// The current position is advanced by 2.
@@ -251,6 +282,10 @@ pub trait Buf {
         buf_get_impl!(self, i16::from_le_bytes);
     }
 
+    fn try_get_i16_le(&mut self) -> io::Result<i16>  {
+        try_advance!(self.remaining() >= 2);
+        Ok(self.get_i16_le())
+    }
     /// Gets a signed 16 bit integer from `self` in native-endian byte order.
     ///
     /// The current position is advanced by 2.
@@ -274,6 +309,10 @@ pub trait Buf {
         buf_get_impl!(self, i16::from_ne_bytes);
     }
 
+    fn try_get_i16_ne(&mut self) -> io::Result<i16>  {
+        try_advance!(self.remaining() >= 2);
+        Ok(self.get_i16_ne())
+    }
     /// Gets an unsigned 32 bit integer from `self` in the big-endian byte order.
     ///
     /// The current position is advanced by 4.
@@ -294,6 +333,10 @@ pub trait Buf {
         buf_get_impl!(self, u32::from_be_bytes);
     }
 
+    fn try_get_u32(&mut self) -> io::Result<u32>  {
+        try_advance!(self.remaining() >= 4);
+        Ok(self.get_u32())
+    }
     /// Gets an unsigned 32 bit integer from `self` in the little-endian byte order.
     ///
     /// The current position is advanced by 4.
@@ -314,6 +357,10 @@ pub trait Buf {
         buf_get_impl!(self, u32::from_le_bytes);
     }
 
+    fn try_get_u32_le(&mut self) -> io::Result<u32>  {
+        try_advance!(self.remaining() >= 4);
+        Ok(self.get_u32_le())
+    }
     /// Gets an unsigned 32 bit integer from `self` in native-endian byte order.
     ///
     /// The current position is advanced by 4.
@@ -337,6 +384,10 @@ pub trait Buf {
         buf_get_impl!(self, u32::from_ne_bytes);
     }
 
+    fn try_get_u32_ne(&mut self) -> io::Result<u32>  {
+        try_advance!(self.remaining() >= 4);
+        Ok(self.get_u32_ne())
+    }
     /// Gets a signed 32 bit integer from `self` in big-endian byte order.
     ///
     /// The current position is advanced by 4.
@@ -357,6 +408,11 @@ pub trait Buf {
         buf_get_impl!(self, i32::from_be_bytes);
     }
 
+    fn try_get_i32(&mut self) -> io::Result<i32>  {
+        try_advance!(self.remaining() >= 4);
+        Ok(self.get_i32())
+    }
+
     /// Gets a signed 32 bit integer from `self` in little-endian byte order.
     ///
     /// The current position is advanced by 4.
@@ -375,6 +431,11 @@ pub trait Buf {
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i32_le(&mut self) -> i32 {
         buf_get_impl!(self, i32::from_le_bytes);
+    }
+
+    fn try_get_i32_le(&mut self) -> io::Result<i32>  {
+        try_advance!(self.remaining() >= 4);
+        Ok(self.get_i32_le())
     }
 
     /// Gets a signed 32 bit integer from `self` in native-endian byte order.
@@ -400,6 +461,10 @@ pub trait Buf {
         buf_get_impl!(self, i32::from_ne_bytes);
     }
 
+    fn try_get_i32_ne(&mut self) -> io::Result<i32>  {
+        try_advance!(self.remaining() >= 4);
+        Ok(self.get_i32_ne())
+    }
     /// Gets an unsigned 64 bit integer from `self` in big-endian byte order.
     ///
     /// The current position is advanced by 8.
@@ -418,6 +483,11 @@ pub trait Buf {
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u64(&mut self) -> u64 {
         buf_get_impl!(self, u64::from_be_bytes);
+    }
+    
+    fn try_get_u64(&mut self) -> io::Result<u64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_u64())
     }
 
     /// Gets an unsigned 64 bit integer from `self` in little-endian byte order.
@@ -438,6 +508,11 @@ pub trait Buf {
     /// This function panics if there is not enough remaining data in `self`.
     fn get_u64_le(&mut self) -> u64 {
         buf_get_impl!(self, u64::from_le_bytes);
+    }
+
+    fn try_get_u64_le(&mut self) -> io::Result<u64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_u64_le())
     }
 
     /// Gets an unsigned 64 bit integer from `self` in native-endian byte order.
@@ -463,6 +538,10 @@ pub trait Buf {
         buf_get_impl!(self, u64::from_ne_bytes);
     }
 
+    fn try_get_u64_ne(&mut self) -> io::Result<u64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_u64_ne())
+    }
     /// Gets a signed 64 bit integer from `self` in big-endian byte order.
     ///
     /// The current position is advanced by 8.
@@ -483,6 +562,10 @@ pub trait Buf {
         buf_get_impl!(self, i64::from_be_bytes);
     }
 
+    fn try_get_i64(&mut self) -> io::Result<i64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_i64())
+    }
     /// Gets a signed 64 bit integer from `self` in little-endian byte order.
     ///
     /// The current position is advanced by 8.
@@ -503,6 +586,10 @@ pub trait Buf {
         buf_get_impl!(self, i64::from_le_bytes);
     }
 
+    fn try_get_i64_le(&mut self) -> io::Result<i64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_i64_le())
+    }
     /// Gets a signed 64 bit integer from `self` in native-endian byte order.
     ///
     /// The current position is advanced by 8.
@@ -526,6 +613,11 @@ pub trait Buf {
         buf_get_impl!(self, i64::from_ne_bytes);
     }
 
+    fn try_get_i64_ne(&mut self) -> io::Result<i64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_i64_ne())
+    }
+
     /// Gets an unsigned 128 bit integer from `self` in big-endian byte order.
     ///
     /// The current position is advanced by 16.
@@ -546,6 +638,10 @@ pub trait Buf {
         buf_get_impl!(self, u128::from_be_bytes);
     }
 
+    fn try_get_u128(&mut self) -> io::Result<u128>  {
+        try_advance!(self.remaining() >= 16);
+        Ok(self.get_u128())
+    }
     /// Gets an unsigned 128 bit integer from `self` in little-endian byte order.
     ///
     /// The current position is advanced by 16.
@@ -566,6 +662,10 @@ pub trait Buf {
         buf_get_impl!(self, u128::from_le_bytes);
     }
 
+    fn try_get_u128_le(&mut self) -> io::Result<u128>  {
+        try_advance!(self.remaining() >= 16);
+        Ok(self.get_u128_le())
+    }
     /// Gets an unsigned 128 bit integer from `self` in native-endian byte order.
     ///
     /// The current position is advanced by 16.
@@ -589,6 +689,11 @@ pub trait Buf {
         buf_get_impl!(self, u128::from_ne_bytes);
     }
 
+    fn try_get_u128_ne(&mut self) -> io::Result<u128>  {
+        try_advance!(self.remaining() >= 16);
+        Ok(self.get_u128_ne())
+    }
+
     /// Gets a signed 128 bit integer from `self` in big-endian byte order.
     ///
     /// The current position is advanced by 16.
@@ -607,6 +712,11 @@ pub trait Buf {
     /// This function panics if there is not enough remaining data in `self`.
     fn get_i128(&mut self) -> i128 {
         buf_get_impl!(self, i128::from_be_bytes);
+    }
+
+    fn try_get_i128(&mut self) -> io::Result<i128>  {
+        try_advance!(self.remaining() >= 16);
+        Ok(self.get_i128())
     }
 
     /// Gets a signed 128 bit integer from `self` in little-endian byte order.
@@ -629,6 +739,10 @@ pub trait Buf {
         buf_get_impl!(self, i128::from_le_bytes);
     }
 
+    fn try_get_i128_le(&mut self) -> io::Result<i128>  {
+        try_advance!(self.remaining() >= 16);
+        Ok(self.get_i128_le())
+    }
     /// Gets a signed 128 bit integer from `self` in native-endian byte order.
     ///
     /// The current position is advanced by 16.
@@ -652,6 +766,10 @@ pub trait Buf {
         buf_get_impl!(self, i128::from_ne_bytes);
     }
 
+    fn try_get_i128_ne(&mut self) -> io::Result<i128>  {
+        try_advance!(self.remaining() >= 16);
+        Ok(self.get_i128_ne())
+    }
     /// Gets an unsigned n-byte integer from `self` in big-endian byte order.
     ///
     /// The current position is advanced by `nbytes`.
@@ -672,6 +790,10 @@ pub trait Buf {
         buf_get_impl!(be => self, u64, nbytes);
     }
 
+    fn try_get_uint(&mut self, nbytes: usize) -> io::Result<u64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_uint(nbytes))
+    }
     /// Gets an unsigned n-byte integer from `self` in little-endian byte order.
     ///
     /// The current position is advanced by `nbytes`.
@@ -692,6 +814,10 @@ pub trait Buf {
         buf_get_impl!(le => self, u64, nbytes);
     }
 
+    fn try_get_uint_le(&mut self, nbytes: usize) -> io::Result<u64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_uint_le(nbytes))
+    }
     /// Gets an unsigned n-byte integer from `self` in native-endian byte order.
     ///
     /// The current position is advanced by `nbytes`.
@@ -719,6 +845,10 @@ pub trait Buf {
         }
     }
 
+    fn try_get_uint_ne(&mut self, nbytes: usize) -> io::Result<u64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_uint_ne(nbytes))
+    }
     /// Gets a signed n-byte integer from `self` in big-endian byte order.
     ///
     /// The current position is advanced by `nbytes`.
@@ -739,6 +869,10 @@ pub trait Buf {
         buf_get_impl!(be => self, i64, nbytes);
     }
 
+    fn try_get_int(&mut self, nbytes: usize) -> io::Result<i64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_int(nbytes))
+    }
     /// Gets a signed n-byte integer from `self` in little-endian byte order.
     ///
     /// The current position is advanced by `nbytes`.
@@ -759,6 +893,10 @@ pub trait Buf {
         buf_get_impl!(le => self, i64, nbytes);
     }
 
+    fn try_get_int_le(&mut self, nbytes: usize) -> io::Result<i64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_int_le(nbytes))
+    }
     /// Gets a signed n-byte integer from `self` in native-endian byte order.
     ///
     /// The current position is advanced by `nbytes`.
@@ -786,6 +924,10 @@ pub trait Buf {
         }
     }
 
+    fn try_get_int_ne(&mut self, nbytes: usize) -> io::Result<i64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_int_ne(nbytes))
+    }
     /// Gets an IEEE754 single-precision (4 bytes) floating point number from
     /// `self` in big-endian byte order.
     ///
@@ -807,6 +949,10 @@ pub trait Buf {
         f32::from_bits(Self::get_u32(self))
     }
 
+    fn try_get_f32(&mut self) -> io::Result<f32>  {
+        try_advance!(self.remaining() >= 4);
+        Ok(self.get_f32())
+    }
     /// Gets an IEEE754 single-precision (4 bytes) floating point number from
     /// `self` in little-endian byte order.
     ///
@@ -828,6 +974,10 @@ pub trait Buf {
         f32::from_bits(Self::get_u32_le(self))
     }
 
+    fn try_get_f32_le(&mut self) -> io::Result<f32>  {
+        try_advance!(self.remaining() >= 4);
+        Ok(self.get_f32_le())
+    }
     /// Gets an IEEE754 single-precision (4 bytes) floating point number from
     /// `self` in native-endian byte order.
     ///
@@ -852,6 +1002,10 @@ pub trait Buf {
         f32::from_bits(Self::get_u32_ne(self))
     }
 
+    fn try_get_f32_ne(&mut self) -> io::Result<f32>  {
+        try_advance!(self.remaining() >= 4);
+        Ok(self.get_f32_ne())
+    }
     /// Gets an IEEE754 double-precision (8 bytes) floating point number from
     /// `self` in big-endian byte order.
     ///
@@ -873,6 +1027,10 @@ pub trait Buf {
         f64::from_bits(Self::get_u64(self))
     }
 
+    fn try_get_f64(&mut self) -> io::Result<f64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_f64())
+    }
     /// Gets an IEEE754 double-precision (8 bytes) floating point number from
     /// `self` in little-endian byte order.
     ///
@@ -894,6 +1052,10 @@ pub trait Buf {
         f64::from_bits(Self::get_u64_le(self))
     }
 
+    fn try_get_f64_le(&mut self) -> io::Result<f64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_f64_le())
+    }
     /// Gets an IEEE754 double-precision (8 bytes) floating point number from
     /// `self` in native-endian byte order.
     ///
@@ -916,6 +1078,11 @@ pub trait Buf {
     /// This function panics if there is not enough remaining data in `self`.
     fn get_f64_ne(&mut self) -> f64 {
         f64::from_bits(Self::get_u64_ne(self))
+    }
+    
+    fn try_get_f64_ne(&mut self) -> io::Result<f64>  {
+        try_advance!(self.remaining() >= 8);
+        Ok(self.get_f64_ne())
     }
 }
 

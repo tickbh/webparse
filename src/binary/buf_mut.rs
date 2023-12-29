@@ -54,7 +54,6 @@ pub unsafe trait BufMut {
 
     fn put_slice(&mut self, src: &[u8]) -> usize {
         let mut off = 0;
-
         assert!(
             self.remaining_mut() >= src.len(),
             "buffer overflow; remaining = {}; src = {}",

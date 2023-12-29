@@ -21,12 +21,14 @@ pub mod url;
 mod helper;
 mod extensions;
 mod serialize;
+mod ws;
 
 
 pub use binary::{Binary, Buf, BinaryMut, BufMut, BinaryRef};
 
 pub use http::{HeaderMap, HeaderName, HeaderValue, Method, Version, Request, Response, HttpError, StatusCode};
 pub use http::http2::{self, Http2Error};
+pub use ws::*;
 
 pub use error::{WebError, WebResult};
 // pub use buffer::Buffer;

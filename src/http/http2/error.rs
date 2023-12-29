@@ -11,7 +11,7 @@
 // Created Date: 2023/08/22 10:03:26
 
 use std::fmt;
-use crate::WebError;
+use crate::{WebError, WsError};
 
 use super::{DecoderError, HuffmanDecoderError};
 
@@ -101,5 +101,12 @@ impl From<HuffmanDecoderError> for Http2Error {
 impl Into<WebError> for Http2Error {
     fn into(self) -> WebError {
         WebError::Http2(self)
+    }
+}
+
+
+impl Into<WebError> for WsError {
+    fn into(self) -> WebError {
+        WebError::Ws(self)
     }
 }
