@@ -341,17 +341,17 @@ impl OwnedMessage {
 
 impl OwnedMessage {
     /// Attempt to form a message from a series of data frames
-    fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<()> {
+    pub fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<()> {
         self.write_to(writer, masked)
     }
 
     /// Returns how many bytes this message will take up
-    fn message_size(&self, masked: bool) -> usize {
+    pub fn message_size(&self, masked: bool) -> usize {
         self.frame_size(masked)
     }
 
     /// Attempt to form a message from a series of data frames
-    fn from_dataframes<D>(frames: Vec<D>) -> WebResult<Self>
+    pub fn from_dataframes<D>(frames: Vec<D>) -> WebResult<Self>
     where
         D: DataFrameable,
     {
