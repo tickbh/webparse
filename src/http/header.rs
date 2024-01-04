@@ -145,6 +145,16 @@ impl HeaderMap {
         }
         None
     }
+    
+    pub fn get_str_value<T: AsRef<[u8]>>(&self, name: &T) -> Option<String> {
+        for i in 0..self.headers.len() {
+            let v = &self.headers[i];
+            if v.0 == name.as_ref() {
+                return v.1.as_string()
+            }
+        }
+        None
+    }
 
     pub fn is_contains<T: AsRef<[u8]>>(&self, name: &T, value: &[u8]) -> bool {
         for i in 0..self.headers.len() {
