@@ -170,7 +170,7 @@ impl<'a> DataFrameable for Message<'a> {
 
 impl<'a> Message<'a> {
     /// Attempt to form a message from a series of data frames
-    fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<()> {
+    fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<usize> {
         self.write_to(writer, masked)
     }
 
@@ -341,7 +341,7 @@ impl OwnedMessage {
 
 impl OwnedMessage {
     /// Attempt to form a message from a series of data frames
-    pub fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<()> {
+    pub fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<usize> {
         self.write_to(writer, masked)
     }
 

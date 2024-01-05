@@ -49,15 +49,15 @@ impl DataFrame {
 
         let data = match header.mask {
             Some(mask) => {
-                if !should_be_masked {
-                    return Err(WsError::DataFrameError("Expected unmasked data frame").into());
-                }
+                // if !should_be_masked {
+                //     return Err(WsError::DataFrameError("Expected unmasked data frame").into());
+                // }
                 mask::mask_data(mask, &body)
             }
             None => {
-                if should_be_masked {
-                    return Err(WsError::DataFrameError("Expected masked data frame").into());
-                }
+                // if should_be_masked {
+                //     return Err(WsError::DataFrameError("Expected masked data frame").into());
+                // }
                 body
             }
         };
@@ -101,12 +101,12 @@ impl DataFrame {
             )
             .into());
         }
-		reader.advance(header.len as usize);
-        let mut data: Vec<u8> = reader.chunk().to_vec();
+		// reader.advance(header.len as usize);
+        let data: Vec<u8> = reader.chunk().to_vec();
         if (data.len() as u64) < header.len {
             return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "incomplete payload").into());
         }
-
+        reader.advance(header.len as usize);
         DataFrame::read_dataframe_body(header, data, should_be_masked)
     }
 }
@@ -150,7 +150,8 @@ pub trait DataFrameable {
 	fn take_payload(self) -> Vec<u8>;
 
 	/// Writes a DataFrame to a Writer.
-	fn write_to(&self, writer: &mut dyn BufMut, mask: bool) -> WebResult<()> {
+	fn write_to(&self, writer: &mut dyn BufMut, mask: bool) -> WebResult<usize> {
+        
 		let mut flags = WsFrameFlags::empty();
 		if self.is_last() {
 			flags.insert(WsFrameFlags::FIN);
@@ -188,7 +189,7 @@ pub trait DataFrameable {
 			None => self.write_payload(&mut data)?,
 		};
 		writer.put_slice(data.as_slice());
-		Ok(())
+		Ok(0)
 	}
 }
 

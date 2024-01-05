@@ -69,7 +69,7 @@ macro_rules! expect {
 macro_rules! try_advance {
     ($flag:expr) => {
         if !$flag {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, "not enough"));
+            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "not enough"));
         }
     };
 }
