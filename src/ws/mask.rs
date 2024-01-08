@@ -56,13 +56,8 @@ unsafe impl<'w> BufMut for Masker<'w> {
 			buf.push(byte ^ self.key[self.pos]);
 			self.pos = (self.pos + 1) % self.key.len();
 		}
-        BufMut::put_slice(self, &buf)
+		self.inner_put_slice(&buf)
     }
-}
-
-/// Generates a random masking key
-pub fn gen_mask() -> [u8; 4] {
-	[1, 2, 3, 4]
 }
 
 /// Masks data to send to a server and writes

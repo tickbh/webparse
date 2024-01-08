@@ -10,5 +10,5 @@ mod mask;
 pub use dataframe::{DataFrame, Opcode, DataFrameable};
 pub use error::WsError;
 pub use frame_header::WsFrameHeader;
-pub use message::{Message, OwnedMessage, CloseData};
+pub use message::{Message, OwnedMessage, CloseData, CloseCode};
 pub use mask::Masker;

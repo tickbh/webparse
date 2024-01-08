@@ -52,7 +52,8 @@ pub unsafe trait BufMut {
         len
     }
 
-    fn put_slice(&mut self, src: &[u8]) -> usize {
+    
+    fn inner_put_slice(&mut self, src: &[u8]) -> usize {
         let mut off = 0;
         assert!(
             self.remaining_mut() >= src.len(),
@@ -78,6 +79,10 @@ pub unsafe trait BufMut {
             }
         }
         src.len()
+    }
+
+    fn put_slice(&mut self, src: &[u8]) -> usize {
+        self.inner_put_slice(src)
     }
 
     fn put_bytes(&mut self, val: u8, cnt: usize) -> usize {

@@ -1,5 +1,6 @@
 use crate::{
-    frame_header, WebResult, WsError, WsFrameHeader, Masker, BufMut, Buf,
+    ws::{frame_header, Masker, WsError, WsFrameHeader},
+    Buf, BufMut, WebResult,
 };
 use std::io::{self, Read, Write};
 
@@ -76,9 +77,9 @@ impl DataFrame {
         R: Buf,
     {
         let header = frame_header::read_header(reader)?;
-		if (reader.remaining() as u64) < header.len {
+        if (reader.remaining() as u64) < header.len {
             return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "incomplete payload").into());
-		}
+        }
         let data: Vec<u8> = reader.advance_chunk(header.len as usize).to_vec();
         DataFrame::read_dataframe_body(header, data, should_be_masked)
     }
@@ -101,7 +102,7 @@ impl DataFrame {
             )
             .into());
         }
-		// reader.advance(header.len as usize);
+        // reader.advance(header.len as usize);
         let data: Vec<u8> = reader.chunk().to_vec();
         if (data.len() as u64) < header.len {
             return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "incomplete payload").into());
@@ -112,21 +113,21 @@ impl DataFrame {
 }
 
 pub trait DataFrameable {
-	/// Is this dataframe the final dataframe of the message?
-	fn is_last(&self) -> bool;
-	/// What type of data does this dataframe contain?
-	fn opcode(&self) -> u8;
-	/// Reserved bits of this dataframe
-	fn reserved(&self) -> &[bool; 3];
+    /// Is this dataframe the final dataframe of the message?
+    fn is_last(&self) -> bool;
+    /// What type of data does this dataframe contain?
+    fn opcode(&self) -> u8;
+    /// Reserved bits of this dataframe
+    fn reserved(&self) -> &[bool; 3];
 
-	/// How long (in bytes) is this dataframe's payload
-	fn size(&self) -> usize;
+    /// How long (in bytes) is this dataframe's payload
+    fn size(&self) -> usize;
 
-	/// Get's the size of the entire dataframe in bytes,
-	/// i.e. header and payload.
-	fn frame_size(&self, masked: bool) -> usize {
-		// one byte for the opcode & reserved & fin
-		1
+    /// Get's the size of the entire dataframe in bytes,
+    /// i.e. header and payload.
+    fn frame_size(&self, masked: bool) -> usize {
+        // one byte for the opcode & reserved & fin
+        1
         // depending on the size of the payload, add the right payload len bytes
         + match self.size() {
             s if s <= 125 => 1,
@@ -141,56 +142,53 @@ pub trait DataFrameable {
         }
         // finally add the payload len
         + self.size()
-	}
+    }
 
-	/// Write the payload to a writer
-	fn write_payload(&self, socket: &mut dyn BufMut) -> WebResult<()>;
+    /// Write the payload to a writer
+    fn write_payload(&self, socket: &mut dyn BufMut) -> WebResult<()>;
 
-	/// Takes the payload out into a vec
-	fn take_payload(self) -> Vec<u8>;
+    /// Takes the payload out into a vec
+    fn take_payload(self) -> Vec<u8>;
 
-	/// Writes a DataFrame to a Writer.
-	fn write_to(&self, writer: &mut dyn BufMut, mask: bool) -> WebResult<usize> {
-        
-		let mut flags = WsFrameFlags::empty();
-		if self.is_last() {
-			flags.insert(WsFrameFlags::FIN);
-		}
-		{
-			let reserved = self.reserved();
-			if reserved[0] {
-				flags.insert(WsFrameFlags::RSV1);
-			}
-			if reserved[1] {
-				flags.insert(WsFrameFlags::RSV2);
-			}
-			if reserved[2] {
-				flags.insert(WsFrameFlags::RSV3);
-			}
-		}
+    /// Writes a DataFrame to a Writer.
+    fn write_to(&self, writer: &mut dyn BufMut, masking_key: Option<[u8; 4]>) -> WebResult<usize> {
+        let mut flags = WsFrameFlags::empty();
+        if self.is_last() {
+            flags.insert(WsFrameFlags::FIN);
+        }
+        {
+            let reserved = self.reserved();
+            if reserved[0] {
+                flags.insert(WsFrameFlags::RSV1);
+            }
+            if reserved[1] {
+                flags.insert(WsFrameFlags::RSV2);
+            }
+            if reserved[2] {
+                flags.insert(WsFrameFlags::RSV3);
+            }
+        }
 
-		let masking_key = if mask { Some(mask::gen_mask()) } else { None };
+        let header = WsFrameHeader {
+            flags,
+            opcode: self.opcode() as u8,
+            mask: masking_key,
+            len: self.size() as u64,
+        };
 
-		let header = WsFrameHeader {
-			flags,
-			opcode: self.opcode() as u8,
-			mask: masking_key,
-			len: self.size() as u64,
-		};
+        let mut data = Vec::<u8>::new();
+        frame_header::write_header(&mut data, header)?;
 
-		let mut data = Vec::<u8>::new();
-		frame_header::write_header(&mut data, header)?;
-
-		match masking_key {
-			Some(mask) => {
-				let mut masker = Masker::new(mask, &mut data);
-				self.write_payload(&mut masker)?
-			}
-			None => self.write_payload(&mut data)?,
-		};
-		writer.put_slice(data.as_slice());
-		Ok(0)
-	}
+        match masking_key {
+            Some(mask) => {
+                let mut masker = Masker::new(mask, &mut data);
+                self.write_payload(&mut masker)?
+            }
+            None => self.write_payload(&mut data)?,
+        };
+        writer.put_slice(data.as_slice());
+        Ok(0)
+    }
 }
 
 impl DataFrameable for DataFrame {
@@ -345,7 +343,7 @@ mod tests {
             data: data.to_vec(),
         };
         let mut obtained = Vec::new();
-        dataframe.write_to(&mut obtained, false).unwrap();
+        dataframe.write_to(&mut obtained, None).unwrap();
 
         assert_eq!(&obtained[..], &expected[..]);
     }

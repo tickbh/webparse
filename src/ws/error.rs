@@ -22,3 +22,9 @@ impl WsError {
         WebError::Ws(e.into())
     }
 }
+
+impl Into<WebError> for WsError {
+    fn into(self) -> WebError {
+        WebError::Ws(self)
+    }
+}

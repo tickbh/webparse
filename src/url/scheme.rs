@@ -99,6 +99,21 @@ impl Scheme {
             _ => false,
         }
     }
+
+
+    pub fn is_ws(&self) -> bool {
+        match self {
+            Scheme::Ws => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_wss(&self) -> bool {
+        match self {
+            Scheme::Wss => true,
+            _ => false,
+        }
+    }
 }
 
 impl Display for Scheme {

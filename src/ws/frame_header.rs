@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 
-use crate::{Buf, BufMut, WebResult, WsError};
+use crate::{Buf, BufMut, WebResult, ws::WsError};
 
 bitflags! {
     /// Flags relevant to a WebSocket data frame.

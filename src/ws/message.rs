@@ -3,7 +3,10 @@ use std::io;
 use std::io::Write;
 use std::str::from_utf8;
 
-use crate::{Buf, BufMut, DataFrame, DataFrameable, Opcode, WebResult, WsError, WebError};
+use crate::{
+    ws::{DataFrame, DataFrameable, Opcode, WsError},
+    Buf, BufMut, WebError, WebResult,
+};
 
 const FALSE_RESERVED_BITS: &[bool; 3] = &[false; 3];
 
@@ -170,9 +173,9 @@ impl<'a> DataFrameable for Message<'a> {
 
 impl<'a> Message<'a> {
     /// Attempt to form a message from a series of data frames
-    fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<usize> {
-        self.write_to(writer, masked)
-    }
+    // fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<usize> {
+    //     self.write_to(writer, masked)
+    // }
 
     /// Returns how many bytes this message will take up
     fn message_size(&self, masked: bool) -> usize {
@@ -341,9 +344,9 @@ impl OwnedMessage {
 
 impl OwnedMessage {
     /// Attempt to form a message from a series of data frames
-    pub fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<usize> {
-        self.write_to(writer, masked)
-    }
+    // pub fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<usize> {
+    //     self.write_to(writer, masked)
+    // }
 
     /// Returns how many bytes this message will take up
     pub fn message_size(&self, masked: bool) -> usize {
@@ -488,10 +491,19 @@ pub struct CloseData {
 }
 
 impl CloseData {
-    /// Create a new CloseData object
-    pub fn new(status_code: u16, reason: String) -> CloseData {
+    pub fn normal() -> Self {
         CloseData {
-            status_code,
+            status_code: CloseCode::Normal.into(),
+            reason: String::new(),
+        }
+    }
+    /// Create a new CloseData object
+    pub fn new<U>(status_code: U, reason: String) -> CloseData
+    where
+        U: Into<u16>,
+    {
+        CloseData {
+            status_code: status_code.into(),
             reason,
         }
     }
@@ -528,5 +540,136 @@ impl<'a> IntoCowBytes<'a> for &'a [u8] {
 impl<'a> IntoCowBytes<'a> for Cow<'a, [u8]> {
     fn into(self) -> Cow<'a, [u8]> {
         self
+    }
+}
+
+use self::CloseCode::*;
+/// Status code used to indicate why an endpoint is closing the WebSocket connection.
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum CloseCode {
+    /// Indicates a normal closure, meaning that the purpose for
+    /// which the connection was established has been fulfilled.
+    /// 表示一个正常的关闭，意味着连接建立的目标已经完成了。
+    Normal,
+    /// Indicates that an endpoint is "going away", such as a server
+    /// going down or a browser having navigated away from a page.
+    /// 表示终端已经“走开”，例如服务器停机了或者在浏览器中离开了这个页面。
+    Away,
+    /// Indicates that an endpoint is terminating the connection due
+    /// to a protocol error.
+    /// 表示终端由于协议错误中止了连接。
+    Protocol,
+    /// Indicates that an endpoint is terminating the connection
+    /// because it has received a type of data it cannot accept (e.g., an
+    /// endpoint that understands only text data MAY send this if it
+    /// receives a binary message).
+    /// 表示终端由于收到了一个不支持的数据类型的数据（如终端只能怪理解文本数据，但是收到了一个二进制数据）从而关闭连接。
+    Unsupported,
+    /// Indicates that no status code was included in a closing frame. This
+    /// close code makes it possible to use a single method, `on_close` to
+    /// handle even cases where no close code was provided.
+    /// 是一个保留值并且不能被终端当做一个关闭帧的状态码。这个状态码是为了给上层应用表示当前没有状态码。
+    Status,
+    /// Indicates an abnormal closure. If the abnormal closure was due to an
+    /// error, this close code will not be used. Instead, the `on_error` method
+    /// of the handler will be called with the error. However, if the connection
+    /// is simply dropped, without an error, this close code will be sent to the
+    /// handler.
+    /// 是一个保留值并且不能被终端当做一个关闭帧的状态码。这个状态码是为了给上层应用表示
+    /// 连接被异常关闭如没有发送或者接受一个关闭帧这种场景的使用而设计的。
+    Abnormal,
+    /// Indicates that an endpoint is terminating the connection
+    /// because it has received data within a message that was not
+    /// consistent with the type of the message (e.g., non-UTF-8 [RFC3629]
+    /// data within a text message).
+    /// 表示终端因为收到了类型不连续的消息（如非 UTF-8 编码的文本消息）导致的连接关闭。
+    Invalid,
+    /// Indicates that an endpoint is terminating the connection
+    /// because it has received a message that violates its policy.  This
+    /// is a generic status code that can be returned when there is no
+    /// other more suitable status code (e.g., Unsupported or Size) or if there
+    /// is a need to hide specific details about the policy.
+    /// 表示终端是因为收到了一个违反政策的消息导致的连接关闭。这是一个通用的状态码，
+    /// 可以在没有什么合适的状态码（如 1003 或者 1009）时或者可能需要隐藏关于政策的具体信息时返回。
+    Policy,
+    /// Indicates that an endpoint is terminating the connection
+    /// because it has received a message that is too big for it to
+    /// process.
+    /// 表示终端由于收到了一个太大的消息无法进行处理从而关闭连接。
+    Size,
+    /// Indicates that an endpoint (client) is terminating the
+    /// connection because it has expected the server to negotiate one or
+    /// more extension, but the server didn't return them in the response
+    /// message of the WebSocket handshake.  The list of extensions that
+    /// are needed should be given as the reason for closing.
+    /// Note that this status code is not used by the server, because it
+    /// can fail the WebSocket handshake instead.
+    /// 表示终端（客户端）因为预期与服务端协商一个或者多个扩展，但是服务端在 WebSocket 握手中没有响应这个导致的关闭。
+    /// 需要的扩展清单应该出现在关闭帧的原因（reason）字段中。
+    Extension,
+    /// Indicates that a server is terminating the connection because
+    /// it encountered an unexpected condition that prevented it from
+    /// fulfilling the request.
+    /// 表示服务端因为遇到了一个意外的条件阻止它完成这个请求从而导致连接关闭。
+    Error,
+    /// Indicates that the server is restarting. A client may choose to reconnect,
+    /// and if it does, it should use a randomized delay of 5-30 seconds between attempts.
+    Restart,
+    /// Indicates that the server is overloaded and the client should either connect
+    /// to a different IP (when multiple targets exist), or reconnect to the same IP
+    /// when a user has performed an action.
+    Again,
+    #[doc(hidden)]
+    /// 这个状态码是用于上层应用来表示连接失败是因为 TLS 握手失败（如服务端证书没有被验证过）导致的关闭的。
+    Tls,
+    #[doc(hidden)]
+    Empty,
+    #[doc(hidden)]
+    Other(u16),
+}
+
+impl Into<u16> for CloseCode {
+    fn into(self) -> u16 {
+        match self {
+            Normal => 1000,
+            Away => 1001,
+            Protocol => 1002,
+            Unsupported => 1003,
+            Status => 1005,
+            Abnormal => 1006,
+            Invalid => 1007,
+            Policy => 1008,
+            Size => 1009,
+            Extension => 1010,
+            Error => 1011,
+            Restart => 1012,
+            Again => 1013,
+            Tls => 1015,
+            Empty => 0,
+            Other(code) => code,
+        }
+    }
+}
+
+impl From<u16> for CloseCode {
+    fn from(code: u16) -> CloseCode {
+        match code {
+            1000 => Normal,
+            1001 => Away,
+            1002 => Protocol,
+            1003 => Unsupported,
+            1005 => Status,
+            1006 => Abnormal,
+            1007 => Invalid,
+            1008 => Policy,
+            1009 => Size,
+            1010 => Extension,
+            1011 => Error,
+            1012 => Restart,
+            1013 => Again,
+            1015 => Tls,
+            0 => Empty,
+            _ => Other(code),
+        }
     }
 }

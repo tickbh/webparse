@@ -12,7 +12,7 @@
 
 use std::{fmt::{self}, result, convert::Infallible};
 
-use crate::{http::HttpError, url::UrlError, Http2Error, WsError};
+use crate::{http::HttpError, url::UrlError, Http2Error, ws::WsError};
 
 #[derive(Debug)]
 pub enum WebError {
