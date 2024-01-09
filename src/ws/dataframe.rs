@@ -102,12 +102,10 @@ impl DataFrame {
             )
             .into());
         }
-        // reader.advance(header.len as usize);
-        let data: Vec<u8> = reader.chunk().to_vec();
-        if (data.len() as u64) < header.len {
+        if (reader.remaining() as u64) < header.len {
             return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "incomplete payload").into());
         }
-        reader.advance(header.len as usize);
+        let data: Vec<u8> = reader.advance_chunk(header.len as usize).to_vec();
         DataFrame::read_dataframe_body(header, data, should_be_masked)
     }
 }
