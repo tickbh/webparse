@@ -287,10 +287,10 @@ impl Opcode {
     }
 }
 
+#[cfg(test)]
 mod tests {
-    
-
-    
+    use crate::WebError;
+    use super::*;
 
     #[test]
     fn test_read_dataframe() {

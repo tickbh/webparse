@@ -185,10 +185,6 @@ impl Binary {
             .load(std::sync::atomic::Ordering::SeqCst)
     }
 
-    #[inline]
-    fn as_slice_all(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(self.ptr.sub(self.cursor), self.len + self.cursor) }
-    }
 
     #[inline]
     fn as_slice(&self) -> &[u8] {

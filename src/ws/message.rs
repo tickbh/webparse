@@ -178,9 +178,9 @@ impl<'a> Message<'a> {
     // }
 
     /// Returns how many bytes this message will take up
-    fn message_size(&self, masked: bool) -> usize {
-        self.frame_size(masked)
-    }
+    // fn message_size(&self, masked: bool) -> usize {
+    //     self.frame_size(masked)
+    // }
 
     /// Attempt to form a message from a series of data frames
     fn from_dataframes<D>(frames: Vec<D>) -> WebResult<Self>
@@ -273,7 +273,7 @@ impl OwnedMessage {
     /// Checks if this message is a close message.
     ///
     ///```rust
-    ///# use webparse::OwnedMessage;
+    ///# use webparse::ws::OwnedMessage;
     ///assert!(OwnedMessage::Close(None).is_close());
     ///```
     pub fn is_close(&self) -> bool {
@@ -287,7 +287,7 @@ impl OwnedMessage {
     /// Control messages are either `Close`, `Ping`, or `Pong`.
     ///
     ///```rust
-    ///# use webparse::OwnedMessage;
+    ///# use webparse::ws::OwnedMessage;
     ///assert!(OwnedMessage::Ping(vec![]).is_control());
     ///assert!(OwnedMessage::Pong(vec![]).is_control());
     ///assert!(OwnedMessage::Close(None).is_control());
@@ -305,7 +305,7 @@ impl OwnedMessage {
     /// Data messages are either `Text` or `Binary`.
     ///
     ///```rust
-    ///# use webparse::OwnedMessage;
+    ///# use webparse::ws::OwnedMessage;
     ///assert!(OwnedMessage::Text("1337".to_string()).is_data());
     ///assert!(OwnedMessage::Binary(vec![]).is_data());
     ///```
@@ -318,7 +318,7 @@ impl OwnedMessage {
     /// response.
     ///
     ///```rust
-    ///# use webparse::OwnedMessage;
+    ///# use webparse::ws::OwnedMessage;
     ///assert!(OwnedMessage::Ping("ping".to_string().into_bytes()).is_ping());
     ///```
     pub fn is_ping(&self) -> bool {
@@ -332,7 +332,7 @@ impl OwnedMessage {
     /// `Pong` messages are usually sent only in response to `Ping` messages.
     ///
     ///```rust
-    ///# use webparse::OwnedMessage;
+    ///# use webparse::ws::OwnedMessage;
     ///assert!(OwnedMessage::Pong("pong".to_string().into_bytes()).is_pong());
     ///```
     pub fn is_pong(&self) -> bool {

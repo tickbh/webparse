@@ -85,11 +85,6 @@ impl<'a> BinaryRef<'a> {
     }
 
     #[inline]
-    fn as_slice_all(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(self.ptr.sub(self.cursor), self.len + self.cursor) }
-    }
-
-    #[inline]
     fn as_slice(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.ptr, self.len) }
     }
@@ -106,15 +101,15 @@ impl<'a> BinaryRef<'a> {
         self.cursor += by;
     }
 
-    #[inline]
-    unsafe fn sub_start(&mut self, by: usize) {
-        // should already be asserted, but debug assert for tests
-        debug_assert!(self.cursor >= by, "internal: inc_start out of bounds");
-        self.len += by;
-        self.ptr = self.ptr.sub(by);
-        self.cursor -= by;
-        self.mark = std::cmp::min(self.mark, self.cursor);
-    }
+    // #[inline]
+    // unsafe fn sub_start(&mut self, by: usize) {
+    //     // should already be asserted, but debug assert for tests
+    //     debug_assert!(self.cursor >= by, "internal: inc_start out of bounds");
+    //     self.len += by;
+    //     self.ptr = self.ptr.sub(by);
+    //     self.cursor -= by;
+    //     self.mark = std::cmp::min(self.mark, self.cursor);
+    // }
 
     pub fn copy_from_slice(data: &'a [u8]) -> Self {
         data.into()

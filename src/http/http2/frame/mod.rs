@@ -1,37 +1,36 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/09/01 04:09:08
 
-
-mod flag;
-mod kind;
-mod settings;
-mod frame;
 mod data;
+mod flag;
+mod frame;
+mod go_away;
 mod headers;
+mod kind;
+mod ping;
 mod priority;
 mod reason;
-mod go_away;
-mod ping;
 mod reset;
+mod settings;
 mod window_update;
 
-use std::{cmp::Ordering, fmt::{Display, Write}};
+use std::{cmp::Ordering, fmt::Display};
 
-pub use priority::{Priority, StreamDependency};
-pub use headers::{Headers, PushPromise};
 pub use data::Data;
 pub use flag::Flag;
 pub use frame::{Frame, PriorityFrame};
+pub use headers::{Headers, PushPromise};
 pub use kind::Kind;
+pub use priority::{Priority, StreamDependency};
 
 pub use self::go_away::GoAway;
 pub use self::ping::Ping;
@@ -43,7 +42,6 @@ pub use self::window_update::WindowUpdate;
 use crate::{Buf, BufMut, Serialize, WebResult};
 
 pub use self::frame::FrameHeader;
-
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct StreamIdentifier(pub u32);
@@ -84,7 +82,6 @@ impl StreamIdentifier {
     }
 }
 
-
 impl From<u32> for StreamIdentifier {
     fn from(value: u32) -> Self {
         StreamIdentifier(value)
@@ -108,7 +105,6 @@ impl Display for StreamIdentifier {
         f.write_str(&format!("{}", self.0))
     }
 }
-
 
 #[inline(always)]
 pub fn read_u64<T: Buf>(buf: &mut T) -> u64 {
@@ -145,7 +141,6 @@ pub fn encode_u24<B: Buf + BufMut>(buf: &mut B, val: u32) -> usize {
     3
 }
 
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SizeIncrement(pub u32);
 
@@ -171,7 +166,6 @@ pub struct ParserSettings {
     padding: bool,
     priority: bool,
 }
-
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ErrorCode(pub u32);

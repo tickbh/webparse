@@ -105,11 +105,6 @@ impl BinaryMut {
     }
 
     #[inline]
-    pub fn as_slice_all(&self) -> &[u8] {
-        unsafe { &(*self.ptr)[..] }
-    }
-
-    #[inline]
     pub fn into_slice_all(&self) -> Vec<u8> {
         if (*self.counter).borrow().load(Ordering::SeqCst) == 1 {
             (*self.counter).borrow().fetch_add(1, Ordering::Relaxed);
@@ -143,12 +138,12 @@ impl BinaryMut {
         self.cursor += by;
     }
 
-    #[inline]
-    unsafe fn sub_start(&mut self, by: usize) {
-        // should already be asserted, but debug assert for tests
-        debug_assert!(self.cursor >= by, "internal: sub_start out of bounds");
-        self.cursor -= by;
-    }
+    // #[inline]
+    // unsafe fn sub_start(&mut self, by: usize) {
+    //     // should already be asserted, but debug assert for tests
+    //     debug_assert!(self.cursor >= by, "internal: sub_start out of bounds");
+    //     self.cursor -= by;
+    // }
 
     /// 判断对象的长度
     ///

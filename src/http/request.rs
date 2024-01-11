@@ -743,6 +743,7 @@ impl Clone for Parts {
     }
 }
 
+#[cfg(test)]
 mod tests {
 
     macro_rules! req {

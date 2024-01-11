@@ -124,9 +124,11 @@ where
     })
 }
 
+#[cfg(test)]
 mod tests {
     
     use test;
+    use super::*;
 
     #[test]
     fn test_read_header_simple() {

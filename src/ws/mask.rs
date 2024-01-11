@@ -1,8 +1,14 @@
-//! Utility functions for masking data frame payload data
-
-
-
-
+// Copyright 2022 - 2024 Wenmeng See the COPYRIGHT
+// file at the top-level directory of this distribution.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// Author: tickbh
+// -----
+// Created Date: 2023/12/29 02:00:25
 
 use crate::BufMut;
 
@@ -10,7 +16,6 @@ use crate::BufMut;
 /// while masking the data being written
 pub struct Masker<'w> {
 	key: [u8; 4],
-    cache: Option<Vec<u8>>,
 	pos: usize,
 	end: &'w mut dyn BufMut,
 }
@@ -22,19 +27,18 @@ impl<'w> Masker<'w> {
 		Masker {
 			key,
 			pos: 0,
-            cache: None,
 			end: endpoint,
 		}
 	}
 
-    fn write(&mut self, data: &[u8]) -> usize {
-		let mut buf = Vec::with_capacity(data.len());
-		for &byte in data.iter() {
-			buf.push(byte ^ self.key[self.pos]);
-			self.pos = (self.pos + 1) % self.key.len();
-		}
-		self.end.put_slice(&buf)
-	}
+    // fn write(&mut self, data: &[u8]) -> usize {
+	// 	let mut buf = Vec::with_capacity(data.len());
+	// 	for &byte in data.iter() {
+	// 		buf.push(byte ^ self.key[self.pos]);
+	// 		self.pos = (self.pos + 1) % self.key.len();
+	// 	}
+	// 	self.end.put_slice(&buf)
+	// }
 }
 
 unsafe impl<'w> BufMut for Masker<'w> {
@@ -70,9 +74,11 @@ pub fn mask_data(mask: [u8; 4], data: &[u8]) -> Vec<u8> {
 	out
 }
 
+#[cfg(test)]
 mod tests {
 	
 	use test;
+	use super::*;
 
 	#[test]
 	fn test_mask_data() {

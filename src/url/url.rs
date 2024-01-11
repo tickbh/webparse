@@ -407,6 +407,7 @@ impl Default for Url {
 }
 
 
+#[cfg(test)]
 mod tests {
     
     
