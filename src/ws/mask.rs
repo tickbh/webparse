@@ -1,8 +1,8 @@
 //! Utility functions for masking data frame payload data
-use std::cmp;
-use std::io::Result as IoResult;
-use std::io::Write;
-use std::ptr;
+
+
+
+
 
 use crate::BufMut;
 
@@ -71,7 +71,7 @@ pub fn mask_data(mask: [u8; 4], data: &[u8]) -> Vec<u8> {
 }
 
 mod tests {
-	use super::*;
+	
 	use test;
 
 	#[test]

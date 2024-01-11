@@ -17,7 +17,7 @@ use std::{
     hash,
     io::{self, Error, Read, Result, Write},
     mem::MaybeUninit,
-    ops::{Deref, DerefMut, RangeBounds},
+    ops::{Deref, DerefMut},
     ptr,
     rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},

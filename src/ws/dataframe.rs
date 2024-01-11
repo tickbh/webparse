@@ -1,8 +1,8 @@
 use crate::{
-    ws::{frame_header, Masker, WsError, WsFrameHeader},
+    ws::{frame_header, Masker, WsFrameHeader},
     Buf, BufMut, WebResult,
 };
-use std::io::{self, Read, Write};
+use std::io::{self};
 
 use super::{frame_header::WsFrameFlags, mask};
 
@@ -36,7 +36,7 @@ impl DataFrame {
     pub fn read_dataframe_body(
         header: WsFrameHeader,
         body: Vec<u8>,
-        should_be_masked: bool,
+        _should_be_masked: bool,
     ) -> WebResult<Self> {
         let finished = header.flags.contains(WsFrameFlags::FIN);
 
@@ -288,9 +288,9 @@ impl Opcode {
 }
 
 mod tests {
-    use crate::WebError;
+    
 
-    use super::*;
+    
 
     #[test]
     fn test_read_dataframe() {

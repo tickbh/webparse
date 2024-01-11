@@ -13,7 +13,7 @@
 use std::fmt::Debug;
 use std::io;
 use std::io::Error;
-use std::ops::{Deref, RangeBounds};
+use std::ops::{Deref};
 use std::{
     alloc::{dealloc, Layout},
     borrow::Borrow,

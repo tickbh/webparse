@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 use std::io;
-use std::io::Write;
+
 use std::str::from_utf8;
 
 use crate::{
-    ws::{DataFrame, DataFrameable, Opcode, WsError},
+    ws::{DataFrameable, Opcode, WsError},
     Buf, BufMut, WebError, WebResult,
 };
 
@@ -212,7 +212,7 @@ impl<'a> Message<'a> {
 
         if opcode == Some(Opcode::Text) {
             println!("data = {:?} v = {:?}", data.as_slice(), from_utf8(data.as_slice()));
-            if let Err(e) = from_utf8(data.as_slice()) {
+            if let Err(_e) = from_utf8(data.as_slice()) {
                 return Err(crate::WebError::Extension("Convert Utf8 error"));
             }
         }

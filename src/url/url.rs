@@ -10,7 +10,7 @@
 // -----
 // Created Date: 2023/08/29 10:32:46
 
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use crate::{WebResult, peek, expect, next, WebError, Helper, Binary, Buf, Scheme, UrlError };
 
@@ -18,7 +18,7 @@ use super::Builder;
 
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Url {
     pub scheme: Scheme,
     pub path: String,
@@ -31,7 +31,7 @@ pub struct Url {
 
 
 impl Url {
-    pub const DEFAULT_PATH: &str = "/";
+    pub const DEFAULT_PATH: &'static str = "/";
 
     pub fn new() -> Url {
         Url { scheme: Scheme::None, path: Self::DEFAULT_PATH.to_string(), username: None, password: None, domain: None, port: None, query: None }
@@ -354,6 +354,14 @@ impl Display for Url {
             f.write_fmt(format_args!("?{}", Self::url_encode(self.query.as_ref().unwrap())))?;
         }
         Ok(())
+    }
+}
+
+impl FromStr for Url {
+    type Err=WebError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Url::parse(s.as_bytes().to_vec())
     }
 }
 
