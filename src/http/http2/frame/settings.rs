@@ -324,7 +324,7 @@ impl Settings {
         use base64::Engine;
         let mut dst = BinaryMut::new();
         self.for_each(|setting| {
-            log::trace!("encoding setting; val={:?}", setting);
+            log::trace!("HTTP2: 编码设置信息; val={:?}", setting);
             setting.encode(&mut dst).unwrap();
         });
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(dst.chunk())
@@ -336,15 +336,14 @@ impl Settings {
             FrameHeader::new(Kind::Settings, self.flags.into(), StreamIdentifier::zero());
         head.length = self.payload_len() as u32;
 
-        log::trace!("encoding SETTINGS; len={}", head.length);
         let mut size = 0;
         size += head.encode(dst)?;
 
         // Encode the settings
         self.for_each(|setting| {
-            log::trace!("encoding setting; val={:?}", setting);
             size += setting.encode(dst).unwrap()
         });
+        log::trace!("HTTP2: 编码设置信息; len={}", size);
         Ok(size)
     }
 

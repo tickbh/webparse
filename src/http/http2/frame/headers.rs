@@ -294,11 +294,8 @@ impl Headers {
         encoder: &mut Encoder,
         dst: &mut B,
     ) -> WebResult<usize> {
-        // self.header_block
-        //     .parts
-        //     .encode_header(&mut self.header_block.fields);
         let size = self.header_block.encode(encoder, dst, self.flags, self.stream_id)?;
-        log::trace!("encoding Header; len={}", size);
+        log::trace!("HTTP2: 编码头信息; len={}", size);
         Ok(size)
     }
 }
@@ -494,8 +491,7 @@ impl PushPromise {
         size += binary.serialize(dst).unwrap();
 
         size += self.header_block.encode(encoder, dst, self.flags, self.promised_id)?;
-        log::trace!("encoding PushPromise; len={}", size);
-
+        log::trace!("HTTP2: 编码推送信息; len={}", size);
         Ok(size)
     }
 

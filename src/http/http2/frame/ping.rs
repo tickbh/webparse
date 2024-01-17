@@ -102,10 +102,10 @@ impl Ping {
     
     pub fn encode<B: Buf+BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         let head = self.head();
-        log::trace!("encoding Ping; len={}", head.length);
         let mut size = 0;
         size += head.encode(dst)?;
         size += dst.put_slice(&self.payload);
+        log::trace!("HTTP2: 编码ping信息; len={}", size);
         Ok(size)
     }
 

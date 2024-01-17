@@ -73,6 +73,7 @@ impl WindowUpdate {
         size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.size_increment);
         log::trace!("encoding WindowUpdate; len={}", size);
+        log::trace!("HTTP2: 编码窗口更新信息; len={}", size);
         Ok(size)
     }
 

@@ -91,7 +91,6 @@ impl<T> Data<T> {
 impl Data<Binary> {
     pub fn encode<B: Buf+BufMut>(&mut self,
         encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
-        log::trace!("encoding Data; len={}", self.data.remaining());
         let mut size = 0;
         loop {
             let now_len = std::cmp::min(self.data.remaining(), encoder.max_frame_size); 

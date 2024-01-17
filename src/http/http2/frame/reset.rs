@@ -60,7 +60,7 @@ impl Reset {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.error_code.into());
-        log::trace!("encoding Reset; len={}", size);
+        log::trace!("HTTP2: 编码Reset信息; len={}", size);
         Ok(size)
     }
 }

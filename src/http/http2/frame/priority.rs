@@ -66,10 +66,10 @@ impl Priority {
 
     pub fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
         let head = FrameHeader::new(super::Kind::Priority, Flag::zero(), self.stream_id);
-        log::trace!("encoding Priority; len={}", 5);
         let mut size = 0;
         size += head.encode(dst)?;
         size += self.dependency.encode(dst)?;
+        log::trace!("HTTP2: 编码优先级信息; len={}", size);
         Ok(size)
     }
     
