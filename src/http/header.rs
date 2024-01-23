@@ -166,6 +166,15 @@ impl HeaderMap {
         false
     }
 
+    pub fn is_equal<T: AsRef<[u8]>>(&self, name: &T, value: &[u8]) -> bool {
+        for i in 0..self.headers.len() {
+            let v = &self.headers[i];
+            if v.0 == name.as_ref() {
+                return v.1.as_bytes() == value;
+            }
+        }
+        false
+    }
 
     pub fn get_host(&self) -> Option<String> {
         if let Some(value) = self.get_option_value(&HeaderName::HOST) {

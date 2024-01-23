@@ -712,6 +712,10 @@ impl<T: Serialize> Response<T> {
         self.partial = false;
         Ok(len - buffer.remaining())
     }
+    
+    pub fn replace_body(&mut self, mut body: T) {
+        std::mem::swap(&mut self.body, &mut body);
+    }
 
     pub fn replace_clone(&mut self, mut body: T) -> Response<T> {
         let parts = self.parts.clone();
