@@ -351,7 +351,7 @@ impl Response<()> {
     pub fn text() -> Builder {
         Response::builder()
         .status(200)
-        .header(HeaderName::CONTENT_TYPE, "text/txt; charset=utf-8")
+        .header(HeaderName::CONTENT_TYPE, "text/plain; charset=utf-8")
     }
     
     pub fn status404() -> Builder {
