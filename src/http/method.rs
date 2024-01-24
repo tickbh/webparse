@@ -10,11 +10,11 @@
 // -----
 // Created Date: 2023/08/15 10:03:23
 
-use std::{fmt::Display};
+use std::{fmt::Display, str::FromStr};
 
 use crate::{WebError, WebResult, Buf, BufMut};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Method {
     None,
     Options,
@@ -138,5 +138,12 @@ impl TryFrom<&str> for Method {
                 Err(WebError::Http(crate::HttpError::Method))
             }
         }
+    }
+}
+
+impl FromStr for Method {
+    type Err = WebError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Method::try_from(&*s.to_uppercase())
     }
 }

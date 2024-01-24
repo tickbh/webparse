@@ -10,11 +10,11 @@
 // -----
 // Created Date: 2023/08/16 09:53:49
 
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use crate::{byte_map, Buf, BufMut, Helper, HttpError, Serialize, WebError, WebResult};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Scheme {
     None,
     Http,
@@ -146,5 +146,12 @@ impl TryFrom<&str> for Scheme {
             "ftp" => Ok(Scheme::Ftp),
             _ => Ok(Scheme::Extension(value.to_string())),
         }
+    }
+}
+
+impl FromStr for Scheme {
+    type Err = WebError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Scheme::try_from(&*s.to_uppercase())
     }
 }
