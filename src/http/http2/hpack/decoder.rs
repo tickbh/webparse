@@ -142,11 +142,11 @@ impl Decoder {
                         let value = value.clone();
                         ((name, value), consumed)
                     };
-                    // // This cannot be done in the same scope as the `decode_literal` call, since
-                    // // Rust cannot figure out that the `into_owned` calls effectively drop the
-                    // // borrow on `self` that the `decode_literal` return value had. Since adding
-                    // // a header to the table requires a `&mut self`, it fails to compile.
-                    // // Manually separating it out here works around it...
+                    // This cannot be done in the same scope as the `decode_literal` call, since
+                    // Rust cannot figure out that the `into_owned` calls effectively drop the
+                    // borrow on `self` that the `decode_literal` return value had. Since adding
+                    // a header to the table requires a `&mut self`, it fails to compile.
+                    // Manually separating it out here works around it...
                     self.index.write().unwrap().add_header(name, value);
                     consumed
                 }
@@ -157,10 +157,10 @@ impl Decoder {
                     consumed
                 }
                 FieldRepresentation::LiteralNeverIndexed => {
-                    // // Same as the previous one, except if we were also a proxy
-                    // // we would need to make sure not to change the
-                    // // representation received here. We don't care about this
-                    // // for now.
+                    // Same as the previous one, except if we were also a proxy
+                    // we would need to make sure not to change the
+                    // representation received here. We don't care about this
+                    // for now.
                     let ((name, value), consumed) = (self.decode_literal(buffer_leftover, false))?;
                     cb(Cow::Owned(name), Cow::Owned(value));
 

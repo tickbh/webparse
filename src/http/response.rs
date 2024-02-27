@@ -354,6 +354,12 @@ impl Response<()> {
         .header(HeaderName::CONTENT_TYPE, "text/plain; charset=utf-8")
     }
     
+    pub fn json() -> Builder {
+        Response::builder()
+        .status(200)
+        .header(HeaderName::CONTENT_TYPE, "application/json; charset=utf-8")
+    }
+
     pub fn status404() -> Builder {
         Response::builder()
         .status(404)

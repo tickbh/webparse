@@ -605,7 +605,7 @@ impl HeaderBlock {
     ) -> WebResult<usize> {
         let mut result = vec![];
         let mut binary = BinaryMut::new();
-
+        
         for value in self.fields.iter() {
             if value.0.bytes_len() + value.1.bytes_len() + binary.remaining()
                 > encoder.max_frame_size as usize

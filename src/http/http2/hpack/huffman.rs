@@ -177,6 +177,37 @@ impl HuffmanEncoder {
         }
         result
     }
+    
+    pub fn encode_lower(src: &[u8]) -> Vec<u8> {
+        let mut result = Vec::with_capacity(src.len());
+        let mut bits: u64 = 0;
+        let mut bits_left = 40;
+    
+        for &b in src {
+            let b = if b >= b'A' && b <= b'Z' {
+                b + 32
+            } else {
+                b
+            };
+            let (code, nbits) = HUFFMAN_CODE_ARRAY[b as usize];
+            let (code, nbits) = (code as u64, nbits as u64);
+            bits |= code << (bits_left - nbits);
+            bits_left -= nbits;
+    
+            while bits_left <= 32 {
+                result.push((bits >> 32) as u8);
+    
+                bits <<= 8;
+                bits_left += 8;
+            }
+        }
+    
+        if bits_left != 40 {
+            bits |= (1 << bits_left) - 1;
+            result.push((bits >> 32) as u8);
+        }
+        result
+    }
 }
 
 

@@ -12,7 +12,7 @@
 
 use crate::{WebResult, Http2Error, Buf, BufMut};
 
-use super::{StreamIdentifier, FrameHeader, frame::Frame, Flag};
+use super::{frame::Frame, Flag, FrameHeader, StreamIdentifier, MASK_U31};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Priority {
@@ -97,9 +97,13 @@ impl StreamDependency {
             return Err(Http2Error::InvalidPayloadLength.into());
         }
 
-        let dependency_id = StreamIdentifier::parse(src);
+        let value = src.get_u32();
+        let id = value & MASK_U31;
+        let is_exclusive = value - id != 0;
+
+        let dependency_id = StreamIdentifier(id);
         let weight = src.get_u8();
-        Ok(StreamDependency::new(dependency_id, weight, false))
+        Ok(StreamDependency::new(dependency_id, weight, is_exclusive))
     }
 
     pub fn dependency_id(&self) -> StreamIdentifier {

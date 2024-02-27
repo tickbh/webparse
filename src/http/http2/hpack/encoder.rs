@@ -99,8 +99,19 @@ impl Encoder {
         let mask = if should_index { 0x40 } else { 0x0 };
 
         buf.put_slice(&[mask]);
-        self.encode_string_literal(&header.0.as_bytes(), buf)?;
+        self.encode_string_literal_lower(&header.0.as_bytes(), buf)?;
         self.encode_string_literal(&header.1.as_bytes(), buf)?;
+        Ok(())
+    }
+
+    fn encode_string_literal_lower<B: BufMut + Buf>(
+        &mut self,
+        octet_str: &[u8],
+        buf: &mut B,
+    ) -> io::Result<()> {
+        let value = HuffmanEncoder::encode_lower(octet_str);
+        Self::encode_integer_into(value.len(), 7, 0x80, buf)?;
+        buf.put_slice(&value);
         Ok(())
     }
 
