@@ -1,28 +1,27 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/17 04:39:49
 
 use std::{
-    any::{Any},
-    sync::{Arc, RwLock}, fmt::Display,
+    any::Any,
+    fmt::Display,
+    sync::{Arc, RwLock},
 };
 
 use crate::{
-    Binary, BinaryMut, Buf, BufMut, Extensions, HeaderMap, HeaderName, HeaderValue, Serialize, Version, WebError, WebResult, Helper,
+    Extensions, HeaderMap, HeaderName, HeaderValue, Helper, Serialize, Version, WebError, WebResult,
 };
+use algorithm::buf::{Binary, BinaryMut, Bt, BtMut};
 
-use super::{
-    http2::{HeaderIndex},
-    StatusCode,
-};
+use super::{http2::HeaderIndex, StatusCode};
 
 #[derive(Debug)]
 pub struct Response<T>
@@ -91,8 +90,7 @@ impl Builder {
         })
     }
 
-    pub fn method(self, method: String) -> Builder
-    {
+    pub fn method(self, method: String) -> Builder {
         self.and_then(move |mut head| {
             head.header.insert(":method", method.to_string());
             Ok(head)
@@ -292,10 +290,8 @@ impl Builder {
                 body,
                 partial: false,
             }
-        }
-        )
+        })
     }
-
 
     /// 获取返回的body长度, 如果为0则表示未写入信息
     pub fn get_body_len(&self) -> isize {
@@ -350,38 +346,38 @@ impl Response<()> {
 
     pub fn text() -> Builder {
         Response::builder()
-        .status(200)
-        .header(HeaderName::CONTENT_TYPE, "text/plain; charset=utf-8")
+            .status(200)
+            .header(HeaderName::CONTENT_TYPE, "text/plain; charset=utf-8")
     }
-    
+
     pub fn json() -> Builder {
         Response::builder()
-        .status(200)
-        .header(HeaderName::CONTENT_TYPE, "application/json; charset=utf-8")
+            .status(200)
+            .header(HeaderName::CONTENT_TYPE, "application/json; charset=utf-8")
     }
 
     pub fn status404() -> Builder {
         Response::builder()
-        .status(404)
-        .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
+            .status(404)
+            .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
     }
-    
+
     pub fn status503() -> Builder {
         Response::builder()
-        .status(503)
-        .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
+            .status(503)
+            .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
     }
 
     pub fn status502() -> Builder {
         Response::builder()
-        .status(502)
-        .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
+            .status(502)
+            .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
     }
 
     pub fn status500() -> Builder {
         Response::builder()
-        .status(500)
-        .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
+            .status(500)
+            .header(HeaderName::CONTENT_TYPE, "text/html; charset=utf-8")
     }
 }
 
@@ -687,13 +683,12 @@ impl<T: Serialize> Response<T> {
         new
     }
 
-    
     /// 获取返回的body长度, 如果为0则表示未写入信息
     pub fn get_body_len(&self) -> isize {
         self.parts.header.get_body_len()
     }
 
-    pub fn encode_header<B: Buf + BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode_header<B: Bt + BtMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += self.parts.version.encode(buffer)?;
         size += buffer.put_slice(" ".as_bytes());
@@ -702,8 +697,13 @@ impl<T: Serialize> Response<T> {
         Ok(size)
     }
 
+    pub fn parse(&mut self, buf: &[u8]) -> WebResult<usize> {
+        self.partial = true;
+        let mut buffer = BinaryMut::from(buf);
+        self.parse_buffer(&mut buffer)
+    }
 
-    pub fn parse_buffer<B: Buf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn parse_buffer<B: Bt>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let len = buffer.remaining();
         self.partial = true;
         // println!("===={:?}", String::from_utf8_lossy(buffer.chunk()));
@@ -718,7 +718,7 @@ impl<T: Serialize> Response<T> {
         self.partial = false;
         Ok(len - buffer.remaining())
     }
-    
+
     pub fn replace_body(&mut self, mut body: T) {
         std::mem::swap(&mut self.body, &mut body);
     }
@@ -779,7 +779,7 @@ impl<T> Serialize for Response<T>
 where
     T: Serialize,
 {
-    fn serialize<B: Buf + BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Bt + BtMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += self.parts.version.encode(buffer)?;
         size += buffer.put_slice(" ".as_bytes());
@@ -791,7 +791,9 @@ where
 }
 
 impl<T> Display for Response<T>
-where T: Serialize + Display {
+where
+    T: Serialize + Display,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.parts.version.fmt(f)?;
         f.write_str(" ")?;

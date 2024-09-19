@@ -1,21 +1,22 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/17 04:42:58
 
+use std::convert::TryFrom;
 use std::fmt;
 use std::num::NonZeroU16;
 use std::str::FromStr;
-use std::{convert::TryFrom};
 
-use crate::{HttpError, WebError, WebResult, HeaderName, HeaderValue, Buf, BufMut};
+use crate::{HeaderName, HeaderValue, HttpError, WebError, WebResult};
+use algorithm::buf::{Bt, BtMut};
 
 /// An HTTP status code (`status-code` in RFC 7230 et al.).
 ///
@@ -194,15 +195,15 @@ impl StatusCode {
     // http2 协议快速转成头参数
     #[inline]
     pub fn build_header(&self) -> (HeaderName, HeaderValue) {
-        (HeaderName::from_static(":status"), HeaderValue::from_bytes(self.as_str().as_bytes()))
+        (
+            HeaderName::from_static(":status"),
+            HeaderValue::from_bytes(self.as_str().as_bytes()),
+        )
     }
 
-    pub fn encode<B: Buf+BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         match self.canonical_reason() {
-            Some(s) => {
-                Ok(buffer
-                    .put_slice(format!("{} {}\r\n", self.as_str(), s).as_bytes()))
-            }
+            Some(s) => Ok(buffer.put_slice(format!("{} {}\r\n", self.as_str(), s).as_bytes())),
             _ => return Err(WebError::from(HttpError::InvalidStatusCode)),
         }
     }
@@ -522,7 +523,6 @@ status_codes! {
     /// [[RFC6585](https://tools.ietf.org/html/rfc6585)]
     (511, NETWORK_AUTHENTICATION_REQUIRED, "Network Authentication Required");
 }
-
 
 // A string of packed 3-ASCII-digit status code values for the supported range
 // of [100, 999] (900 codes, 2700 bytes).

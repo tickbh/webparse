@@ -10,20 +10,20 @@
 // -----
 // Created Date: 2023/12/29 02:00:25
 
-use crate::BufMut;
+use algorithm::buf::BtMut;
 
 /// Struct to pipe data into another writer,
 /// while masking the data being written
 pub struct Masker<'w> {
 	key: [u8; 4],
 	pos: usize,
-	end: &'w mut dyn BufMut,
+	end: &'w mut dyn BtMut,
 }
 
 impl<'w> Masker<'w> {
 	/// Create a new Masker with the key and the endpoint
 	/// to be writer to.
-	pub fn new(key: [u8; 4], endpoint: &'w mut dyn BufMut) -> Self {
+	pub fn new(key: [u8; 4], endpoint: &'w mut dyn BtMut) -> Self {
 		Masker {
 			key,
 			pos: 0,
@@ -41,7 +41,7 @@ impl<'w> Masker<'w> {
 	// }
 }
 
-unsafe impl<'w> BufMut for Masker<'w> {
+unsafe impl<'w> BtMut for Masker<'w> {
     fn remaining_mut(&self) -> usize {
         self.end.remaining_mut()
     }

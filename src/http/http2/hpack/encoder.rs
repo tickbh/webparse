@@ -1,17 +1,18 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/22 10:50:59
 
-use super::{HeaderIndex, huffman::HuffmanEncoder};
-use crate::{BinaryMut, Buf, BufMut, HeaderName, HeaderValue};
+use super::{huffman::HuffmanEncoder, HeaderIndex};
+use crate::{HeaderName, HeaderValue};
+use algorithm::buf::{BinaryMut, Bt, BtMut};
 use std::{
     io,
     num::Wrapping,
@@ -47,7 +48,7 @@ impl Encoder {
         encoded
     }
 
-    pub fn encode_into<'b, I, B: BufMut + Buf>(
+    pub fn encode_into<'b, I, B: BtMut + Bt>(
         &mut self,
         headers: I,
         writer: &mut B,
@@ -61,13 +62,13 @@ impl Encoder {
         Ok(())
     }
 
-    pub fn encode_header_into<B: BufMut + Buf>(
+    pub fn encode_header_into<B: BtMut + Bt>(
         &mut self,
         header: (&HeaderName, &HeaderValue),
         writer: &mut B,
     ) -> io::Result<()> {
         let value = { self.index.read().unwrap().find_header(header) };
-        
+
         match value {
             None => {
                 self.encode_literal(header, true, writer)?;
@@ -90,7 +91,7 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_literal<B: BufMut + Buf>(
+    fn encode_literal<B: BtMut + Bt>(
         &mut self,
         header: (&HeaderName, &HeaderValue),
         should_index: bool,
@@ -104,7 +105,7 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_string_literal_lower<B: BufMut + Buf>(
+    fn encode_string_literal_lower<B: BtMut + Bt>(
         &mut self,
         octet_str: &[u8],
         buf: &mut B,
@@ -115,7 +116,7 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_string_literal<B: BufMut + Buf>(
+    fn encode_string_literal<B: BtMut + Bt>(
         &mut self,
         octet_str: &[u8],
         buf: &mut B,
@@ -126,7 +127,7 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_indexed_name<B: BufMut + Buf>(
+    fn encode_indexed_name<B: BtMut + Bt>(
         &mut self,
         header: (usize, &HeaderValue),
         should_index: bool,
@@ -140,16 +141,12 @@ impl Encoder {
         Ok(())
     }
 
-    fn encode_indexed<B: BufMut + Buf>(
-        &self,
-        index: usize,
-        buf: &mut B,
-    ) -> io::Result<()> {
+    fn encode_indexed<B: BtMut + Bt>(&self, index: usize, buf: &mut B) -> io::Result<()> {
         Self::encode_integer_into(index, 7, 0x80, buf)?;
         Ok(())
     }
 
-    pub fn encode_integer_into<B: BufMut + Buf>(
+    pub fn encode_integer_into<B: BtMut + Bt>(
         mut value: usize,
         prefix_size: u8,
         leading_bits: u8,

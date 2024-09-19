@@ -13,7 +13,6 @@
 #[macro_use] extern crate bitflags;
 
 
-pub mod binary;
 pub mod http;
 mod error;
 pub mod url;
@@ -22,9 +21,6 @@ mod helper;
 mod extensions;
 mod serialize;
 pub mod ws;
-
-
-pub use binary::{Binary, Buf, BinaryMut, BufMut, BinaryRef};
 
 pub use http::{HeaderMap, HeaderName, HeaderValue, Method, Version, Request, Response, HttpError, StatusCode};
 pub use http::http2::{self, Http2Error};

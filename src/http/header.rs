@@ -1,21 +1,25 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/14 05:20:35
 
+use crate::{HeaderName, HeaderValue, WebError, WebResult};
 use std::{
-    ops::{Index, IndexMut}, fmt::Display, collections::HashMap, borrow::Borrow, hash::Hash
+    borrow::Borrow,
+    collections::HashMap,
+    fmt::Display,
+    hash::Hash,
+    ops::{Index, IndexMut},
 };
-use crate::{HeaderName, HeaderValue, WebError, WebResult, Buf, BufMut};
 
-
+use algorithm::buf::{Bt, BtMut};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct HeaderMap {
@@ -31,7 +35,7 @@ impl HeaderMap {
         }
     }
 
-    pub fn iter(&self) ->  std::slice::Iter<(HeaderName, HeaderValue)> {
+    pub fn iter(&self) -> std::slice::Iter<(HeaderName, HeaderValue)> {
         self.headers.iter()
     }
 
@@ -84,9 +88,8 @@ impl HeaderMap {
         self.headers.push((name, value));
         None
     }
-    
-    pub fn remove<T: AsRef<[u8]>>(&mut self, name: &T) -> Option<HeaderValue>
-    {
+
+    pub fn remove<T: AsRef<[u8]>>(&mut self, name: &T) -> Option<HeaderValue> {
         for i in 0..self.headers.len() {
             let v = &self.headers[i];
             if v.0 == name.as_ref() {
@@ -99,12 +102,12 @@ impl HeaderMap {
     pub fn clear(&mut self) {
         self.headers.clear()
     }
-    
+
     pub fn contains<T: AsRef<[u8]>>(&self, name: &T) -> bool {
         for i in 0..self.headers.len() {
             let v = &self.headers[i];
             if &v.0 == &name.as_ref() {
-                return true
+                return true;
             }
         }
         false
@@ -114,7 +117,7 @@ impl HeaderMap {
         for i in 0..self.headers.len() {
             let v = &self.headers[i];
             if &v.0 == &name.as_ref() {
-                return &v.1
+                return &v.1;
             }
         }
         unreachable!()
@@ -123,7 +126,7 @@ impl HeaderMap {
     pub fn get_mut_value<'a, T: AsRef<[u8]>>(&'a mut self, name: &T) -> &'a mut HeaderValue {
         for v in self.headers.iter_mut() {
             if &v.0 == &name.as_ref() {
-                return &mut v.1
+                return &mut v.1;
             }
         }
         // for i in 0..self.headers.len() {
@@ -135,22 +138,21 @@ impl HeaderMap {
         unreachable!()
     }
 
-
     pub fn get_option_value<T: AsRef<[u8]>>(&self, name: &T) -> Option<&HeaderValue> {
         for i in 0..self.headers.len() {
             let v = &self.headers[i];
             if v.0 == name.as_ref() {
-                return Some(&v.1)
+                return Some(&v.1);
             }
         }
         None
     }
-    
+
     pub fn get_str_value<T: AsRef<[u8]>>(&self, name: &T) -> Option<String> {
         for i in 0..self.headers.len() {
             let v = &self.headers[i];
             if v.0 == name.as_ref() {
-                return v.1.as_string()
+                return v.1.as_string();
             }
         }
         None
@@ -184,9 +186,9 @@ impl HeaderMap {
             // host 信息只取前缀
             if value.contains(":") {
                 let v: Vec<&str> = value.splitn(1, ':').collect();
-                return Some(v[0].to_string())
+                return Some(v[0].to_string());
             } else {
-                return Some(value)
+                return Some(value);
             }
         } else {
             None
@@ -217,7 +219,6 @@ impl HeaderMap {
         }
     }
 
-
     pub fn get_body_len(&self) -> isize {
         // if self.headers.contains_key(&HeaderName::TRANSFER_ENCODING) {
         //     let value = &self.headers[&HeaderName::CONTENT_LENGTH];
@@ -232,14 +233,13 @@ impl HeaderMap {
     }
 
     pub fn is_keep_alive(&self) -> bool {
-
         if let Some(value) = self.get_option_value(&HeaderName::CONNECTION) {
             Self::contains_bytes(value.as_bytes(), b"Keep-Alive")
         } else {
             false
         }
     }
-    
+
     pub fn is_chunked(&self) -> bool {
         if let Some(value) = self.get_option_value(&HeaderName::TRANSFER_ENCODING) {
             Self::contains_bytes(value.as_bytes(), b"chunked")
@@ -249,19 +249,18 @@ impl HeaderMap {
     }
 
     pub fn get_upgrade_protocol(&self) -> Option<String> {
-
         if let Some(value) = self.get_option_value(&HeaderName::CONNECTION) {
             if !Self::contains_bytes(value.as_bytes(), b"Upgrade") {
-                return None
+                return None;
             }
         } else {
-            return None
+            return None;
         }
 
         if let Some(value) = self.get_option_value(&HeaderName::UPGRADE) {
-            return value.as_string()
+            return value.as_string();
         } else {
-            return None
+            return None;
         }
     }
 
@@ -279,12 +278,13 @@ impl HeaderMap {
 
     pub fn system_get<Q: ?Sized>(&self, key: &Q) -> Option<&String>
     where
-    String: Borrow<Q>,
-    Q: Hash + Eq, {
+        String: Borrow<Q>,
+        Q: Hash + Eq,
+    {
         self.systems.get(key)
     }
-    
-    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
+
+    pub fn encode<B: Bt + BtMut>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         for value in self.iter() {
             size += value.0.encode(buffer)?;

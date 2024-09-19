@@ -1,7 +1,8 @@
 use crate::{
     ws::{frame_header, Masker, WsFrameHeader},
-    Buf, BufMut, WebResult,
+    WebResult,
 };
+use algorithm::buf::{Bt, BtMut};
 use std::io::{self};
 
 use super::{frame_header::WsFrameFlags, mask};
@@ -74,7 +75,7 @@ impl DataFrame {
     /// Reads a DataFrame from a Reader.
     pub fn read_dataframe<R>(reader: &mut R, should_be_masked: bool) -> WebResult<Self>
     where
-        R: Buf,
+        R: Bt,
     {
         let header = frame_header::read_header(reader)?;
         if (reader.remaining() as u64) < header.len {
@@ -91,7 +92,7 @@ impl DataFrame {
         limit: usize,
     ) -> WebResult<Self>
     where
-        R: Buf,
+        R: Bt,
     {
         let header = frame_header::read_header(reader)?;
 
@@ -143,13 +144,13 @@ pub trait DataFrameable {
     }
 
     /// Write the payload to a writer
-    fn write_payload(&self, socket: &mut dyn BufMut) -> WebResult<()>;
+    fn write_payload(&self, socket: &mut dyn BtMut) -> WebResult<()>;
 
     /// Takes the payload out into a vec
     fn take_payload(self) -> Vec<u8>;
 
     /// Writes a DataFrame to a Writer.
-    fn write_to(&self, writer: &mut dyn BufMut, masking_key: Option<[u8; 4]>) -> WebResult<usize> {
+    fn write_to(&self, writer: &mut dyn BtMut, masking_key: Option<[u8; 4]>) -> WebResult<usize> {
         let mut flags = WsFrameFlags::empty();
         if self.is_last() {
             flags.insert(WsFrameFlags::FIN);
@@ -211,7 +212,7 @@ impl DataFrameable for DataFrame {
     }
 
     #[inline(always)]
-    fn write_payload(&self, socket: &mut dyn BufMut) -> WebResult<()> {
+    fn write_payload(&self, socket: &mut dyn BtMut) -> WebResult<()> {
         socket.put_slice(self.data.as_slice());
         Ok(())
     }
@@ -289,8 +290,8 @@ impl Opcode {
 
 #[cfg(test)]
 mod tests {
-    use crate::WebError;
     use super::*;
+    use crate::WebError;
 
     #[test]
     fn test_read_dataframe() {

@@ -1,11 +1,11 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/15 10:00:38
@@ -17,9 +17,10 @@ use std::{
 
 use super::{http2::HeaderIndex, HeaderMap, Method, Version};
 use crate::{
-    http2::frame::Settings, BinaryMut, Buf, BufMut, Extensions, HeaderName, HeaderValue, Helper,
-    Scheme, Serialize, Url, WebError, WebResult,
+    http2::frame::Settings, Extensions, HeaderName, HeaderValue, Helper, Scheme, Serialize, Url,
+    WebError, WebResult,
 };
+use algorithm::buf::{BinaryMut, Bt, BtMut};
 
 #[derive(Debug)]
 pub struct Request<T>
@@ -541,7 +542,7 @@ where
         Ok(())
     }
 
-    pub fn parse_buffer<B: Buf>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn parse_buffer<B: Bt>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let len = buffer.remaining();
         self.partial = true;
         Helper::skip_empty_lines(buffer)?;
@@ -629,7 +630,7 @@ where
         &mut self.body
     }
 
-    pub fn encode_header<B: Buf + BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode_header<B: Bt + BtMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += self.parts.method.encode(buffer)?;
         size += buffer.put_u8(b' ');

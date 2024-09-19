@@ -11,7 +11,8 @@
 // Created Date: 2023/09/01 04:16:30
 
 
-use crate::{Binary, Serialize, Buf, BufMut, WebResult, http2::encoder::Encoder};
+use algorithm::buf::{Bt, Binary, BtMut};
+use crate::{Serialize, WebResult, http2::encoder::Encoder};
 
 use super::{Flag, FrameHeader, Kind, StreamIdentifier};
 
@@ -89,7 +90,7 @@ impl<T> Data<T> {
 }
 
 impl Data<Binary> {
-    pub fn encode<B: Buf+BufMut>(&mut self,
+    pub fn encode<B: Bt+BtMut>(&mut self,
         encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
         let mut size = 0;
         loop {

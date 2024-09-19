@@ -1,22 +1,21 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/09/01 04:39:00
 
 use std::fmt;
 
-use crate::{Binary, WebResult, Http2Error, Buf, BufMut};
+use crate::{Http2Error, WebResult};
+use algorithm::buf::{Binary, Bt, BtMut};
 
-use super::{StreamIdentifier, Reason, frame, Kind, FrameHeader, Flag};
-
-
+use super::{frame, Flag, FrameHeader, Kind, Reason, StreamIdentifier};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct GoAway {
@@ -34,7 +33,11 @@ impl GoAway {
         }
     }
 
-    pub fn with_debug_data(last_stream_id: StreamIdentifier, reason: Reason, debug_data: Binary) -> Self {
+    pub fn with_debug_data(
+        last_stream_id: StreamIdentifier,
+        reason: Reason,
+        debug_data: Binary,
+    ) -> Self {
         Self {
             last_stream_id,
             error_code: reason,
@@ -54,7 +57,7 @@ impl GoAway {
         &self.debug_data
     }
 
-    pub fn parse<B: Buf>(payload: &mut B) -> WebResult<GoAway> {
+    pub fn parse<B: Bt>(payload: &mut B) -> WebResult<GoAway> {
         if payload.remaining() < 8 {
             return Err(Http2Error::BadFrameSize.into());
         }
@@ -70,14 +73,13 @@ impl GoAway {
         })
     }
 
-    
     pub(crate) fn head(&self) -> FrameHeader {
         let mut head = FrameHeader::new(Kind::GoAway, Flag::zero(), StreamIdentifier::zero());
         head.length = 8 + self.debug_data.remaining() as u32;
         head
     }
 
-    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> crate::WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(&self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.last_stream_id.0);
@@ -86,7 +88,6 @@ impl GoAway {
         Ok(size)
     }
 }
-
 
 impl<B> From<GoAway> for frame::Frame<B> {
     fn from(src: GoAway) -> Self {

@@ -1,18 +1,22 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/18 10:06:42
 
-use std::{fmt::{self, Display}, hash::Hash};
+use std::{
+    fmt::{self, Display},
+    hash::Hash,
+};
 
-use crate::{WebError, WebResult, Buf, BufMut, Helper};
+use crate::{Helper, WebError, WebResult};
+use algorithm::buf::{Bt, BtMut};
 
 /// 请求头的名字不区分大小写
 #[derive(Clone)]
@@ -20,7 +24,6 @@ pub enum HeaderName {
     Stand(&'static str),
     Value(String),
 }
-
 
 impl PartialEq<HeaderName> for &[u8] {
     fn eq(&self, other: &HeaderName) -> bool {
@@ -119,7 +122,7 @@ impl HeaderName {
             Self::Value(s) => s,
         }
     }
-    
+
     pub fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Stand(s) => &s.as_bytes(),
@@ -127,7 +130,7 @@ impl HeaderName {
         }
     }
 
-    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(&self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
             Self::Value(name) => Ok(buffer.put_slice(name.as_bytes())),

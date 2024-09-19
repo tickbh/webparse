@@ -5,8 +5,9 @@ use std::str::from_utf8;
 
 use crate::{
     ws::{DataFrameable, Opcode, WsError},
-    Buf, BufMut, WebError, WebResult,
+    WebError, WebResult,
 };
+use algorithm::buf::{Bt, BtMut};
 
 const FALSE_RESERVED_BITS: &[bool; 3] = &[false; 3];
 
@@ -151,7 +152,7 @@ impl<'a> DataFrameable for Message<'a> {
         self.payload.len() + if self.cd_status_code.is_some() { 2 } else { 0 }
     }
 
-    fn write_payload(&self, socket: &mut dyn BufMut) -> WebResult<()> {
+    fn write_payload(&self, socket: &mut dyn BtMut) -> WebResult<()> {
         if let Some(reason) = self.cd_status_code {
             socket.put_u16(reason);
         }
@@ -173,7 +174,7 @@ impl<'a> DataFrameable for Message<'a> {
 
 impl<'a> Message<'a> {
     /// Attempt to form a message from a series of data frames
-    // fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<usize> {
+    // fn serialize(&self, writer: &mut dyn BtMut, masked: bool) -> WebResult<usize> {
     //     self.write_to(writer, masked)
     // }
 
@@ -344,7 +345,7 @@ impl OwnedMessage {
 
 impl OwnedMessage {
     /// Attempt to form a message from a series of data frames
-    // pub fn serialize(&self, writer: &mut dyn BufMut, masked: bool) -> WebResult<usize> {
+    // pub fn serialize(&self, writer: &mut dyn BtMut, masked: bool) -> WebResult<usize> {
     //     self.write_to(writer, masked)
     // }
 
@@ -397,7 +398,7 @@ impl DataFrameable for OwnedMessage {
         }
     }
 
-    fn write_payload(&self, socket: &mut dyn BufMut) -> WebResult<()> {
+    fn write_payload(&self, socket: &mut dyn BtMut) -> WebResult<()> {
         match *self {
             OwnedMessage::Text(ref txt) => socket.put_slice(txt.as_bytes()),
             OwnedMessage::Binary(ref bin) => socket.put_slice(bin.as_slice()),

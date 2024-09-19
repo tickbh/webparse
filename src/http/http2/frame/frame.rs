@@ -1,11 +1,11 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/21 11:20:39
@@ -14,14 +14,13 @@ use std::fmt::Debug;
 
 use crate::{
     http::http2::{encoder::Encoder, Decoder},
-    Binary, Buf, BufMut, HeaderMap, Http2Error, Serialize, WebResult,
+    HeaderMap, Http2Error, Serialize, WebResult,
 };
+use algorithm::buf::{Binary, Bt, BtMut};
 
 use super::{
-    encode_u24,
-    headers::{PushPromise},
-    read_u24, Data, Flag, GoAway, Headers, Kind, Ping, Priority, Reset, Settings, StreamIdentifier,
-    WindowUpdate,
+    encode_u24, headers::PushPromise, read_u24, Data, Flag, GoAway, Headers, Kind, Ping, Priority,
+    Reset, Settings, StreamIdentifier, WindowUpdate,
 };
 
 pub const FRAME_HEADER_BYTES: usize = 9;
@@ -49,7 +48,7 @@ pub enum Frame<T = Binary> {
 
 impl Frame<Binary> {
     #[inline]
-    pub fn trim_padding<B: Buf>(header: &FrameHeader, buf: &mut B) -> WebResult<()> {
+    pub fn trim_padding<B: Bt>(header: &FrameHeader, buf: &mut B) -> WebResult<()> {
         if header.flag.is_padded() && buf.has_remaining() {
             let pad_length = buf.peek().unwrap();
             if pad_length as u32 > header.length {
@@ -61,7 +60,7 @@ impl Frame<Binary> {
         }
         Ok(())
     }
-    
+
     pub fn display_name(&self) -> String {
         match self {
             Frame::Data(f) => format!("Data({})", f.stream_id()),
@@ -104,8 +103,6 @@ impl Frame<Binary> {
         }
     }
 
-
-
     pub fn is_header(&self) -> bool {
         match self {
             Frame::Headers(_) => true,
@@ -136,12 +133,7 @@ impl Frame<Binary> {
         }
     }
 
-    
-    pub fn encode<B: Buf + BufMut>(
-        self,
-        buf: &mut B,
-        encoder: &mut Encoder,
-    ) -> WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(self, buf: &mut B, encoder: &mut Encoder) -> WebResult<usize> {
         let name = self.display_name();
         let size = match self {
             Frame::Data(mut s) => s.encode(encoder, buf)?,
@@ -159,7 +151,7 @@ impl Frame<Binary> {
     }
 }
 
-impl<T: Buf> Frame<T> {
+impl<T: Bt> Frame<T> {
     pub fn parse(
         header: FrameHeader,
         mut buf: T,
@@ -194,7 +186,6 @@ impl<T: Buf> Frame<T> {
         }
     }
 
-
     /// How many bytes this Frame will use in a buffer when encoding.
     pub fn encoded_len(&self) -> usize {
         0
@@ -211,8 +202,8 @@ impl<T: Buf> Frame<T> {
     }
 }
 
-impl<T: Buf> Serialize for Frame<T> {
-    fn serialize<B: Buf + BufMut>(&mut self, _buffer: &mut B) -> WebResult<usize> {
+impl<T: Bt> Serialize for Frame<T> {
+    fn serialize<B: Bt + BtMut>(&mut self, _buffer: &mut B) -> WebResult<usize> {
         let size = 0;
         // if !self.no_serialize_header() {
         //     size += self.header.serialize(buffer)?;
@@ -232,7 +223,7 @@ impl FrameHeader {
         }
     }
     #[inline]
-    pub fn parse<T: Buf>(buffer: &mut T) -> WebResult<FrameHeader> {
+    pub fn parse<T: Bt>(buffer: &mut T) -> WebResult<FrameHeader> {
         if buffer.remaining() < FRAME_HEADER_BYTES {
             return Err(Http2Error::into(Http2Error::Short));
         }
@@ -265,7 +256,7 @@ impl FrameHeader {
         &mut self.flag
     }
 
-    pub fn encode<B: Buf + BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(&self, buffer: &mut B) -> WebResult<usize> {
         let mut size = 0;
         size += encode_u24(buffer, self.length);
         size += buffer.put_u8(self.kind.encode());
@@ -275,8 +266,7 @@ impl FrameHeader {
     }
 }
 
-
-// impl<T: Buf> Debug for Frame<T> {
+// impl<T: Bt> Debug for Frame<T> {
 //     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 //         f.debug_struct("Frame")
 //             // .field("header", &self.header)

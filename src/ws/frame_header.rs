@@ -1,7 +1,7 @@
 use bitflags::bitflags;
 
-use crate::{Buf, BufMut, WebResult, ws::WsError};
-
+use crate::{ws::WsError, WebResult};
+use algorithm::buf::{Bt, BtMut};
 bitflags! {
     /// Flags relevant to a WebSocket data frame.
     #[derive(Debug, Clone, Copy, PartialEq)]
@@ -31,7 +31,7 @@ pub struct WsFrameHeader {
 }
 
 /// Writes a data frame header.
-pub fn write_header(writer: &mut dyn BufMut, header: WsFrameHeader) -> WebResult<()> {
+pub fn write_header(writer: &mut dyn BtMut, header: WsFrameHeader) -> WebResult<()> {
     if header.opcode > 0xF {
         return Err(WsError::DataFrameError("Invalid data frame opcode").into());
     }
@@ -69,7 +69,7 @@ pub fn write_header(writer: &mut dyn BufMut, header: WsFrameHeader) -> WebResult
 /// Reads a data frame header.
 pub fn read_header<R>(reader: &mut R) -> WebResult<WsFrameHeader>
 where
-    R: Buf,
+    R: Bt,
 {
     let byte0 = reader.try_get_u8()?;
     let byte1 = reader.try_get_u8()?;
@@ -126,9 +126,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    
-    use test;
+
     use super::*;
+    use test;
 
     #[test]
     fn test_read_header_simple() {
@@ -185,5 +185,4 @@ mod tests {
 
         assert_eq!(&obtained[..], &expected[..]);
     }
-
 }

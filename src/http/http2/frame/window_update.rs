@@ -10,7 +10,8 @@
 // -----
 // Created Date: 2023/09/01 04:39:00
 
-use crate::{http::http2::frame::Kind, Http2Error, WebResult, Buf, BufMut};
+use algorithm::buf::{Bt, BtMut};
+use crate::{http::http2::frame::Kind, Http2Error, WebResult};
 
 use super::{StreamIdentifier, FrameHeader, frame::Frame, Flag};
 
@@ -41,7 +42,7 @@ impl WindowUpdate {
     }
 
     /// Builds a `WindowUpdate` frame from a raw frame.
-    pub fn parse<B: Buf>(head: FrameHeader, payload: &mut B) -> WebResult<WindowUpdate> {
+    pub fn parse<B: Bt>(head: FrameHeader, payload: &mut B) -> WebResult<WindowUpdate> {
         debug_assert_eq!(head.kind(), &Kind::WindowUpdate);
         if payload.remaining() != 4 {
             return Err(Http2Error::BadFrameSize.into());
@@ -68,7 +69,7 @@ impl WindowUpdate {
         head
     }
 
-    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> crate::WebResult<usize> {
+    pub fn encode<B: Bt+BtMut>(&self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.size_increment);

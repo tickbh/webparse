@@ -10,7 +10,8 @@
 // -----
 // Created Date: 2023/09/01 04:44:01
 
-use crate::{WebResult, Http2Error, Buf, BufMut};
+use algorithm::buf::{Bt, BtMut};
+use crate::{WebResult, Http2Error};
 
 use super::{StreamIdentifier, Reason, FrameHeader, frame::Frame, Kind, Flag};
 
@@ -37,7 +38,7 @@ impl Reset {
         self.error_code
     }
 
-    pub fn parse<B: Buf>(head: FrameHeader, payload: &mut B) -> WebResult<Reset> {
+    pub fn parse<B: Bt>(head: FrameHeader, payload: &mut B) -> WebResult<Reset> {
         if payload.remaining() != 4 {
             return Err(Http2Error::InvalidPayloadLength.into());
         }
@@ -56,7 +57,7 @@ impl Reset {
         head
     }
 
-    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> crate::WebResult<usize> {
+    pub fn encode<B: Bt+BtMut>(&self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_u32(self.error_code.into());

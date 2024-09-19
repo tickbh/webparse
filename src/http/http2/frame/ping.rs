@@ -1,19 +1,22 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/09/01 04:38:29
 
-use crate::{WebResult, Buf, http::http2::frame::{Kind, Flag}, Http2Error, Serialize, BufMut};
+use crate::{
+    http::http2::frame::{Flag, Kind},
+    Http2Error, Serialize, WebResult,
+};
+use algorithm::buf::{Bt, BtMut};
 
-use super::{FrameHeader, Frame, StreamIdentifier};
-
+use super::{Frame, FrameHeader, StreamIdentifier};
 
 pub type Payload = [u8; 8];
 
@@ -29,7 +32,6 @@ pub const SHUTDOWN_PAYLOAD: Payload = [0x0b, 0x7b, 0xa2, 0xf0, 0x8b, 0x9b, 0xfe,
 pub const USER_PAYLOAD: Payload = [0x3b, 0x7c, 0xdb, 0x7a, 0x0b, 0x87, 0x16, 0xb4];
 
 impl Ping {
-
     pub const SHUTDOWN: Payload = SHUTDOWN_PAYLOAD;
     pub const USER: Payload = USER_PAYLOAD;
 
@@ -43,9 +45,12 @@ impl Ping {
     pub fn pong(payload: Payload) -> Ping {
         Ping { ack: true, payload }
     }
-    
+
     pub fn ret_pong(&self) -> Ping {
-        Ping { ack: true, payload: self.payload }
+        Ping {
+            ack: true,
+            payload: self.payload,
+        }
     }
 
     pub fn is_ack(&self) -> bool {
@@ -61,7 +66,7 @@ impl Ping {
     }
 
     /// Builds a `Ping` frame from a raw frame.
-    pub fn parse<B: Buf>(head: FrameHeader, bytes: &mut B) -> WebResult<Ping> {
+    pub fn parse<B: Bt>(head: FrameHeader, bytes: &mut B) -> WebResult<Ping> {
         debug_assert_eq!(head.kind(), &Kind::Ping);
 
         // PING frames are not associated with any individual stream. If a PING
@@ -91,7 +96,6 @@ impl Ping {
         Ok(Ping { ack, payload })
     }
 
-    
     pub(crate) fn head(&self) -> FrameHeader {
         let flags = if self.ack { Flag::ack() } else { Flag::zero() };
         let mut head = FrameHeader::new(Kind::Ping, flags.into(), StreamIdentifier::zero());
@@ -99,8 +103,7 @@ impl Ping {
         head
     }
 
-    
-    pub fn encode<B: Buf+BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(&self, dst: &mut B) -> WebResult<usize> {
         let head = self.head();
         let mut size = 0;
         size += head.encode(dst)?;
@@ -108,11 +111,10 @@ impl Ping {
         log::trace!("HTTP2: 编码ping信息; len={}", size);
         Ok(size)
     }
-
 }
 
 impl Serialize for Ping {
-    fn serialize<B: Buf+BufMut>(&mut self, buffer: &mut B) -> crate::WebResult<usize> {
+    fn serialize<B: Bt + BtMut>(&mut self, buffer: &mut B) -> crate::WebResult<usize> {
         let mut size = 0;
         size += self.head().encode(buffer)?;
         size += buffer.put_slice(&self.payload);

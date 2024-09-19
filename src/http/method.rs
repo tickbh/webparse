@@ -1,18 +1,19 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/15 10:03:23
 
 use std::{fmt::Display, str::FromStr};
 
-use crate::{WebError, WebResult, Buf, BufMut};
+use crate::{WebError, WebResult};
+use algorithm::buf::{Bt, BtMut};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Method {
@@ -104,7 +105,7 @@ impl Method {
         }
     }
 
-    pub fn encode<B: Buf+BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Method::None => Err(WebError::Serialize("method")),
             _ => Ok(buffer.put_slice(self.as_str().as_bytes())),
@@ -113,15 +114,13 @@ impl Method {
 }
 
 impl Display for Method {
-    
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.as_str())
     }
 }
 
-
 impl TryFrom<&str> for Method {
-    type Error=WebError;
+    type Error = WebError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
@@ -134,9 +133,7 @@ impl TryFrom<&str> for Method {
             Method::SCONNECT => Ok(Method::CONNECT),
             Method::SPATCH => Ok(Method::PATCH),
             Method::STRACE => Ok(Method::TRACE),
-            _ => {
-                Err(WebError::Http(crate::HttpError::Method))
-            }
+            _ => Err(WebError::Http(crate::HttpError::Method)),
         }
     }
 }

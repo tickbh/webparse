@@ -1,11 +1,11 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/18 10:06:47
@@ -13,7 +13,8 @@
 use std::hash::Hash;
 use std::{borrow::Cow, fmt};
 
-use crate::{Helper, WebError, WebResult, Buf, BufMut};
+use crate::{Helper, WebError, WebResult};
+use algorithm::buf::{Bt, BtMut};
 
 #[derive(Clone, Debug)]
 pub enum HeaderValue {
@@ -64,12 +65,12 @@ impl HeaderValue {
             Self::Value(s) => {
                 s.push(b';');
                 s.append(&mut value.as_bytes().to_vec());
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
 
-    pub fn encode<B: Buf+BufMut>(&self, buffer: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(&self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Self::Stand(name) => Ok(buffer.put_slice(name.as_bytes())),
             Self::Value(vec) => Ok(buffer.put_slice(&**vec)),
@@ -127,7 +128,6 @@ impl TryInto<usize> for &HeaderValue {
         }
     }
 }
-
 
 impl TryInto<isize> for &HeaderValue {
     type Error = WebError;
@@ -203,7 +203,6 @@ impl TryFrom<isize> for HeaderValue {
     }
 }
 
-
 impl Eq for HeaderValue {}
 
 impl PartialEq<HeaderValue> for HeaderValue {
@@ -246,4 +245,3 @@ impl PartialEq<HeaderValue> for &str {
         url == self
     }
 }
-

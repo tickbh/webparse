@@ -1,16 +1,17 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/09/01 04:35:19
 
-use crate::{WebResult, Http2Error, Buf, BufMut};
+use crate::{Http2Error, WebResult};
+use algorithm::buf::{Bt, BtMut};
 
 use super::{frame::Frame, Flag, FrameHeader, StreamIdentifier, MASK_U31};
 
@@ -35,7 +36,7 @@ pub struct StreamDependency {
 }
 
 impl Priority {
-    pub fn parse<B: Buf>(head: FrameHeader, payload: &mut B) -> WebResult<Self> {
+    pub fn parse<B: Bt>(head: FrameHeader, payload: &mut B) -> WebResult<Self> {
         let dependency = StreamDependency::load(payload)?;
 
         if dependency.dependency_id() == head.stream_id() {
@@ -49,13 +50,17 @@ impl Priority {
     }
 
     pub fn into(self) -> (StreamIdentifier, StreamIdentifier, u8) {
-        (self.stream_id, self.dependency.dependency_id, self.dependency.weight)
+        (
+            self.stream_id,
+            self.dependency.dependency_id,
+            self.dependency.weight,
+        )
     }
 
     pub fn stream_id(&self) -> StreamIdentifier {
         self.stream_id
     }
-    
+
     pub fn dependency_id(&self) -> StreamIdentifier {
         self.dependency.dependency_id
     }
@@ -64,7 +69,7 @@ impl Priority {
         self.dependency.weight
     }
 
-    pub fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(&self, dst: &mut B) -> WebResult<usize> {
         let head = FrameHeader::new(super::Kind::Priority, Flag::zero(), self.stream_id);
         let mut size = 0;
         size += head.encode(dst)?;
@@ -72,7 +77,6 @@ impl Priority {
         log::trace!("HTTP2: 编码优先级信息; len={}", size);
         Ok(size)
     }
-    
 }
 
 impl<B> From<Priority> for Frame<B> {
@@ -92,7 +96,7 @@ impl StreamDependency {
         }
     }
 
-    pub fn load<B: Buf>(src: &mut B) -> WebResult<Self> {
+    pub fn load<B: Bt>(src: &mut B) -> WebResult<Self> {
         if src.remaining() < 5 {
             return Err(Http2Error::InvalidPayloadLength.into());
         }
@@ -109,8 +113,8 @@ impl StreamDependency {
     pub fn dependency_id(&self) -> StreamIdentifier {
         self.dependency_id
     }
-    
-    fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+
+    fn encode<B: Bt + BtMut>(&self, dst: &mut B) -> WebResult<usize> {
         self.dependency_id.encode(dst)?;
         dst.put_u8(self.weight);
         Ok(5)

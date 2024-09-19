@@ -1,11 +1,11 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/09/01 02:19:26
@@ -15,8 +15,9 @@ use crate::{
         frame::{Kind, StreamIdentifier},
         DEFAULT_MAX_FRAME_SIZE, MAX_INITIAL_WINDOW_SIZE, MAX_MAX_FRAME_SIZE,
     },
-    Binary, BinaryMut, Buf, BufMut, Http2Error, WebResult,
+    Http2Error, WebResult,
 };
+use algorithm::buf::{Binary, BinaryMut, Bt, BtMut};
 
 use super::{frame::FrameHeader, Flag};
 
@@ -116,14 +117,14 @@ impl Setting {
         }
     }
 
-    fn parse<T: Buf>(bytes: &mut T) -> Option<Setting> {
+    fn parse<T: Bt>(bytes: &mut T) -> Option<Setting> {
         let id: u16 = bytes.get_u16();
         let val: u32 = bytes.get_u32();
 
         Setting::from_id(id, val)
     }
 
-    fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    fn encode<B: Bt + BtMut>(&self, dst: &mut B) -> WebResult<usize> {
         use self::Setting::*;
 
         let (kind, val) = match *self {
@@ -219,7 +220,7 @@ impl Settings {
     }
     */
 
-    fn parse_setting<T: Buf>(payload: &mut T) -> WebResult<Settings> {
+    fn parse_setting<T: Bt>(payload: &mut T) -> WebResult<Settings> {
         use self::Setting::*;
 
         // Ensure the payload length is correct, each setting is 6 bytes long.
@@ -278,7 +279,7 @@ impl Settings {
         Ok(settings)
     }
 
-    pub fn parse<T: Buf>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
+    pub fn parse<T: Bt>(head: FrameHeader, payload: &mut T) -> WebResult<Settings> {
         debug_assert_eq!(head.kind(), &Kind::Settings);
 
         if !head.stream_id().is_zero() {
@@ -330,7 +331,7 @@ impl Settings {
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(dst.chunk())
     }
 
-    pub fn encode<B: Buf + BufMut>(&self, dst: &mut B) -> WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(&self, dst: &mut B) -> WebResult<usize> {
         // Create & encode an appropriate frame head
         let mut head =
             FrameHeader::new(Kind::Settings, self.flags.into(), StreamIdentifier::zero());
@@ -340,9 +341,7 @@ impl Settings {
         size += head.encode(dst)?;
 
         // Encode the settings
-        self.for_each(|setting| {
-            size += setting.encode(dst).unwrap()
-        });
+        self.for_each(|setting| size += setting.encode(dst).unwrap());
         log::trace!("HTTP2: 编码设置信息; len={}", size);
         Ok(size)
     }

@@ -11,8 +11,8 @@
 // Created Date: 2023/08/15 11:30:53
 
 
-
-use crate::{Buf, WebResult, WebError, byte_map, next, expect, peek, HttpError, StatusCode, BufMut, BinaryRef};
+use algorithm::buf::{Bt, BtMut, BinaryRef};
+use crate::{WebResult, WebError, byte_map, next, expect, peek, HttpError, StatusCode};
 use super::{Method, Version, HeaderMap, HeaderName, HeaderValue, Scheme};
 
 
@@ -215,12 +215,12 @@ impl Helper {
         Self::HEADER_VALUE_MAP[b as usize]
     }
 
-    pub(crate) fn parse_method<B:Buf>(buffer: &mut B) -> WebResult<Method> {
+    pub(crate) fn parse_method<B:Bt>(buffer: &mut B) -> WebResult<Method> {
         let token = Self::parse_token(buffer)?;
         TryFrom::try_from(token)
     }
 
-    pub(crate) fn parse_status<B:Buf>(buffer: &mut B) -> WebResult<StatusCode> {
+    pub(crate) fn parse_status<B:Bt>(buffer: &mut B) -> WebResult<StatusCode> {
         let token = Self::parse_token(buffer)?;
         let status = StatusCode::try_from(token);
 
@@ -228,7 +228,7 @@ impl Helper {
         status
     }
 
-    pub(crate) fn parse_version<B:Buf>(buffer: &mut B) -> WebResult<Version> {
+    pub(crate) fn parse_version<B:Bt>(buffer: &mut B) -> WebResult<Version> {
         let token = Self::parse_token(buffer)?;
         match token {
             Version::SHTTP10 => Ok(Version::Http10),
@@ -243,7 +243,7 @@ impl Helper {
 
     
     #[inline]
-    pub(crate) fn parse_token_by_func_empty<'a, B: Buf>(buffer: &'a mut B, func: fn(u8)->bool, err: WebError, empty: bool) -> WebResult<&'a str> {
+    pub(crate) fn parse_token_by_func_empty<'a, B: Bt>(buffer: &'a mut B, func: fn(u8)->bool, err: WebError, empty: bool) -> WebResult<&'a str> {
         let position = {
             let mut postion = 0;
             let mut cur = BinaryRef::from(buffer.chunk());
@@ -272,27 +272,27 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn parse_token_by_func<'a, B: Buf>(buffer: &'a mut B, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
+    pub(crate) fn parse_token_by_func<'a, B: Bt>(buffer: &'a mut B, func: fn(u8)->bool, err: WebError) -> WebResult<&'a str> {
         Self::parse_token_by_func_empty(buffer, func, err, false)
     }
 
     #[inline]
-    pub(crate) fn parse_hex<'a, B: Buf>(buffer: &'a mut B) -> WebResult<&'a str> {
+    pub(crate) fn parse_hex<'a, B: Bt>(buffer: &'a mut B) -> WebResult<&'a str> {
         Self::parse_token_by_func(buffer, Self::is_hex, WebError::from(HttpError::Token))
     }
 
     #[inline]
-    pub(crate) fn parse_token<'a, B:Buf>(buffer: &'a mut B) -> WebResult<&'a str> {
+    pub(crate) fn parse_token<'a, B:Bt>(buffer: &'a mut B) -> WebResult<&'a str> {
         Self::parse_token_by_func(buffer, Self::is_token, WebError::from(HttpError::Token))
     }
 
     #[inline]
-    pub(crate) fn parse_status_token<'a, B:Buf>(buffer: &'a mut B) -> WebResult<&'a str> {
+    pub(crate) fn parse_status_token<'a, B:Bt>(buffer: &'a mut B) -> WebResult<&'a str> {
         Self::parse_token_by_func(buffer, Self::is_status_token, WebError::from(HttpError::Token))
     }
 
     #[inline]
-    pub(crate) fn parse_header_name<'a, B:Buf>(buffer: &'a mut B) -> WebResult<HeaderName> {
+    pub(crate) fn parse_header_name<'a, B:Bt>(buffer: &'a mut B) -> WebResult<HeaderName> {
         let token = Self::parse_token_by_func(buffer, Self::is_header_name_token, WebError::from(HttpError::HeaderName))?;
         match HeaderName::from_bytes(token.as_bytes()) {
             Some(name) => Ok(name),
@@ -301,19 +301,19 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn parse_header_value<'a, B:Buf>(buffer: &'a mut B) -> WebResult<HeaderValue> {
+    pub(crate) fn parse_header_value<'a, B:Bt>(buffer: &'a mut B) -> WebResult<HeaderValue> {
         let token = Self::parse_token_by_func_empty(buffer, Self::is_header_value_token, WebError::from(HttpError::HeaderValue), true)?;
         Ok(HeaderValue::Value(token.as_bytes().to_vec()))
     }
 
     #[inline]
-    pub(crate) fn parse_scheme<'a, B:Buf>(buffer: &'a mut B) -> WebResult<&'a str> {
+    pub(crate) fn parse_scheme<'a, B:Bt>(buffer: &'a mut B) -> WebResult<&'a str> {
         let token = Self::parse_token_by_func(buffer, Scheme::is_scheme_token, WebError::from(HttpError::HeaderValue))?;
         Ok(token)
     }
 
     #[inline]
-    pub fn skip_new_line<B:Buf>(buffer: &mut B) -> WebResult<()> {
+    pub fn skip_new_line<B:Bt>(buffer: &mut B) -> WebResult<()> {
         match next!(buffer)? {
             b'\r' => {
                 expect!(buffer.next() == b'\n' => Err(WebError::from(HttpError::NewLine)));
@@ -328,7 +328,7 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn skip_empty_lines<B: Buf>(buffer: &mut B) -> WebResult<()> {
+    pub(crate) fn skip_empty_lines<B: Bt>(buffer: &mut B) -> WebResult<()> {
         loop {
             let b = buffer.peek();
             match b {
@@ -348,7 +348,7 @@ impl Helper {
     }
 
     #[inline]
-    pub(crate) fn skip_spaces<B:Buf>(buffer: &mut B) -> WebResult<()> {
+    pub(crate) fn skip_spaces<B:Bt>(buffer: &mut B) -> WebResult<()> {
         loop {
             let b = buffer.peek();
             match b {
@@ -364,7 +364,7 @@ impl Helper {
     }
     
     #[inline]
-    pub(crate) fn parse_header<B:Buf>(buffer: &mut B, header: &mut HeaderMap) -> WebResult<()> {
+    pub(crate) fn parse_header<B:Bt>(buffer: &mut B, header: &mut HeaderMap) -> WebResult<()> {
         header.clear();
 
         loop {
@@ -389,7 +389,7 @@ impl Helper {
         }
     }
 
-    pub fn parse_chunk_data<'a, B:Buf>(buffer: &'a mut B) -> WebResult<(usize, usize)> {
+    pub fn parse_chunk_data<'a, B:Bt>(buffer: &'a mut B) -> WebResult<(usize, usize)> {
         let len = buffer.remaining();
         let mut val = BinaryRef::from(buffer.chunk());
         let num = Helper::parse_hex(&mut val)?;
@@ -406,7 +406,7 @@ impl Helper {
         // Ok((ret, buffer.mark_commit() - first, num == 0))
     }
 
-    pub fn encode_chunk_data<B:Buf+BufMut>(buffer: &mut B, data: &[u8]) -> std::io::Result<usize> {
+    pub fn encode_chunk_data<B:Bt+BtMut>(buffer: &mut B, data: &[u8]) -> std::io::Result<usize> {
         let len_str = format!("{:x}", data.len());
         let mut size = buffer.put_slice(len_str.as_bytes());
         size += buffer.put_slice("\r\n".as_bytes());

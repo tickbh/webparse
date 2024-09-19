@@ -1,16 +1,20 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/09/01 04:34:25
 
-use crate::{http::{request, response}, http2::DecoderError, BufMut, HeaderName, Request, Serialize};
+use crate::{
+    http::{request, response},
+    http2::DecoderError,
+    HeaderName, Request, Serialize,
+};
 use std::fmt;
 
 use crate::{
@@ -18,8 +22,9 @@ use crate::{
         http2::{encoder::Encoder, Decoder},
         StatusCode,
     },
-    BinaryMut, Buf, HeaderMap, Http2Error, Method, Scheme, Url, WebResult,
+    HeaderMap, Http2Error, Method, Scheme, Url, WebResult,
 };
+use algorithm::buf::{BinaryMut, Bt, BtMut};
 
 use super::{frame::Frame, Flag, FrameHeader, Kind, StreamDependency, StreamIdentifier};
 
@@ -121,7 +126,7 @@ impl Headers {
         }
     }
 
-    pub fn parse<B: Buf>(
+    pub fn parse<B: Bt>(
         &mut self,
         mut buffer: B,
         decoder: &mut Decoder,
@@ -176,7 +181,7 @@ impl Headers {
     pub fn flags(&self) -> Flag {
         self.flags
     }
-    
+
     pub fn flags_mut(&mut self) -> &mut Flag {
         &mut self.flags
     }
@@ -289,12 +294,10 @@ impl Headers {
         Ok(builder)
     }
 
-    pub fn encode<B: Buf + BufMut>(
-        mut self,
-        encoder: &mut Encoder,
-        dst: &mut B,
-    ) -> WebResult<usize> {
-        let size = self.header_block.encode(encoder, dst, self.flags, self.stream_id)?;
+    pub fn encode<B: Bt + BtMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
+        let size = self
+            .header_block
+            .encode(encoder, dst, self.flags, self.stream_id)?;
         log::trace!("HTTP2: 编码头信息; len={}", size);
         Ok(size)
     }
@@ -438,7 +441,7 @@ impl PushPromise {
         self.header_block.fields
     }
 
-    pub fn parse<B: Buf>(
+    pub fn parse<B: Bt>(
         head: FrameHeader,
         mut src: B,
         _decoder: &mut Decoder,
@@ -455,11 +458,7 @@ impl PushPromise {
         self.promised_id
     }
 
-    pub fn encode<B: Buf + BufMut>(
-        mut self,
-        encoder: &mut Encoder,
-        dst: &mut B,
-    ) -> WebResult<usize> {
+    pub fn encode<B: Bt + BtMut>(mut self, encoder: &mut Encoder, dst: &mut B) -> WebResult<usize> {
         let mut binary = BinaryMut::new();
         self.header_block
             .parts
@@ -490,11 +489,12 @@ impl PushPromise {
         size += self.promised_id.encode(dst).unwrap();
         size += binary.serialize(dst).unwrap();
 
-        size += self.header_block.encode(encoder, dst, self.flags, self.promised_id)?;
+        size += self
+            .header_block
+            .encode(encoder, dst, self.flags, self.promised_id)?;
         log::trace!("HTTP2: 编码推送信息; len={}", size);
         Ok(size)
     }
-
 }
 
 impl<T> From<PushPromise> for Frame<T> {
@@ -585,18 +585,22 @@ impl Parts {
     }
 
     pub fn build_url(&self) -> WebResult<Url> {
-        
         if self.authority.is_none() {
             return Err(crate::WebError::Http2(Http2Error::InvalidRequesetUrl));
         }
-        let url = format!("{}://{}{}", self.scheme.as_ref().unwrap_or(&Scheme::Http), self.authority.as_ref().unwrap(), self.path.clone().unwrap_or("/".to_string()));
+        let url = format!(
+            "{}://{}{}",
+            self.scheme.as_ref().unwrap_or(&Scheme::Http),
+            self.authority.as_ref().unwrap(),
+            self.path.clone().unwrap_or("/".to_string())
+        );
         let url = Url::parse(url.into_bytes().to_vec())?;
         Ok(url)
     }
 }
 
 impl HeaderBlock {
-    pub fn encode<B: Buf + BufMut>(
+    pub fn encode<B: Bt + BtMut>(
         &mut self,
         encoder: &mut Encoder,
         dst: &mut B,
@@ -605,7 +609,7 @@ impl HeaderBlock {
     ) -> WebResult<usize> {
         let mut result = vec![];
         let mut binary = BinaryMut::new();
-        
+
         for value in self.fields.iter() {
             if value.0.bytes_len() + value.1.bytes_len() + binary.remaining()
                 > encoder.max_frame_size as usize
@@ -643,7 +647,6 @@ impl HeaderBlock {
         }
         Ok(size)
     }
-
 }
 
 // #[cfg(test)]

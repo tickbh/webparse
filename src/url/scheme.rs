@@ -12,7 +12,8 @@
 
 use std::{fmt::Display, str::FromStr};
 
-use crate::{byte_map, Buf, BufMut, Helper, HttpError, Serialize, WebError, WebResult};
+use algorithm::buf::{Bt, BtMut};
+use crate::{byte_map, Helper, HttpError, Serialize, WebError, WebResult};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Scheme {
@@ -59,7 +60,7 @@ impl Scheme {
         Self::SCHEME_MAP[b as usize]
     }
 
-    pub fn parse_scheme<T: Buf>(buffer: &mut T) -> WebResult<Scheme> {
+    pub fn parse_scheme<T: Bt>(buffer: &mut T) -> WebResult<Scheme> {
         let scheme = Helper::parse_scheme(buffer)?;
         if scheme.as_bytes().len() > Self::MAX_SCHEME_LEN {
             return Err(WebError::Http(HttpError::SchemeTooLong));
@@ -123,7 +124,7 @@ impl Display for Scheme {
 }
 
 impl Serialize for Scheme {
-    fn serialize<B: Buf + BufMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
+    fn serialize<B: Bt + BtMut>(&mut self, buffer: &mut B) -> WebResult<usize> {
         match self {
             Scheme::None => Err(WebError::Serialize("scheme")),
             _ => Ok(buffer.put_slice(self.as_str().as_bytes())),

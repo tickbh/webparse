@@ -1,11 +1,11 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/22 10:50:53
@@ -16,9 +16,8 @@ use std::num::Wrapping;
 
 use std::sync::{Arc, RwLock};
 
-use crate::{
-    Buf, HeaderName, HeaderValue, Http2Error, WebResult,
-};
+use crate::{HeaderName, HeaderValue, Http2Error, WebResult};
+use algorithm::buf::Bt;
 
 use super::huffman::{HuffmanDecoder, HuffmanDecoderError};
 use super::HeaderIndex;
@@ -105,10 +104,7 @@ impl Decoder {
         Decoder { index }
     }
 
-    pub fn decode<B: Buf>(
-        &mut self,
-        buf: &mut B,
-    ) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
+    pub fn decode<B: Bt>(&mut self, buf: &mut B) -> WebResult<Vec<(HeaderName, HeaderValue)>> {
         let mut header_list = Vec::new();
         self.decode_with_cb(buf, |n, v| {
             header_list.push((n.into_owned(), v.into_owned()))
@@ -116,7 +112,7 @@ impl Decoder {
         Ok(header_list)
     }
 
-    pub fn decode_with_cb<F, B: Buf>(&mut self, buf: &mut B, mut cb: F) -> WebResult<()>
+    pub fn decode_with_cb<F, B: Bt>(&mut self, buf: &mut B, mut cb: F) -> WebResult<()>
     where
         F: FnMut(Cow<HeaderName>, Cow<HeaderValue>),
     {

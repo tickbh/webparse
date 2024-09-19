@@ -12,7 +12,8 @@
 
 use std::{fmt::Display, str::FromStr};
 
-use crate::{WebResult, peek, expect, next, WebError, Helper, Binary, Buf, Scheme, UrlError };
+use algorithm::buf::{Bt, Binary};
+use crate::{WebResult, peek, expect, next, WebError, Helper, Scheme, UrlError };
 
 use super::Builder;
 
