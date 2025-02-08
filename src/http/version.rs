@@ -36,7 +36,7 @@ impl Version {
     pub const HTTP3: Version = Version::Http3;
     pub const SHTTP3: &'static str = "HTTP/3";
 
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Version::Http10 => "HTTP/1.0",
             Version::Http11 => "HTTP/1.1",
@@ -65,6 +65,18 @@ impl Version {
         match self {
             Version::Http2 => true,
             _ => false,
+        }
+    }
+}
+
+impl From<&str> for Version {
+    fn from(value: &str) -> Self {
+        match value {
+            "HTTP/1.0" => Version::HTTP10,
+            "HTTP/1.1" => Version::HTTP11,
+            "HTTP/2" => Version::HTTP2,
+            "HTTP/3" => Version::HTTP3,
+            _ => Version::None
         }
     }
 }

@@ -389,6 +389,11 @@ where
         self.parts.version == Version::Http2
     }
 
+    pub fn set_url(&mut self, url: Url) {
+        self.parts.path = url.path.clone();
+        self.parts.url = url;
+    }
+
     /// 返回parts信息
     pub fn parts(&self) -> &Parts {
         &self.parts
@@ -455,6 +460,10 @@ where
 
     pub fn url(&self) -> &Url {
         &self.parts.url
+    }
+    
+    pub fn url_mut(&mut self) -> &mut Url {
+        &mut self.parts.url
     }
 
     pub fn get_host(&self) -> Option<String> {

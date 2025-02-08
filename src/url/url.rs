@@ -1,23 +1,21 @@
 // Copyright 2022 - 2023 Wenmeng See the COPYRIGHT
 // file at the top-level directory of this distribution.
-// 
+//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// 
+//
 // Author: tickbh
 // -----
 // Created Date: 2023/08/29 10:32:46
 
 use std::{fmt::Display, str::FromStr};
 
-use algorithm::buf::{Bt, Binary};
-use crate::{WebResult, peek, expect, next, WebError, Helper, Scheme, UrlError };
+use crate::{expect, next, peek, Helper, Scheme, UrlError, WebError, WebResult};
+use algorithm::buf::{Binary, Bt};
 
 use super::Builder;
-
-
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Url {
@@ -30,14 +28,21 @@ pub struct Url {
     pub query: Option<String>,
 }
 
-
 impl Url {
     pub const DEFAULT_PATH: &'static str = "/";
 
     pub fn new() -> Url {
-        Url { scheme: Scheme::None, path: Self::DEFAULT_PATH.to_string(), username: None, password: None, domain: None, port: None, query: None }
+        Url {
+            scheme: Scheme::None,
+            path: Self::DEFAULT_PATH.to_string(),
+            username: None,
+            password: None,
+            domain: None,
+            port: None,
+            query: None,
+        }
     }
-    
+
     pub fn builder() -> Builder {
         Builder::new()
     }
@@ -47,27 +52,26 @@ impl Url {
         if other.scheme != Scheme::None && self.scheme != other.scheme {
             self.scheme = other.scheme;
         }
-        if other.path != Self::DEFAULT_PATH  && self.path != other.path {
+        if other.path != Self::DEFAULT_PATH && self.path != other.path {
             self.path = other.path;
         }
-        if other.username != None  && self.username != other.username {
+        if other.username != None && self.username != other.username {
             self.username = other.username;
         }
-        if other.password != None  && self.password != other.password {
+        if other.password != None && self.password != other.password {
             self.password = other.password;
         }
-        if other.domain != None  && self.domain != other.domain {
+        if other.domain != None && self.domain != other.domain {
             self.domain = other.domain;
         }
         if other.port != None && other.port != Some(0) && self.port != other.port {
             self.port = other.port;
         }
-        if other.query != None  && self.query != other.query {
+        if other.query != None && self.query != other.query {
             self.query = other.query;
         }
-        
     }
-    
+
     fn parse_url_token<'a>(buffer: &'a mut Binary, can_convert: bool) -> WebResult<Option<String>> {
         let mut result = Vec::with_capacity(buffer.len());
         loop {
@@ -94,7 +98,7 @@ impl Url {
         }
         match String::from_utf8(result) {
             Ok(s) => Ok(Some(s)),
-            Err(_) => Err(WebError::from(UrlError::UrlInvalid))
+            Err(_) => Err(WebError::from(UrlError::UrlInvalid)),
         }
     }
 
@@ -123,7 +127,7 @@ impl Url {
         } else {
             return Err(WebError::from(UrlError::UrlInvalid));
         }
-        
+
         let check_func = Helper::is_token;
 
         let mut val = vec![];
@@ -154,7 +158,6 @@ impl Url {
                     break;
                 }
             };
-
 
             // 存在用户名, 解析用户名
             if b == b':' {
@@ -229,11 +232,11 @@ impl Url {
                 }
             }
         }
-        
+
         if path.is_some() {
             url.path = Self::parse_url_token(&mut path.unwrap(), true)?.unwrap_or("/".to_string());
         }
-        
+
         if query.is_some() {
             url.query = Self::parse_url_token(&mut query.unwrap(), true)?;
         }
@@ -267,7 +270,7 @@ impl Url {
 
         String::from_utf8_lossy(&vec).to_string()
     }
-    
+
     pub fn url_decode(val: &str) -> WebResult<String> {
         let bytes = val.as_bytes();
         let mut vec = Vec::with_capacity(bytes.len() as usize);
@@ -281,7 +284,7 @@ impl Url {
                 if idx + 2 >= bytes.len() {
                     return Err(WebError::from(UrlError::UrlCodeInvalid));
                 }
-                
+
                 let t = Helper::convert_hex(bytes[idx + 1]);
                 let u = Helper::convert_hex(bytes[idx + 2]);
                 if t.is_none() || u.is_none() {
@@ -302,18 +305,22 @@ impl Url {
             match (&self.scheme, self.port) {
                 (Scheme::Http, Some(80)) => None,
                 (Scheme::Https, Some(443)) => None,
-                _ => Some(format!(":{}", self.port.as_ref().unwrap()).to_string())
+                _ => Some(format!(":{}", self.port.as_ref().unwrap()).to_string()),
             }
         } else {
             None
         };
         if self.domain.is_some() {
-            format!("{}{}", self.domain.as_ref().unwrap(), port.unwrap_or(String::new()))
+            format!(
+                "{}{}",
+                self.domain.as_ref().unwrap(),
+                port.unwrap_or(String::new())
+            )
         } else {
             String::new()
         }
     }
-    
+
     pub fn get_scheme(&self) -> String {
         self.scheme.as_str().to_string()
     }
@@ -332,13 +339,16 @@ impl Url {
 }
 
 impl Display for Url {
-    
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.scheme != Scheme::None {
             f.write_fmt(format_args!("{}://", self.scheme))?;
         }
         if self.username.is_some() || self.password.is_some() {
-            f.write_fmt(format_args!("{}:{}@", Self::url_encode(self.username.as_ref().unwrap_or(&String::new())) , Self::url_encode(self.password.as_ref().unwrap_or(&String::new()))))?;
+            f.write_fmt(format_args!(
+                "{}:{}@",
+                Self::url_encode(self.username.as_ref().unwrap_or(&String::new())),
+                Self::url_encode(self.password.as_ref().unwrap_or(&String::new()))
+            ))?;
         }
         if self.domain.is_some() {
             f.write_fmt(format_args!("{}", self.domain.as_ref().unwrap()))?;
@@ -347,19 +357,22 @@ impl Display for Url {
             match (&self.scheme, self.port) {
                 (Scheme::Http, Some(80)) => {}
                 (Scheme::Https, Some(443)) => {}
-                _ => f.write_fmt(format_args!(":{}", self.port.as_ref().unwrap()))?
+                _ => f.write_fmt(format_args!(":{}", self.port.as_ref().unwrap()))?,
             };
         }
         f.write_fmt(format_args!("{}", Self::url_encode(&self.path)))?;
         if self.query.is_some() {
-            f.write_fmt(format_args!("?{}", Self::url_encode(self.query.as_ref().unwrap())))?;
+            f.write_fmt(format_args!(
+                "?{}",
+                Self::url_encode(self.query.as_ref().unwrap())
+            ))?;
         }
         Ok(())
     }
 }
 
 impl FromStr for Url {
-    type Err=WebError;
+    type Err = WebError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Url::parse(s.as_bytes().to_vec())
@@ -367,21 +380,21 @@ impl FromStr for Url {
 }
 
 impl TryFrom<&[u8]> for Url {
-    type Error=WebError;
+    type Error = WebError;
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         Url::parse(value.to_vec())
     }
 }
 
 impl TryFrom<&str> for Url {
-    type Error=WebError;
+    type Error = WebError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Url::parse(value.as_bytes().to_vec())
     }
 }
 
 impl TryFrom<String> for Url {
-    type Error=WebError;
+    type Error = WebError;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Url::parse(value.into_bytes().to_vec())
     }
@@ -392,7 +405,6 @@ impl PartialEq<str> for Url {
         format!("{}", &self) == other
     }
 }
-
 
 impl PartialEq<Url> for str {
     fn eq(&self, url: &Url) -> bool {
@@ -407,26 +419,22 @@ impl Default for Url {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    
-    
-    
+
     macro_rules! murl {
-        ($name:ident, $buf:expr, |$arg:ident| $body:expr) => (
-        #[test]
-        fn $name() {
-            let url = crate::Url::try_from($buf).unwrap();
-            closure(url);
-            fn closure($arg: crate::Url) {
-                $body
+        ($name:ident, $buf:expr, |$arg:ident| $body:expr) => {
+            #[test]
+            fn $name() {
+                let url = crate::Url::try_from($buf).unwrap();
+                closure(url);
+                fn closure($arg: crate::Url) {
+                    $body
+                }
             }
-        }
-        )
+        };
     }
 
-        
     murl! {
         urltest_001,
         "https://%4811:!%2011@www.baidu.com:88/path?aaa=222",
@@ -440,7 +448,7 @@ mod tests {
             assert_eq!(u.query.unwrap(), "aaa=222");
         }
     }
-    
+
     murl! {
         urltest_002,
         "/path?aaa=222",
@@ -468,7 +476,6 @@ mod tests {
         }
     }
 
-
     murl! {
         urltest_004,
         "http://127.0.0.1:8080",
@@ -480,5 +487,4 @@ mod tests {
             assert_eq!(u.query, None);
         }
     }
-
 }
