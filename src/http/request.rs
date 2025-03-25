@@ -38,7 +38,6 @@ pub struct Parts {
     pub header: HeaderMap,
     pub version: Version,
     pub url: Url,
-    pub path: String,
     pub extensions: Extensions,
 }
 
@@ -79,7 +78,7 @@ impl Builder {
         }
         if req.path() != &Url::DEFAULT_PATH {
             let _ = build.inner.as_mut().map(|head| {
-                head.path = req.path().clone();
+                head.url.path = req.path().clone();
             });
         }
 
@@ -301,9 +300,6 @@ impl Builder {
         T: Serialize,
     {
         self.inner.map(move |mut head| {
-            if head.path.len() == 0 {
-                head.path = head.url.path.clone();
-            }
             let server = HeaderName::from_static("User-Agent");
             if !head.header.contains(&server) {
                 head.header.insert(server, "wenmeng");
@@ -328,9 +324,6 @@ impl Builder {
 
     pub fn upgrade_http2(self, settings: Settings) -> Self {
         self.and_then(move |mut head| {
-            if head.path.len() == 0 {
-                head.path = head.url.path.clone();
-            }
             head.header.insert("Connection", "Upgrade, HTTP2-Settings");
             head.header.insert("Upgrade", "h2c");
             head.header
@@ -390,7 +383,12 @@ where
     }
 
     pub fn set_url(&mut self, url: Url) {
-        self.parts.path = url.path.clone();
+        if let Some(connect) = url.get_connect_url() {
+            if !self.headers().contains(&"Host") {
+                self.headers_mut().insert("Host", connect.clone());
+            }
+        }
+
         self.parts.url = url;
     }
 
@@ -425,12 +423,12 @@ where
 
     #[inline]
     pub fn path(&self) -> &String {
-        &self.parts.path
+        &self.parts.url.path
     }
 
     #[inline]
     pub fn set_path(&mut self, path: String) {
-        self.parts.path = path;
+        self.parts.url.path = path;
     }
 
     pub fn scheme(&self) -> &Scheme {
@@ -557,7 +555,7 @@ where
         Helper::skip_empty_lines(buffer)?;
         self.parts.method = Helper::parse_method(buffer)?;
         Helper::skip_spaces(buffer)?;
-        self.parts.path = Helper::parse_token(buffer)?.to_string();
+        let path = Helper::parse_token(buffer)?.to_string();
         Helper::skip_spaces(buffer)?;
         self.parts.version = Helper::parse_version(buffer)?;
         Helper::skip_new_line(buffer)?;
@@ -567,11 +565,11 @@ where
             // Connect 协议, Path则为连接地址,
             Method::Connect => {
                 let mut url = Url::new();
-                Self::parse_connect_by_host(&mut url, &self.parts.path)?;
+                Self::parse_connect_by_host(&mut url, &path)?;
                 url
             }
             _ => {
-                let mut url = Url::try_from(self.parts.path.to_string())?;
+                let mut url = Url::try_from(path)?;
                 if url.domain.is_none() {
                     match self.parts.header.get_host() {
                         Some(h) => {
@@ -643,7 +641,7 @@ where
         let mut size = 0;
         size += self.parts.method.encode(buffer)?;
         size += buffer.put_u8(b' ');
-        size += self.parts.path.serialize(buffer)?;
+        size += self.parts.url.path.serialize(buffer)?;
         size += buffer.put_u8(b' ');
         size += self.parts.version.encode(buffer)?;
         size += buffer.put_slice("\r\n".as_bytes());
@@ -710,7 +708,7 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.parts.method.fmt(f)?;
         f.write_str(" ")?;
-        self.parts.path.fmt(f)?;
+        self.parts.url.path.fmt(f)?;
         f.write_str(" ")?;
         self.parts.version.fmt(f)?;
         f.write_str("\r\n")?;
@@ -726,7 +724,6 @@ impl Default for Parts {
             header: HeaderMap::new(),
             version: Version::Http11,
             url: Url::new(),
-            path: String::new(),
             extensions: Extensions::new(),
         }
     }
@@ -739,7 +736,6 @@ impl Clone for Parts {
             header: self.header.clone(),
             version: self.version.clone(),
             url: self.url.clone(),
-            path: self.path.clone(),
             extensions: Extensions::new(),
         };
 
